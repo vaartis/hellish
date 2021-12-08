@@ -1,0 +1,14 @@
+name = "hellish"
+description = "A torrent tracker"
+version = "0.0.0"
+
+authors = ["Ekaterina Vaartis"]
+maintainers = ["Ekaterina Vaartis <vaartis@kotobank.ch>"]
+maintainers-logins = ["vaartis"]
+
+executables = ["hellish"]
+
+[[depends-on]]  # Added by alr
+aws = "^21.0.0"  # Added by alr
+[[depends-on]]  # Added by alr
+json = "^5.0.0"  # Added by alr

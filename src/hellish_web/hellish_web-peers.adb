@@ -21,7 +21,7 @@ package body Hellish_Web.Peers is
             end if;
          end if;
 
-         Put_Line("Peer " & To_String(Joined_Peer.Peer_Id) & " JOINED " & Info_Hash);
+         Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """");
          Put_Line("There are now " & Trim(Torrent_Map(Info_Hash).Length'Image, Ada.Strings.Left) & " peers");
       end Add;
 
@@ -33,7 +33,7 @@ package body Hellish_Web.Peers is
             begin
                Peer_Map.Exclude(To_String(Peer_Id));
 
-               Put_Line("Peer " & To_String(Peer_Id) & " LEFT " & Info_Hash);
+               Put_Line("Peer """ & To_String(Peer_Id) & """ LEFT """ & Info_Hash & """");
                Put_Line("There are now " & Trim(Peer_Map.Length'Image, Ada.Strings.Left) & " peers");
 
                if Natural(Length(Peer_Map)) = 0 then

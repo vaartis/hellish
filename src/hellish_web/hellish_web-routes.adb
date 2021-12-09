@@ -14,11 +14,6 @@ with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
 
 package body Hellish_Web.Routes is
-   function Clone(Element : in Announce_Handler) return Announce_Handler is
-   begin
-      return Element;
-   end Clone;
-
    function To_Hex_string(Input : String) return String is
       Result : Unbounded_String;
    begin
@@ -87,18 +82,49 @@ package body Hellish_Web.Routes is
                        Left => Natural'Value(Params.Get("left"))));
          end if;
 
-         Result := Peers.Encode_Hash_Peers_Response(Info_Hash_Hex);
+         Result := Peers.Protected_Map.Encode_Hash_Peers_Response(Info_Hash_Hex, Params.Get("peer_id"));
       end;
 
-      Put_Line(Status.Parameters(Request).URI_Format);
+      -- Put_Line(Status.Parameters(Request).URI_Format);
 
       <<Finish>>
-      return Response.Build(Mime.Text_Html, Result.Element.Encoded);
+      return Response.Build(Mime.Text_Plain, Result.Element.Encoded);
+   end Dispatch;
+
+   function Dispatch
+     (Handler : in Scrape_Handler;
+      Request : in Status.Data) return Response.Data is
+      Params : constant Parameters.List := AWS.Status.Parameters(Request);
+
+      Info_Hashes : Parameters.VString_Array := Params.Get_Values("info_hash");
+
+      Files : Bencoder.Bencode_Vectors.Vector;
+      Result_Map : Bencoder.Bencode_Maps.Map;
+   begin
+      for Hash of Info_Hashes loop
+         declare
+            Info_Hash_Hex : String := To_Hex_String(To_String(Hash));
+            Stats : Peers.Scrape_Stat_Data := Peers.Protected_Map.Scrape_Stats(Info_Hash_Hex);
+
+            File_Stats : Bencoder.Bencode_Maps.Map;
+         begin
+            File_Stats.Include("complete", Bencoder.Encode(Stats.Complete));
+            File_Stats.Include("incomlete", Bencoder.Encode(Stats.Incomplete));
+            File_Stats.Include("downloaded", Bencoder.Encode(Stats.Downloaded));
+
+            Files.Append(Bencoder.Encode(File_Stats));
+         end;
+      end loop;
+      Result_Map.Include("files", Bencoder.Encode(Files));
+
+      return Response.Build(Mime.Text_Plain, Bencoder.Encode(Result_Map).Element.Encoded);
    end Dispatch;
 
    procedure Run_Server is
    begin
       Services.Dispatchers.Uri.Register(Root, "/announce", Announce);
+      Services.Dispatchers.Uri.Register(Root, "/scrape", Scrape);
+
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");
 

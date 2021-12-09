@@ -21,7 +21,7 @@ package body Hellish_Web.Peers is
             end if;
          end if;
 
-         Put_Line("Peer " & To_String(Joined_Peer.Peer_Id) & " joined " & Info_Hash);
+         Put_Line("Peer " & To_String(Joined_Peer.Peer_Id) & " JOINED " & Info_Hash);
          Put_Line("There are now " & Trim(Torrent_Map(Info_Hash).Length'Image, Ada.Strings.Left) & " peers");
       end Add;
 
@@ -46,29 +46,56 @@ package body Hellish_Web.Peers is
       function Contains(Info_Hash : String) return Boolean is (Torrent_Map.Contains(Info_Hash));
       function Constant_Reference(Info_Hash : String) return Torrent_Maps.Constant_Reference_Type is
         (Torrent_Map.Constant_Reference(Info_Hash));
-   end Protected_Map;
 
-   function Encode_Hash_Peers_Response(Info_Hash : String) return Bencode_Value_Holders.Holder is
-      Result_Map : Bencode_Maps.Map;
-      Peer_Bencodes : Bencode_Vectors.Vector;
-   begin
-      if Protected_Map.Contains(Info_Hash) then
-         for The_Peer of Protected_Map.Constant_Reference(Info_Hash) loop
+      function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String) return Bencode_Value_Holders.Holder is
+         Result_Map : Bencode_Maps.Map;
+         Peer_Bencodes : Bencode_Vectors.Vector;
+      begin
+         if Torrent_Map.Contains(Info_Hash) then
+            for The_Peer of Torrent_Map.Constant_Reference(Info_Hash) loop
+               -- No need to send the peer to itself
+               if To_String(The_Peer.Peer_Id) /= From_Id then
+                  declare
+                     Peer_Bencode : Bencode_Maps.Map;
+                  begin
+                     Peer_Bencode.Include("peer id", Encode(To_String(The_Peer.Peer_id)));
+                     Peer_Bencode.Include("port", Encode(The_Peer.Port));
+                     Peer_Bencode.Include("ip", Encode(To_String(The_Peer.Ip)));
+
+                     Peer_Bencodes.Append(Encode(Peer_Bencode));
+                  end;
+               end if;
+            end loop;
+
             declare
-               Peer_Bencode : Bencode_Maps.Map;
+               Stats : Scrape_Stat_Data := Scrape_Stats(Info_Hash);
             begin
-               Bencode_Maps.Include(Peer_Bencode, "peer id", Encode(To_String(The_Peer.Peer_id)));
-               Bencode_Maps.Include(Peer_Bencode, "port", Encode(The_Peer.Port));
-               Bencode_Maps.Include(Peer_Bencode, "ip", Encode(To_String(The_Peer.Ip)));
-
-               Peer_Bencodes.Append(Encode(Peer_Bencode));
+               Result_Map.Include("complete", Encode(Stats.Complete));
+               Result_Map.Include("incomplete", Encode(Stats.Incomplete));
             end;
-         end loop;
-      end if;
+         end if;
 
-      Bencode_Maps.Include(Result_Map, "interval", Encode(30));
-      Bencode_Maps.Include(Result_Map, "peers", Encode(Peer_Bencodes));
+         Result_Map.Include("interval", Encode(30));
+         Result_Map.Include("peers", Encode(Peer_Bencodes));
 
-      return Encode(Result_Map);
-   end;
+         return Encode(Result_Map);
+      end Encode_Hash_Peers_Response;
+
+      function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data is
+         Result : Scrape_Stat_Data;
+      begin
+         if Torrent_Map.Contains(Info_Hash) then
+            for Peer of Torrent_Map(Info_Hash) loop
+               if Peer.Left = 0 then
+                  Result.Complete := Result.Complete + 1;
+               else
+                  Result.Incomplete := Result.Incomplete + 1;
+               end if;
+            end loop;
+         end if;
+
+         return Result;
+      end Scrape_Stats;
+
+   end Protected_Map;
 end Hellish_Web.Peers;

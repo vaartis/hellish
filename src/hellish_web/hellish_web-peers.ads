@@ -30,15 +30,20 @@ package Hellish_Web.Peers is
         Equivalent_Keys => "=");
    use Torrent_Maps;
 
+   type Scrape_Stat_Data is record
+      Complete: Natural := 0;
+      Downloaded: Natural := 0;
+      Incomplete: Natural := 0;
+   end record;
+
    protected Protected_Map is
       procedure Add(Info_Hash : String; Joined_Peer : Peer);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
 
-      function Contains(Info_Hash : String) return Boolean;
-      function Constant_Reference(Info_Hash : String) return Torrent_Maps.Constant_Reference_Type;
+      function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String) return Bencode_Value_Holders.Holder;
+
+      function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data;
    private
       Torrent_Map : Torrent_Maps.Map;
-   end;
-
-   function Encode_Hash_Peers_Response(Info_Hash : String) return Bencode_Value_Holders.Holder;
+   end Protected_Map;
 end Hellish_Web.Peers;

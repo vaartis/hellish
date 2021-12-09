@@ -10,5 +10,3 @@ executables = ["hellish"]
 
 [[depends-on]]  # Added by alr
 aws = "^21.0.0"  # Added by alr
-[[depends-on]]  # Added by alr
-json = "^5.0.0"  # Added by alr

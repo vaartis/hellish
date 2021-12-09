@@ -4,50 +4,39 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 package body Hellish_Web.Peers is
    protected body Protected_Map is
       procedure Add(Info_Hash : String; Joined_Peer : Peer) is
+         Peer_Id : String := To_String(Joined_Peer.Peer_Id);
       begin
          if not Torrent_Map.Contains(Info_Hash) then
             declare
-               Peer_Vector : Peer_Vectors.Vector;
+               Peer_Map : Peer_Maps.Map;
             begin
-               Peer_Vector.Append(Joined_Peer);
-
-               Torrent_Map.Include(Info_Hash, Peer_Vector);
+               Peer_Map.Include(Peer_Id, Joined_Peer);
+               Torrent_Map.Include(Info_Hash, Peer_Map);
             end;
          else
-            for Peer of Torrent_Map(Info_Hash) loop
-               if Peer.Peer_Id = Joined_Peer.Peer_Id then
-                  goto Do_Not_Add;
-               end if;
-
-               Torrent_Map(Info_Hash).Append(Joined_Peer);
-               <<Do_Not_Add>>
-            end loop;
+            if not Torrent_Map(Info_Hash).Contains(Peer_Id) then
+               Torrent_Map(Info_Hash).Include(Peer_Id, Joined_Peer);
+            else
+               Torrent_Map(Info_Hash).Replace(Peer_Id, Joined_Peer);
+            end if;
          end if;
-
-         Put_Line("Peer IP: " & To_String(Joined_Peer.Ip));
 
          Put_Line("Peer " & To_String(Joined_Peer.Peer_Id) & " joined " & Info_Hash);
          Put_Line("There are now " & Trim(Torrent_Map(Info_Hash).Length'Image, Ada.Strings.Left) & " peers");
       end Add;
 
-      procedure Remove(Info_Hash : String; Peer_id : Unbounded_String) is
+      procedure Remove(Info_Hash : String; Peer_Id : Unbounded_String) is
       begin
          if Torrent_Map.Contains(Info_Hash) then
             declare
-               Peer_Vector : Torrent_Hashed_Maps.Reference_Type := Torrent_Map.Reference(Info_Hash);
+               Peer_Map : Torrent_Maps.Reference_Type := Torrent_Map.Reference(Info_Hash);
             begin
-               for I in Peer_Vector.Iterate loop
-                  if Peer_Vector(I).Peer_Id = Peer_Id then
-                     Peer_Vector.Delete(Peer_Vectors.To_Index(I));
+               Peer_Map.Exclude(To_String(Peer_Id));
 
-                     Put_Line("Peer " & To_String(Peer_Id) & " left " & Info_Hash);
-                     Put_Line("There are now " & Trim(Peer_Vector.Length'Image, Ada.Strings.Left) & " peers");
+               Put_Line("Peer " & To_String(Peer_Id) & " LEFT " & Info_Hash);
+               Put_Line("There are now " & Trim(Peer_Map.Length'Image, Ada.Strings.Left) & " peers");
 
-                     exit;
-                  end if;
-               end loop;
-
-               if Natural(Peer_Vector.Length) = 0 then
+               if Natural(Length(Peer_Map)) = 0 then
                   Torrent_Map.Delete(Info_Hash);
                end if;
             end;
@@ -55,7 +44,7 @@ package body Hellish_Web.Peers is
       end Remove;
 
       function Contains(Info_Hash : String) return Boolean is (Torrent_Map.Contains(Info_Hash));
-      function Constant_Reference(Info_Hash : String) return Torrent_Hashed_Maps.Constant_Reference_Type is
+      function Constant_Reference(Info_Hash : String) return Torrent_Maps.Constant_Reference_Type is
         (Torrent_Map.Constant_Reference(Info_Hash));
    end Protected_Map;
 
@@ -77,10 +66,8 @@ package body Hellish_Web.Peers is
          end loop;
       end if;
 
-      Bencode_Maps.Include(Result_Map, "interval", Encode(10));
+      Bencode_Maps.Include(Result_Map, "interval", Encode(30));
       Bencode_Maps.Include(Result_Map, "peers", Encode(Peer_Bencodes));
-
-      Put_Line("Sending " & To_String(Encode(Result_Map).Element.Encoded));
 
       return Encode(Result_Map);
    end;

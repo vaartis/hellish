@@ -71,17 +71,20 @@ package body Hellish_Web.Routes is
       declare
          Info_Hash : String := Params.Get("info_hash");
          Info_Hash_Hex : String := To_Hex_String(info_hash);
+         Ip : Unbounded_String := To_Unbounded_String(if Params.Exist("ip")
+                                                      then Params.Get("ip")
+                                                      else Aws.Status.Peername(Request));
       begin
-         if Params.Get("event") = "started" then
-            Peers.Protected_Map.Add(Info_Hash_Hex,
+         if Params.Get("event") = "stopped" then
+               Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));
+            else
+               Peers.Protected_Map.Add(Info_Hash_Hex,
                       (Peer_Id => To_Unbounded_String(Params.Get("peer_id")),
-                       Ip => To_Unbounded_String(Params.Get("ip")),
+                       Ip => Ip,
                        Port => Positive'Value(Params.Get("port")),
                        Uploaded => Natural'Value(Params.Get("uploaded")),
                        Downloaded => Natural'Value(Params.Get("downloaded")),
                        Left => Natural'Value(Params.Get("left"))));
-         elsif Params.Get("event") = "stopped" then
-            Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));
          end if;
 
          Result := Peers.Encode_Hash_Peers_Response(Info_Hash_Hex);

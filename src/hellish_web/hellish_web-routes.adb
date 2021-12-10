@@ -73,14 +73,18 @@ package body Hellish_Web.Routes is
       begin
          if Params.Get("event") = "stopped" then
                Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));
-            else
-               Peers.Protected_Map.Add(Info_Hash_Hex,
-                      (Peer_Id => To_Unbounded_String(Params.Get("peer_id")),
-                       Ip => Ip,
-                       Port => Positive'Value(Params.Get("port")),
-                       Uploaded => Natural'Value(Params.Get("uploaded")),
-                       Downloaded => Natural'Value(Params.Get("downloaded")),
-                       Left => Natural'Value(Params.Get("left"))));
+         else
+            if Params.Get("event") = "completed" then
+               -- Increment the downloaded count
+               Peers.Protected_Map.Downloaded(Info_Hash_Hex);
+            end if;
+            Peers.Protected_Map.Add(Info_Hash_Hex,
+                                    (Peer_Id => To_Unbounded_String(Params.Get("peer_id")),
+                                     Ip => Ip,
+                                     Port => Positive'Value(Params.Get("port")),
+                                     Uploaded => Natural'Value(Params.Get("uploaded")),
+                                     Downloaded => Natural'Value(Params.Get("downloaded")),
+                                     Left => Natural'Value(Params.Get("left"))));
          end if;
 
          declare
@@ -140,7 +144,7 @@ package body Hellish_Web.Routes is
             File_Stats : Bencoder.Bencode_Maps.Map;
          begin
             File_Stats.Include("complete", Bencoder.Encode(Stats.Complete));
-            File_Stats.Include("incomlete", Bencoder.Encode(Stats.Incomplete));
+            File_Stats.Include("incomplete", Bencoder.Encode(Stats.Incomplete));
             File_Stats.Include("downloaded", Bencoder.Encode(Stats.Downloaded));
 
             Files.Append(Bencoder.Encode(File_Stats));

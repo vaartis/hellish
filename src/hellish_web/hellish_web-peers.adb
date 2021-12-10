@@ -24,7 +24,8 @@ package body Hellish_Web.Peers is
             end if;
          end if;
 
-         Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """");
+         Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """ from " &
+                    To_String(Joined_Peer.Ip) & ":" & Trim(Joined_Peer.Port'Image, Ada.Strings.Left));
          Put_Line("There are now " & Trim(Torrent_Map(Info_Hash).Length'Image, Ada.Strings.Left) & " peers");
       end Add;
 
@@ -104,6 +105,7 @@ package body Hellish_Web.Peers is
             begin
                Result_Map.Include("complete", Encode(Stats.Complete));
                Result_Map.Include("incomplete", Encode(Stats.Incomplete));
+               Result_Map.Include("downloaded", Encode((if Saved_Stats_Map.Contains(Info_Hash) then Saved_Stats_Map(Info_Hash).Downloaded else 0)));
             end;
          end if;
 
@@ -123,6 +125,9 @@ package body Hellish_Web.Peers is
                   Result.Incomplete := Result.Incomplete + 1;
                end if;
             end loop;
+         end if;
+         if Saved_Stats_Map.Contains(Info_Hash) then
+            Result.Downloaded := Saved_Stats_Map(Info_Hash).Downloaded;
          end if;
 
          return Result;
@@ -158,6 +163,15 @@ package body Hellish_Web.Peers is
 
          return Result;
       end Ip_Port_Bytes;
+
+      procedure Downloaded(Info_Hash : String) is
+      begin
+         if Saved_Stats_Map.Contains(Info_Hash) then
+            Saved_Stats_Map(Info_Hash).Downloaded := Saved_Stats_Map(Info_Hash).Downloaded + 1;
+         else
+            Saved_Stats_Map.Include(Info_Hash, (Downloaded => 1));
+         end if;
+      end;
 
    end Protected_Map;
 end Hellish_Web.Peers;

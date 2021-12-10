@@ -41,6 +41,18 @@ package Hellish_Web.Peers is
       Num_Want: Natural;
    end record;
 
+   type Saved_Stats is record
+      Downloaded: Natural;
+   end record;
+
+   package Saved_Stats_Maps is new
+     Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => saved_stats,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=");
+   use Saved_Stats_Maps;
+
    protected Protected_Map is
       procedure Add(Info_Hash : String; Joined_Peer : Peer);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
@@ -49,9 +61,12 @@ package Hellish_Web.Peers is
                                           Options : Response_Options) return Bencode_Value_Holders.Holder;
 
       function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data;
+
+      procedure Downloaded(Info_Hash : String);
    private
       function Ip_Port_Bytes(From_Peer : Peer) return String;
 
       Torrent_Map : Torrent_Maps.Map;
+      Saved_Stats_Map : Saved_Stats_Maps.Map;
    end Protected_Map;
 end Hellish_Web.Peers;

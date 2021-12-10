@@ -11,6 +11,8 @@ with Aws.Services.Dispatchers.URI;
 with AWS.Mime;
 with Aws.Parameters;
 
+with Templates_Parser; use Templates_Parser;
+
 with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
 
@@ -155,8 +157,22 @@ package body Hellish_Web.Routes is
       return Response.Build(Mime.Text_Plain, Bencoder.Encode(Result_Map).Element.Encoded);
    end Dispatch;
 
+   function Dispatch
+     (Handler : in Index_Handler;
+      Request : in Status.Data) return Response.Data is
+      Total_Stats : Peers.Total_Stats := Peers.Protected_Map.Total_Stat_Data;
+      Translations : Translate_Table := (1 => Assoc("total_known", Total_Stats.Known),
+                                         2 => Assoc("total_downloaded", Total_Stats.Downloaded),
+                                         3 => Assoc("current_seeders", Total_Stats.Seeders),
+                                         4 => Assoc("current_leechers", Total_Stats.Leechers));
+   begin
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/index.html", Translations)));
+   end Dispatch;
+
    procedure Run_Server is
    begin
+      Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register(Root, "/announce", Announce);
       Services.Dispatchers.Uri.Register(Root, "/scrape", Scrape);
 

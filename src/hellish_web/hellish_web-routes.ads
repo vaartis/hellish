@@ -10,16 +10,15 @@ package Hellish_Web.Routes is
 
    procedure Run_Server;
 private
+   type Index_Handler is new Dispatchers.Handler with null record;
    type Announce_Handler is new Dispatchers.Handler with null record;
    type Scrape_Handler is new Dispatchers.Handler with null record;
 
-   overriding function Dispatch
-     (Handler : in Announce_Handler;
-      Request : in Status.Data) return Response.Data;
-   overriding function Dispatch
-     (Handler : in Scrape_Handler;
-      Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Scrape_Handler; Request : in Status.Data) return Response.Data;
 
+   overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
    overriding function Clone(Element : in Scrape_Handler) return Scrape_Handler is (Element);
 
@@ -27,6 +26,7 @@ private
    Root : Services.Dispatchers.Uri.Handler;
    Conf : constant Config.Object := AWS.Config.Get_Current;
 
+   Index : Index_Handler;
    Announce : Announce_Handler;
    Scrape : Scrape_Handler;
 

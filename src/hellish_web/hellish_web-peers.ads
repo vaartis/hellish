@@ -53,6 +53,13 @@ package Hellish_Web.Peers is
         Equivalent_Keys => "=");
    use Saved_Stats_Maps;
 
+   type Total_Stats is record
+      Known: Natural := 0;
+      Downloaded: Natural := 0;
+      Seeders: Natural := 0;
+      Leechers: Natural := 0;
+   end record;
+
    protected Protected_Map is
       procedure Add(Info_Hash : String; Joined_Peer : Peer);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
@@ -63,6 +70,7 @@ package Hellish_Web.Peers is
       function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data;
 
       procedure Downloaded(Info_Hash : String);
+      function Total_Stat_Data return Total_Stats;
    private
       function Ip_Port_Bytes(From_Peer : Peer) return String;
 

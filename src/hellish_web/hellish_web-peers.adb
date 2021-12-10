@@ -15,6 +15,8 @@ package body Hellish_Web.Peers is
             begin
                Peer_Map.Include(Peer_Id, Joined_Peer);
                Torrent_Map.Include(Info_Hash, Peer_Map);
+               -- Also add it to the stats map
+               Saved_Stats_Map.Include(Info_Hash, (Downloaded => 0));
             end;
          else
             if not Torrent_Map(Info_Hash).Contains(Peer_Id) then
@@ -172,6 +174,25 @@ package body Hellish_Web.Peers is
             Saved_Stats_Map.Include(Info_Hash, (Downloaded => 1));
          end if;
       end;
+
+      function Total_Stat_Data return Total_Stats is
+         Stats : Total_Stats;
+      begin
+         Stats.Known := Natural(Saved_Stats_Map.Length);
+         for Stat of Saved_Stats_Map loop
+            Stats.Downloaded := Stats.Downloaded + Stat.Downloaded;
+         end loop;
+         for Torrent in Torrent_Map.Iterate loop
+            declare
+               Torrent_Stats : Scrape_Stat_Data := Scrape_Stats(Key(Torrent));
+            begin
+               Stats.Seeders := Stats.Seeders + Torrent_Stats.Complete;
+               Stats.Leechers := Stats.Leechers + Torrent_Stats.Incomplete;
+            end;
+         end loop;
+
+         return Stats;
+      end Total_Stat_Data;
 
    end Protected_Map;
 end Hellish_Web.Peers;

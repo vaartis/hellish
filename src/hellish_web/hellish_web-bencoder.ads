@@ -45,6 +45,8 @@ package Hellish_Web.Bencoder is
    function Encode(Value : Bencode_Vectors.Vector) return Holder;
    function Encode(The_Map : Bencode_Maps.Map) return Holder;
 
+   procedure Include(The_Map : in out Bencode_Dict; Key : String; Value : Bencode_Value_Holders.Holder);
+
    function With_Failure_Reason(reason : String) return Holder;
 
    Encode_Error : exception;

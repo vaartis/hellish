@@ -36,12 +36,17 @@ package Hellish_Web.Peers is
       Incomplete: Natural := 0;
    end record;
 
+   type Response_Options is record
+      Compact: Boolean;
+      Num_Want: Natural;
+   end record;
+
    protected Protected_Map is
       procedure Add(Info_Hash : String; Joined_Peer : Peer);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
 
       function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String;
-                                         Compact : Boolean) return Bencode_Value_Holders.Holder;
+                                          Options : Response_Options) return Bencode_Value_Holders.Holder;
 
       function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data;
    private

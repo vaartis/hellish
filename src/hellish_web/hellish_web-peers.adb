@@ -51,21 +51,23 @@ package body Hellish_Web.Peers is
         (Torrent_Map.Constant_Reference(Info_Hash));
 
       function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String;
-                                          Compact : Boolean) return Bencode_Value_Holders.Holder is
+                                          Options : Response_Options) return Bencode_Value_Holders.Holder is
          Result_Map : Bencode_Maps.Map;
       begin
          if Torrent_Map.Contains(Info_Hash) then
-            if Compact then
-               Put_Line("Compact peer list requested by " & From_Id);
-
+            if Options.Compact then
                -- Compact format
                declare
                   Compact_String : Unbounded_String;
+                  Peer_Counter : Natural := 0;
                begin
                   for The_Peer of Torrent_Map.Constant_Reference(Info_Hash) loop
                      -- No need to send the peer to itself
                      if To_String(The_Peer.Peer_Id) /= From_Id then
                         Append(Compact_String, Ip_Port_Bytes(The_Peer));
+
+                        Peer_Counter := Peer_Counter + 1;
+                        exit when Peer_Counter >= Options.Num_Want;
                      end if;
                   end loop;
 
@@ -88,6 +90,7 @@ package body Hellish_Web.Peers is
                            Peer_Bencode.Include("ip", Encode(To_String(The_Peer.Ip)));
 
                            Peer_Bencodes.Append(Encode(Peer_Bencode));
+                           exit when Natural(Peer_Bencodes.Length) > Options.Num_Want;
                         end;
                      end if;
                   end loop;

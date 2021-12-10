@@ -28,7 +28,7 @@ package body Hellish_Web.Bencoder is
       return To_Holder(Bencode_List'(Value => Value, Encoded => Result));
    end Encode;
 
-   function Encode(The_Map : Bencode_Maps.Map) return Holder is
+   function Encode_Map(The_Map : Bencode_Maps.Map) return Unbounded_String is
       Result : Unbounded_String;
    begin
       Append(Result, "d");
@@ -40,8 +40,20 @@ package body Hellish_Web.Bencoder is
       end loop;
       Append(Result, "e");
 
-      return To_Holder(Bencode_Dict'(Value => The_Map, Encoded => Result));
+      return Result;
+   end;
+
+   function Encode(The_Map : Bencode_Maps.Map) return Holder is
+   begin
+      return To_Holder(Bencode_Dict'(Value => The_Map, Encoded => Encode_Map(The_Map)));
    end Encode;
+
+   procedure Include(The_Map : in out Bencode_Dict; Key : String; Value : Bencode_Value_Holders.Holder) is
+   begin
+      The_Map.Value.Include(Key, Value);
+      -- Update the encoded value
+      The_Map.Encoded := Encode_Map(The_Map.Value);
+   end;
 
    function With_Failure_Reason(reason : String) return Holder is
       Result : Bencode_Maps.Map;

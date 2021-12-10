@@ -1,8 +1,9 @@
 with Ada.Text_Io; use Ada.Text_Io;
+with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
-with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
+with Ada.Containers.Indefinite_Holders;
 
 with Aws.Server.Log;
 with Aws.Config;
@@ -84,10 +85,34 @@ package body Hellish_Web.Routes is
 
          declare
             Compact : Boolean := not Params.Exist("compact") or Params.Get("compact") = "1";
+            Num_Want : Natural := 50;
+
+            package Indefinite_String_Holders is new Ada.Containers.Indefinite_Holders(String);
+            use Indefinite_String_Holders;
+
+            Warning : Indefinite_String_Holders.Holder;
+            procedure Include_Warning(Dict : in out Bencoder.Bencode_Value'Class) is
+            begin
+               -- Add the warning to the held result
+               Bencoder.Bencode_Dict(Dict).Include("warning message", Bencoder.Encode(Warning.Element));
+            end Include_Warning;
          begin
+            if Params.Exist("numwant") then
+               begin
+                  Num_Want := Natural'Value(Params.Get("numwant"));
+               exception
+                  when Constraint_Error =>
+                     -- Don't fail just because the number wasn't properly provided, just use the default
+                     Warning := To_Holder("numwant was expected to be a positive number, but was " & Params.Get("numwant"));
+               end;
+            end if;
+
             Result :=
               Peers.Protected_Map.Encode_Hash_Peers_Response(Info_Hash_Hex, Params.Get("peer_id"),
-                                                             Compact => Compact);
+                                                             (Compact => Compact, Num_Want => Num_Want));
+            if not Warning.Is_Empty then
+               Result.Update_Element(Include_Warning'Access);
+            end if;
          end;
       end;
 

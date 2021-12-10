@@ -82,7 +82,13 @@ package body Hellish_Web.Routes is
                        Left => Natural'Value(Params.Get("left"))));
          end if;
 
-         Result := Peers.Protected_Map.Encode_Hash_Peers_Response(Info_Hash_Hex, Params.Get("peer_id"));
+         declare
+            Compact : Boolean := not Params.Exist("compact") or Params.Get("compact") = "1";
+         begin
+            Result :=
+              Peers.Protected_Map.Encode_Hash_Peers_Response(Info_Hash_Hex, Params.Get("peer_id"),
+                                                             Compact => Compact);
+         end;
       end;
 
       -- Put_Line(Status.Parameters(Request).URI_Format);

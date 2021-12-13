@@ -4,6 +4,7 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers.Indefinite_Holders;
+with Ada.Text_Io; use Ada.Text_Io;
 
 package Hellish_Web.Bencoder is
    type Bencode_Value is abstract tagged record
@@ -45,9 +46,16 @@ package Hellish_Web.Bencoder is
    function Encode(Value : Bencode_Vectors.Vector) return Holder;
    function Encode(The_Map : Bencode_Maps.Map) return Holder;
 
+   function Decode(File : File_Type) return Bencode_Value_Holders.Holder;
+   function Decode_String(File : File_Type) return Bencode_Value_Holders.Holder;
+   function Decode_Integer(File : File_Type) return Bencode_Value_Holders.Holder;
+   function Decode_List(File : File_Type) return Bencode_Value_Holders.Holder;
+   function Decode_Dict(File : File_Type) return Bencode_Value_Holders.Holder;
+
    procedure Include(The_Map : in out Bencode_Dict; Key : String; Value : Bencode_Value_Holders.Holder);
 
    function With_Failure_Reason(reason : String) return Holder;
 
    Encode_Error : exception;
+   Decode_Error : exception;
 end Hellish_Web.Bencoder;

@@ -1,3 +1,6 @@
+with Ada.Integer_Text_Io;
+use Ada.Integer_Text_Io;
+
 package body Hellish_Web.Bencoder is
    function Encode(Value : Natural) return Holder is
    begin
@@ -62,4 +65,147 @@ package body Hellish_Web.Bencoder is
 
       return Encode(Result);
    end With_Failure_Reason;
+
+   function File_At(File : File_Type) return String is
+   begin
+      return " at " & Line(File)'Image & ":" & Col(File)'Image;
+   end;
+
+   function Decode(File : File_Type) return Bencode_Value_Holders.Holder is
+      Char : Character;
+      Eol : Boolean;
+   begin
+      Look_Ahead(File, Char, Eol);
+
+      declare
+         Tmp: Integer;
+      begin
+         Tmp := Integer'Value(( 1 => Char ));
+         -- Confirmed that the appropriate type is a string
+         return Decode_String(File);
+      exception
+         when Constraint_Error =>
+            -- Not a string, must be something else
+            case Char is
+               when 'i' =>
+                  return Decode_Integer(File);
+               when 'l' =>
+                  return Decode_List(File);
+               when 'd' =>
+                  return Decode_Dict(File);
+               when others =>
+                  raise Decode_Error with "Unknown character determining value type: " & Char & File_At(File);
+            end case;
+      end;
+
+   end Decode;
+
+   function Decode_String(File : File_Type) return Bencode_Value_Holders.Holder is
+      Length : Natural;
+      Char : Character;
+      Eol : Boolean;
+   begin
+      declare
+         Reading : Unbounded_String;
+      begin
+         loop
+            -- This is stupid but it just refuses to read the number
+            Look_Ahead(File, Char, Eol);
+            exit when Char = ':';
+            Get_Immediate(File, Char);
+
+            Append(Reading, (1 => Char));
+         end loop;
+         Length := Natural'Value(To_String(Reading));
+      end;
+
+      Get_Immediate(File, Char);
+      if Char /= ':' then
+         raise Decode_Error with "Expected number to be followed by a :, but instead found " & Char & File_At(File);
+      end if;
+      declare
+         Content : String (1..Length);
+      begin
+         for I in 1..Length loop
+            Get_Immediate(File, Content(I));
+         end loop;
+
+         return Encode(Content);
+      end;
+   end Decode_String;
+
+   function Decode_Integer(File : File_Type) return Bencode_Value_Holders.Holder is
+      Char : Character;
+      Result : Integer;
+   begin
+      Get_Immediate(File, Char);
+      if Char /= 'i' then
+         raise Decode_Error with "Expected a number to begin with i, but instead found" & Char & File_At(File);
+      end if;
+
+      declare
+         Reading : Unbounded_String;
+         Eol : Boolean;
+      begin
+         loop
+            -- This is stupid but it just refuses to read the number
+            Look_Ahead(File, Char, Eol);
+            exit when Char = 'e';
+            Get_Immediate(File, Char);
+
+            Append(Reading, (1 => Char));
+         end loop;
+         Result := Natural'Value(To_String(Reading));
+      end;
+
+      Get_Immediate(File, Char);
+      if Char /= 'e' then
+         raise Decode_Error with "Expected a number to end with e, but instead found" & Char & File_At(File);
+      end if;
+
+      return Encode(Result);
+   end Decode_Integer;
+
+   function Decode_List(File : File_Type) return Bencode_Value_Holders.Holder is
+      Char : Character;
+      Eol : Boolean;
+
+      Result : Bencode_Vectors.Vector;
+   begin
+      Get_Immediate(File, Char);
+      if Char /= 'l' then
+         raise Decode_Error with "Expected a list to begin with l, but instead found" & Char & File_At(File);
+      end if;
+      loop
+         Look_Ahead(File, Char, Eol);
+         exit when Char = 'e';
+
+         Result.Append(Decode(File));
+      end loop;
+      -- Always 'e'
+      Get_Immediate(File, Char);
+
+      return Encode(Result);
+   end Decode_list;
+
+   function Decode_Dict(File : File_Type) return Bencode_Value_Holders.Holder is
+      Char : Character;
+      Eol : Boolean;
+
+      Result : Bencode_Maps.Map;
+   begin
+      Get_Immediate(File, Char);
+      if Char /= 'd' then
+         raise Decode_Error with "Expected a dict to begin with d, but instead found" & Char & File_At(File);
+      end if;
+      loop
+         Look_Ahead(File, Char, Eol);
+         exit when Char = 'e';
+
+         Result.Include(To_String(Bencode_String((Decode_String(File).Element)).Value),
+                        Decode(File));
+      end loop;
+      return Encode(Result);
+   end Decode_Dict;
+
 end Hellish_Web.Bencoder;

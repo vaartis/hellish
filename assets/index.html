@@ -1,4 +1,5 @@
 <head>
+    <meta charset="UTF-8">
     <h1>Hellish tracker</h1>
 </head>
 <body>
@@ -14,4 +15,9 @@
     <p>
         Current leechers: <b>@_current_leechers_@</b>
     </p>
+
+    <form enctype="multipart/form-data" ACTION="/api/upload" method="POST">
+        <input NAME="file" TYPE="file" >
+        <INPUT TYPE="submit" NAME="go" value="Send File">
+    </form>
 </body>

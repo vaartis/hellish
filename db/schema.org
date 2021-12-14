@@ -1,0 +1,8 @@
+| TABLE    | torrents      | torrent  |   |   |
+| id       | AUTOINCREMENT | PK       |   |   |
+| bencoded | TEXT          | NOT NULL |   |   |
+| filename | TEXT          | NOT NULL |   |   |
+
+| TABLE   | config        | config   |   |   |
+| id      | AUTOINCREMENT | PK       |   |   |
+| version | INTEGER       | NOT NULL |   |   |

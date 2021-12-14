@@ -15,6 +15,7 @@ with Templates_Parser; use Templates_Parser;
 
 with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
+with Hellish_Web.Database;
 
 package body Hellish_Web.Routes is
    function To_Hex_string(Input : String) return String is
@@ -170,11 +171,43 @@ package body Hellish_Web.Routes is
                             String'(Templates_Parser.Parse("assets/index.html", Translations)));
    end Dispatch;
 
+   -- API
+
+   function Dispatch
+     (Handler : in Api_Upload_Handler;
+      Request : in Status.Data) return Response.Data is
+      Params : constant Parameters.List := Status.Parameters(Request);
+      File_Path : String := Params.Get("file");
+      File_Name : String := Params.Get("file", 2);
+      File : File_Type;
+
+      Contents_Str : String (1..1);
+      Contents : Unbounded_String;
+      --Contents : Bencoder.Bencode_Value_Holders.Holder;
+   begin
+      Open(File, Mode => In_File, Name => File_Path);
+      while not End_Of_File(File) loop
+         Get_Immediate(File, Contents_Str(1));
+         Append(Contents, Contents_Str);
+      end loop;
+      Close(File);
+
+      --Contents := Bencoder.Decode(File);
+
+      return Response.Build(Mime.Text_Html, "");
+   end Dispatch;
+
+   -- Entrypoint
+
    procedure Run_Server is
    begin
+      Database.Init;
+
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register(Root, "/announce", Announce);
       Services.Dispatchers.Uri.Register(Root, "/scrape", Scrape);
+
+      Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");

@@ -45,15 +45,23 @@ package Orm is
    No_Config : constant Config;
 
    type Torrent is new Orm_Element with null record;
-   type Torrent_DDR is new Detached_Data (5) with private;
+   type Torrent_DDR is new Detached_Data (4) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
    new Sessions.Detached_Element with private;
    type Detached_Torrent_Access is access all Detached_Torrent'Class;
    No_Detached_Torrent : constant Detached_Torrent;
    No_Torrent : constant Torrent;
 
+   type User_Torrent_Stat is new Orm_Element with null record;
+   type User_Torrent_Stat_DDR is new Detached_Data (6) with private;
+   type Detached_User_Torrent_Stat is  --  Get() returns a User_Torrent_Stat_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_User_Torrent_Stat_Access is access all Detached_User_Torrent_Stat'Class;
+   No_Detached_User_Torrent_Stat : constant Detached_User_Torrent_Stat;
+   No_User_Torrent_Stat : constant User_Torrent_Stat;
+
    type User is new Orm_Element with null record;
-   type User_DDR is new Detached_Data (3) with private;
+   type User_DDR is new Detached_Data (6) with private;
    type Detached_User is  --  Get() returns a User_DDR
    new Sessions.Detached_Element with private;
    type Detached_User_Access is access all Detached_User'Class;
@@ -79,16 +87,13 @@ package Orm is
      (Self  : Detached_Torrent;
       Value : Detached_User'Class);
 
-   function Filename (Self : Torrent) return String;
-   function Filename (Self : Detached_Torrent) return String;
-   procedure Set_Filename (Self : Detached_Torrent; Value : String);
-
    function Id (Self : Torrent) return Integer;
    function Id (Self : Detached_Torrent) return Integer;
 
-   function Torrent_File (Self : Torrent) return String;
-   function Torrent_File (Self : Detached_Torrent) return String;
-   procedure Set_Torrent_File (Self : Detached_Torrent; Value : String);
+   function Info_Hash (Self : Torrent) return String;
+   function Info_Hash (Self : Detached_Torrent) return String;
+   procedure Set_Info_Hash (Self : Detached_Torrent; Value : String);
+   --  The SHA1 hash of the torrent
 
    function Detach (Self : Torrent'Class) return Detached_Torrent'Class;
 
@@ -110,12 +115,24 @@ package Orm is
    --  Compares two elements using only the primary keys. All other fields are
    --  ignored
 
+   function Downloaded (Self : User) return Integer;
+   function Downloaded (Self : Detached_User) return Integer;
+   procedure Set_Downloaded (Self : Detached_User; Value : Integer);
+
    function Id (Self : User) return Integer;
    function Id (Self : Detached_User) return Integer;
+
+   function Passkey (Self : User) return String;
+   function Passkey (Self : Detached_User) return String;
+   procedure Set_Passkey (Self : Detached_User; Value : String);
 
    function Password (Self : User) return String;
    function Password (Self : Detached_User) return String;
    procedure Set_Password (Self : Detached_User; Value : String);
+
+   function Uploaded (Self : User) return Integer;
+   function Uploaded (Self : Detached_User) return Integer;
+   procedure Set_Uploaded (Self : Detached_User; Value : Integer);
 
    function Username (Self : User) return String;
    function Username (Self : Detached_User) return String;
@@ -159,6 +176,46 @@ package Orm is
 
    function New_Config return Detached_Config'Class;
 
+   ----------------------------------
+   -- Elements: User_Torrent_Stats --
+   ----------------------------------
+
+   function By_User (Self : User_Torrent_Stat) return Integer;
+   function By_User (Self : Detached_User_Torrent_Stat) return Integer;
+   procedure Set_By_User (Self : Detached_User_Torrent_Stat; Value : Integer);
+   function By_User (Self : User_Torrent_Stat) return User'Class;
+   function By_User
+     (Self : Detached_User_Torrent_Stat)
+     return Detached_User'Class;
+   procedure Set_By_User
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Detached_User'Class);
+
+   function Downloaded (Self : User_Torrent_Stat) return Integer;
+   function Downloaded (Self : Detached_User_Torrent_Stat) return Integer;
+   procedure Set_Downloaded (Self : Detached_User_Torrent_Stat; Value : Integer);
+
+   function Of_Torrent (Self : User_Torrent_Stat) return Integer;
+   function Of_Torrent (Self : Detached_User_Torrent_Stat) return Integer;
+   procedure Set_Of_Torrent (Self : Detached_User_Torrent_Stat; Value : Integer);
+   function Of_Torrent (Self : User_Torrent_Stat) return Torrent'Class;
+   function Of_Torrent
+     (Self : Detached_User_Torrent_Stat)
+     return Detached_Torrent'Class;
+   procedure Set_Of_Torrent
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Detached_Torrent'Class);
+
+   function Uploaded (Self : User_Torrent_Stat) return Integer;
+   function Uploaded (Self : Detached_User_Torrent_Stat) return Integer;
+   procedure Set_Uploaded (Self : Detached_User_Torrent_Stat; Value : Integer);
+
+   function Detach
+     (Self : User_Torrent_Stat'Class)
+     return Detached_User_Torrent_Stat'Class;
+
+   function New_User_Torrent_Stat return Detached_User_Torrent_Stat'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
@@ -172,6 +229,14 @@ package Orm is
       Pk_Only   : Boolean := False);
 
    procedure Internal_Query_Torrents
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_User_Torrent_Stats
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -217,6 +282,19 @@ package Orm is
    Empty_Direct_Torrent_List : constant Direct_Torrent_List :=
    I_Torrents.Empty_Direct_List;
 
+   type I_User_Torrent_Stats_Managers is abstract new Manager with null record;
+   package I_User_Torrent_Stats is new Generic_Managers
+     (I_User_Torrent_Stats_Managers, User_Torrent_Stat, Related_Depth, DBA.User_Torrent_Stats,
+      Internal_Query_User_Torrent_Stats);
+   type User_Torrent_Stats_Managers is new I_User_Torrent_Stats.Manager with null record;
+   subtype User_Torrent_Stats_Stmt is I_User_Torrent_Stats.ORM_Prepared_Statement;
+
+   subtype User_Torrent_Stat_List is I_User_Torrent_Stats.List;
+   subtype Direct_User_Torrent_Stat_List is I_User_Torrent_Stats.Direct_List;
+   Empty_User_Torrent_Stat_List : constant User_Torrent_Stat_List := I_User_Torrent_Stats.Empty_List;
+   Empty_Direct_User_Torrent_Stat_List : constant Direct_User_Torrent_Stat_List :=
+   I_User_Torrent_Stats.Empty_Direct_List;
+
    type I_Users_Managers is abstract new Manager with null record;
    package I_Users is new Generic_Managers
      (I_Users_Managers, User, Related_Depth, DBA.Users,
@@ -235,12 +313,21 @@ package Orm is
    -- Manager: Torrents --
    -----------------------
 
+   function User_Torrent_Stats_Of_Torrent_Id
+     (Self : Torrent'Class)
+     return User_Torrent_Stats_Managers;
+   function User_Torrent_Stats_Of_Torrent_Id
+     (Self : Detached_Torrent'Class)
+     return User_Torrent_Stats_Managers;
+   function User_Torrent_Stats_Of_Torrent_Id
+     (Self : I_Torrents_Managers'Class)
+     return User_Torrent_Stats_Managers;
+
    function Filter
-     (Self         : Torrents_Managers'Class;
-      Id           : Integer := -1;
-      Torrent_File : String := No_Update;
-      Filename     : String := No_Update;
-      Created_By   : Integer := -1)
+     (Self       : Torrents_Managers'Class;
+      Id         : Integer := -1;
+      Info_Hash  : String := No_Update;
+      Created_By : Integer := -1)
      return Torrents_Managers;
 
    function Get_Torrent
@@ -263,10 +350,13 @@ package Orm is
      return Torrents_Managers;
 
    function Filter
-     (Self     : Users_Managers'Class;
-      Id       : Integer := -1;
-      Username : String := No_Update;
-      Password : String := No_Update)
+     (Self       : Users_Managers'Class;
+      Id         : Integer := -1;
+      Username   : String := No_Update;
+      Password   : String := No_Update;
+      Passkey    : String := No_Update;
+      Uploaded   : Integer := -1;
+      Downloaded : Integer := -1)
      return Users_Managers;
 
    function Get_User
@@ -275,6 +365,14 @@ package Orm is
       Depth            : Related_Depth := 0;
       Follow_Left_Join : Boolean := False)
      return Detached_User'Class;
+
+   function Torrent_Stats (Self : User'Class) return User_Torrent_Stats_Managers;
+   function Torrent_Stats
+     (Self : Detached_User'Class)
+     return User_Torrent_Stats_Managers;
+   function Torrent_Stats
+     (Self : I_Users_Managers'Class)
+     return User_Torrent_Stats_Managers;
 
    ---------------------
    -- Manager: Config --
@@ -293,6 +391,18 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_Config'Class;
 
+   ---------------------------------
+   -- Manager: User_Torrent_Stats --
+   ---------------------------------
+
+   function Filter
+     (Self       : User_Torrent_Stats_Managers'Class;
+      By_User    : Integer := -1;
+      Of_Torrent : Integer := -1;
+      Uploaded   : Integer := -1;
+      Downloaded : Integer := -1)
+     return User_Torrent_Stats_Managers;
+
    --------------
    -- Managers --
    --------------
@@ -302,6 +412,9 @@ package Orm is
 
    All_Torrents : constant Torrents_Managers :=
      (I_Torrents.All_Managers with null record);
+
+   All_User_Torrent_Stats : constant User_Torrent_Stats_Managers :=
+     (I_User_Torrent_Stats.All_Managers with null record);
 
    All_Users : constant Users_Managers :=
      (I_Users.All_Managers with null record);
@@ -313,6 +426,7 @@ package Orm is
 
    overriding procedure Free (Self : in out Config_Ddr);
    overriding procedure Free (Self : in out Torrent_Ddr);
+   overriding procedure Free (Self : in out User_Torrent_Stat_Ddr);
    overriding procedure Free (Self : in out User_Ddr);
 
    overriding procedure Insert_Or_Update
@@ -324,19 +438,26 @@ package Orm is
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
+     (Self        : in out Detached_User_Torrent_Stat;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
      (Self        : in out Detached_User;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
 
    overriding procedure Internal_Delete (Self : Detached_Config);
    overriding procedure Internal_Delete (Self : Detached_Torrent);
+   overriding procedure Internal_Delete (Self : Detached_User_Torrent_Stat);
    overriding procedure Internal_Delete (Self : Detached_User);
 
    overriding function Key (Self : Config_Ddr) return Element_Key;
    overriding function Key (Self : Torrent_Ddr) return Element_Key;
+   overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key;
    overriding function Key (Self : User_Ddr) return Element_Key;
 
    overriding procedure On_Persist (Self : Detached_Torrent);
+   overriding procedure On_Persist (Self : Detached_User_Torrent_Stat);
 
 private
 
@@ -346,19 +467,31 @@ private
     end record;
     type Config_Data is access all Config_DDR;
     
-    type Torrent_DDR is new Detached_Data (5) with record
-       ORM_Created_By      : Integer := -1;
-       ORM_FK_Created_By   : Detached_User_Access := null;
-       ORM_Filename        : Unbounded_String := Null_Unbounded_String;
-       ORM_Id              : Integer := -1;
-       ORM_Torrent_File    : Unbounded_String := Null_Unbounded_String;
+    type Torrent_DDR is new Detached_Data (4) with record
+       ORM_Created_By    : Integer := -1;
+       ORM_FK_Created_By : Detached_User_Access := null;
+       ORM_Id            : Integer := -1;
+       ORM_Info_Hash     : Unbounded_String := Null_Unbounded_String;
     end record;
     type Torrent_Data is access all Torrent_DDR;
     
-    type User_DDR is new Detached_Data (3) with record
-       ORM_Id          : Integer := -1;
-       ORM_Password    : Unbounded_String := Null_Unbounded_String;
-       ORM_Username    : Unbounded_String := Null_Unbounded_String;
+    type User_Torrent_Stat_DDR is new Detached_Data (6) with record
+       ORM_By_User       : Integer := -1;
+       ORM_Downloaded    : Integer := -1;
+       ORM_FK_By_User    : Detached_User_Access := null;
+       ORM_FK_Of_Torrent : Detached_Torrent_Access := null;
+       ORM_Of_Torrent    : Integer := -1;
+       ORM_Uploaded      : Integer := -1;
+    end record;
+    type User_Torrent_Stat_Data is access all User_Torrent_Stat_DDR;
+    
+    type User_DDR is new Detached_Data (6) with record
+       ORM_Downloaded    : Integer := 0;
+       ORM_Id            : Integer := -1;
+       ORM_Passkey       : Unbounded_String := Null_Unbounded_String;
+       ORM_Password      : Unbounded_String := Null_Unbounded_String;
+       ORM_Uploaded      : Integer := 0;
+       ORM_Username      : Unbounded_String := Null_Unbounded_String;
     end record;
     type User_Data is access all User_DDR;
     
@@ -373,6 +506,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Torrent : constant Torrent :=(No_Orm_Element with null record);
     No_Detached_Torrent : constant Detached_Torrent :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_User_Torrent_Stat
+       is new Sessions.Detached_Element with null record;
+    No_User_Torrent_Stat : constant User_Torrent_Stat :=(No_Orm_Element with null record);
+    No_Detached_User_Torrent_Stat : constant Detached_User_Torrent_Stat :=
       (Sessions.Detached_Element with null record);
  
     type Detached_User

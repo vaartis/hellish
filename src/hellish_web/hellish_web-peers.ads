@@ -4,6 +4,8 @@ with Ada.Containers.Indefinite_Hashed_Maps;
 
 with Hellish_Web.Bencoder; use Hellish_Web.Bencoder;
 
+with Orm; use Orm;
+
 package Hellish_Web.Peers is
    type Peer is record
       Peer_Id: Unbounded_String;
@@ -61,7 +63,7 @@ package Hellish_Web.Peers is
    end record;
 
    protected Protected_Map is
-      procedure Add(Info_Hash : String; Joined_Peer : Peer);
+      procedure Add(Info_Hash : String; Joined_Peer : Peer; The_User : Detached_User'Class);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
 
       function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String;

@@ -129,10 +129,13 @@ package body Hellish_Web.Database is
       The_User: Detached_User'Class := New_User;
 
       Session : Session_Type := Get_New_Session;
+
+      Passkey : String := As_Hexidecimal(Random_Hash_Key(16));
    begin
       if not User_Exists(Name, Session) then
          The_User.Set_Username(Name);
          The_User.Set_Password(Password_Hash);
+         The_User.Set_Passkey(Passkey);
 
          Session.Persist(The_User);
          Session.Commit;
@@ -143,8 +146,10 @@ package body Hellish_Web.Database is
       return False;
    end Create_User;
 
-   function Get_User(Name : String; Session : Session_Type := Get_New_Session) return Detached_User'Class is
+   function Get_User(Name : String) return Detached_User'Class is
       use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
 
       Query : Prepared_Statement :=
         Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
@@ -163,6 +168,21 @@ package body Hellish_Web.Database is
       end if;
    end Get_User;
 
+   function Get_User_By_Passkey(Passkey : String) return Detached_User'Class is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      Manager : Users_Managers := All_Users.Filter(Passkey => Passkey);
+      List : User_List := Manager.Get(Session);
+   begin
+      if List.Has_Row then
+         return List.Element.Detach;
+      else
+         return No_Detached_User;
+      end if;
+   end Get_User_By_Passkey;
+
    function Verify_User_Credentials(Name, Password : String) return Boolean is
       use Sodium.Functions;
       use Hellish_Database;
@@ -172,17 +192,67 @@ package body Hellish_Web.Database is
       return Detached_User(User_Data) /= No_Detached_User and then Password_Hash_Matches(User_Data.Password, Password);
    end Verify_User_Credentials;
 
-   procedure Create_Torrent(Filename, Username, Torrent_File : String) is
+   procedure Create_Torrent(Username, Info_Hash : String) is
       Session : Session_Type := Get_New_Session;
 
-      Created_By : Detached_User'Class := Get_User(Username, Session);
+      Created_By : Detached_User'Class := Get_User(Username);
       The_Torrent : Detached_Torrent'Class := New_Torrent;
    begin
-      The_Torrent.Set_Filename(Filename);
-      The_Torrent.Set_Torrent_File(Torrent_File);
+      The_Torrent.Set_Info_Hash(Info_Hash);
       The_Torrent.Set_Created_By(Created_By);
 
       Session.Persist(The_Torrent);
       Session.Commit;
    end Create_Torrent;
+
+   procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;
+                                    Uploaded_Diff : Natural; Downloaded_Diff : Natural) is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      T_List : Torrent_List := All_Torrents.Filter(Info_Hash => Info_Hash).Get(Session);
+      S_List : User_Torrent_Stat_List := All_User_Torrent_Stats.Filter(By_User => User.Id, Of_Torrent => T_List.Element.Id).Get(Session);
+
+      Stats : Detached_User_Torrent_Stat'Class := (if S_List.Has_Row
+                                                   then S_List.Element.Detach
+                                                   else New_User_Torrent_Stat);
+   begin
+      if not S_List.Has_Row then
+         Stats.Set_By_User(User.Id);
+         Stats.Set_Of_Torrent(T_List.Element.Id);
+         Stats.Set_Uploaded(Uploaded_diff);
+         Stats.Set_Downloaded(Downloaded_Diff);
+
+         Session.Persist(Stats);
+         Session.Commit;
+      else
+         -- Updating fields in gnatcoll sql just does not work with orm, no matter how I try it.
+         -- So SQL queries are used instead. Also, commit doesn't work properly if not called
+         -- after every operation explicitly, so do that too.
+         declare
+            Query : Sql_Query := Sql_Update
+              (Table => User_Torrent_Stats,
+               Set => (User_Torrent_Stats.Uploaded = User_Torrent_Stats.Uploaded + Uploaded_Diff)
+                 & (User_Torrent_Stats.Downloaded = User_Torrent_Stats.Downloaded + Downloaded_Diff),
+               Where => (User_Torrent_Stats.By_User = User.Id) and (User_Torrent_Stats.Of_Torrent = T_List.Element.Id));
+         begin
+            Execute(Session.Db, Query);
+            Session.Commit;
+         end;
+      end if;
+
+      -- Also add it to the total user credit
+      declare
+         Query : Sql_Query :=
+           Sql_Update
+             (Table => Users,
+              Set => (Users.Uploaded = Users.Uploaded + Uploaded_diff)
+                & (Users.Downloaded = Users.Downloaded + Downloaded_Diff),
+             Where => Users.Id = User.Id);
+      begin
+         Execute(Session.Db, Query);
+         Session.Commit;
+      end;
+   end Update_Torrent_Up_Down;
 end;

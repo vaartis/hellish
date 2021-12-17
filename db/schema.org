@@ -1,14 +1,23 @@
-| TABLE        | torrents                   | torrent  |   |   |
-| id           | AUTOINCREMENT              | PK       |   |   |
-| torrent_file | TEXT                       | NOT NULL |   |   |
-| filename     | TEXT                       | NOT NULL |   |   |
-| created_by   | FK users(created_torrents) |          |   |   |
+| TABLE      | torrents                   | torrent                 |   |                              |
+| id         | AUTOINCREMENT              | PK                      |   |                              |
+| info_hash  | TEXT                       | NOT NULL, UNIQUE, INDEX |   | The SHA1 hash of the torrent |
+| created_by | FK users(created_torrents) | NOT NULL                |   |                              |
 
-| TABLE    | users         | user             |   |   |
-| id       | AUTOINCREMENT | PK               |   |   |
-| username | TEXT          | NOT NULL, UNIQUE |   |   |
-| password | TEXT          | NOT NULL         |   |   |
+| TABLE      | users         | user                    |   |   |
+| id         | AUTOINCREMENT | PK                      |   |   |
+| username   | TEXT          | NOT NULL, UNIQUE, INDEX |   |   |
+| password   | TEXT          | NOT NULL                |   |   |
+| passkey    | TEXT          | NOT NULL, UNIQUE, INDEX |   |   |
+| uploaded   | INTEGER       |                         | 0 |   |
+| downloaded | INTEGER       |                         | 0 |   |
 
 | TABLE   | config        | config   |   |   |
 | id      | AUTOINCREMENT | PK       |   |   |
 | version | INTEGER       | NOT NULL |   |   |
+
+| TABLE      | user_torrent_stats      | user_torrent_stat   |   |   |
+| UNIQUE:    | by_user,of_torrent      | user_torrent_unique |   |   |
+| by_user    | FK users(torrent_stats) | NOT NULL            |   |   |
+| of_torrent | FK torrents             | NOT NULL            |   |   |
+| uploaded   | INTEGER                 |                     |   |   |
+| downloaded | INTEGER                 |                     |   |   |

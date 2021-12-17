@@ -7,7 +7,8 @@ with Ada.Directories;
 with Ada.Containers.Indefinite_Holders;
 with Ada.Calendar;
 
-with GNAT.SHA1;
+with GNAT.Regpat; use GNAT.Regpat;
+with Gnat.SHA1;
 
 with
   Aws.Cookie,
@@ -66,13 +67,33 @@ package body Hellish_Web.Routes is
       end if;
    end Request_Session;
 
+   Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
+
    function Dispatch
      (Handler : in Announce_Handler;
       Request : in Status.Data) return Response.Data is
       Params : constant Parameters.List := AWS.Status.Parameters(Request);
 
       Result : Bencoder.Bencode_Value_Holders.Holder;
+
+      Matches : Match_Array (0..1);
+      Uri : String := Status.Uri(Request);
+
+      User : Detached_User;
    begin
+      Match(Announce_Passkey_Matcher, Uri, Matches);
+      declare
+         Match : Match_Location := Matches(1);
+         Passkey : String := Uri(Matches(1).First..Matches(1).Last);
+      begin
+         User := Detached_User(Database.Get_User_By_Passkey(Passkey));
+
+         if User = No_Detached_User then
+            Result := Bencoder.With_Failure_Reason("Invalid passkey");
+            goto Finish;
+         end if;
+      end;
+
       declare
          Required_Params : array (Natural range <>) of Unbounded_String :=
            (To_Unbounded_String("info_hash"), To_Unbounded_String("peer_id"),
@@ -108,7 +129,8 @@ package body Hellish_Web.Routes is
                                      Port => Positive'Value(Params.Get("port")),
                                      Uploaded => Natural'Value(Params.Get("uploaded")),
                                      Downloaded => Natural'Value(Params.Get("downloaded")),
-                                     Left => Natural'Value(Params.Get("left"))));
+                                     Left => Natural'Value(Params.Get("left"))),
+                                    User);
          end if;
 
          declare
@@ -193,10 +215,15 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("current_seeders", Total_Stats.Seeders));
       Insert(Translations, Assoc("current_leechers", Total_Stats.Leechers));
 
-      Put_Line(Session.Image(Session_Id));
-
       if Username'Length > 0 then
-         Insert(Translations, Assoc("username", Username));
+         declare
+            The_User : Detached_User'Class := Database.Get_User(Username);
+         begin
+            Insert(Translations,
+                   Assoc("host", Aws.Config.Server_Host(Conf) & ":" & Trim(Aws.Config.Server_Port(Conf)'Image, Ada.Strings.Left)));
+            Insert(Translations, Assoc("username", The_User.Username));
+            Insert(Translations, Assoc("passkey", The_User.Passkey));
+         end;
       end if;
 
       return Response.Build(Mime.Text_Html,
@@ -210,7 +237,6 @@ package body Hellish_Web.Routes is
       Request : in Status.Data) return Response.Data is
       Params : constant Parameters.List := Status.Parameters(Request);
       File_Path : String := Params.Get("file");
-      File_Name : String := Params.Get("file", 2);
 
       use Ada.Directories;
       Uploads_Path : constant String := "uploads/torrents/";
@@ -231,14 +257,14 @@ package body Hellish_Web.Routes is
          File : File_Type;
 
          Decoded : Bencode_Value_Holders.Holder;
-         Bencoded_Info : Unbounded_String;
       begin
          Open(File, Mode => In_File, Name => File_Path);
          Decoded := Decode(File);
          Close(File);
 
-         Bencoded_Info := Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info")).Element.Element.Encoded;
          declare
+            Bencoded_Info : Unbounded_String :=
+              Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info")).Element.Element.Encoded;
             Sha1_Hash : String := Gnat.Sha1.Digest(To_String(Bencoded_Info));
             New_Name : String := Compose(Name => Sha1_Hash, Extension => "torrent");
             Uploaded_Path : String := Compose(Containing_Directory => Uploads_Path,Name => New_Name);
@@ -246,7 +272,9 @@ package body Hellish_Web.Routes is
             Create_Path(Uploads_Path);
             Copy_File(File_Path, Uploaded_Path);
 
-            Database.Create_Torrent(Filename => File_Name, Username => Username, Torrent_File => New_Name);
+            -- Only really need to save the hash, since it's the filename. Things like actual file name and such
+            -- are encoded in the torrent file itself
+            Database.Create_Torrent(Username => Username, Info_Hash => Sha1_Hash);
          end;
       end;
 
@@ -315,8 +343,6 @@ package body Hellish_Web.Routes is
          declare
             User : Detached_User'Class := Database.Get_User(Username);
          begin
-            Put_Line(Session.Image(Session_Id));
-
             Session.Set(Session_Id, "username", User.Username);
             Session.Save(Session_File_Name);
          end;
@@ -336,8 +362,8 @@ package body Hellish_Web.Routes is
       end if;
 
       Services.Dispatchers.Uri.Register(Root, "/", Index);
-      Services.Dispatchers.Uri.Register(Root, "/announce", Announce);
-      Services.Dispatchers.Uri.Register(Root, "/scrape", Scrape);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
+      Services.Dispatchers.Uri.Register(Root, "/(\w+)/scrape", Scrape);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 

@@ -4,10 +4,15 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Interfaces; use Interfaces;
 with System; use System;
 
+with Hellish_Web.Database;
+
 package body Hellish_Web.Peers is
    protected body Protected_Map is
-      procedure Add(Info_Hash : String; Joined_Peer : Peer) is
+      procedure Add(Info_Hash : String; Joined_Peer : Peer; The_User : Detached_User'Class) is
          Peer_Id : String := To_String(Joined_Peer.Peer_Id);
+
+         Uploaded_Diff : Natural := 0;
+         Downloaded_Diff : Natural := 0;
       begin
          if not Torrent_Map.Contains(Info_Hash) then
             declare
@@ -17,14 +22,28 @@ package body Hellish_Web.Peers is
                Torrent_Map.Include(Info_Hash, Peer_Map);
                -- Also add it to the stats map
                Saved_Stats_Map.Include(Info_Hash, (Downloaded => 0));
+
+               -- Initial upload/download data
+               Uploaded_Diff := Joined_Peer.Uploaded;
+               Downloaded_Diff := Joined_Peer.Downloaded;
             end;
          else
             if not Torrent_Map(Info_Hash).Contains(Peer_Id) then
+               -- Just joined
+               Uploaded_Diff := Joined_Peer.Uploaded;
+               Downloaded_Diff := Joined_Peer.Downloaded;
+
                Torrent_Map(Info_Hash).Include(Peer_Id, Joined_Peer);
             else
+               -- Update from existing
+               Uploaded_Diff := Joined_Peer.Uploaded - Torrent_Map(Info_Hash)(Peer_Id).Uploaded;
+               Downloaded_Diff := Joined_Peer.Downloaded - Torrent_Map(Info_Hash)(Peer_Id).Downloaded;
+
                Torrent_Map(Info_Hash).Replace(Peer_Id, Joined_Peer);
             end if;
          end if;
+
+         Database.Update_Torrent_Up_Down(The_User, Info_Hash, Uploaded_Diff, Downloaded_Diff);
 
          Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """ from " &
                     To_String(Joined_Peer.Ip) & ":" & Trim(Joined_Peer.Port'Image, Ada.Strings.Left));
@@ -194,6 +213,5 @@ package body Hellish_Web.Peers is
 
          return Stats;
       end Total_Stat_Data;
-
    end Protected_Map;
 end Hellish_Web.Peers;

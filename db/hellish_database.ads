@@ -34,8 +34,9 @@ package Hellish_Database is
    is abstract new SQL_Table (Ta_Torrents, Instance, Index) with
    record
       Id : SQL_Field_Integer (Ta_Torrents, Instance, N_Id, Index);
-      Torrent_File : SQL_Field_Text (Ta_Torrents, Instance, N_Torrent_File, Index);
-      Filename : SQL_Field_Text (Ta_Torrents, Instance, N_Filename, Index);
+      Info_Hash : SQL_Field_Text (Ta_Torrents, Instance, N_Info_Hash, Index);
+      --  The SHA1 hash of the torrent
+
       Created_By : SQL_Field_Integer (Ta_Torrents, Instance, N_Created_By, Index);
    end record;
 
@@ -48,6 +49,26 @@ package Hellish_Database is
       is new T_Abstract_Torrents (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   type T_Abstract_User_Torrent_Stats
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_User_Torrent_Stats, Instance, Index) with
+   record
+      By_User : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_By_User, Index);
+      Of_Torrent : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Of_Torrent, Index);
+      Uploaded : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Uploaded, Index);
+      Downloaded : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Downloaded, Index);
+   end record;
+
+   type T_User_Torrent_Stats (Instance : Cst_String_Access)
+      is new T_Abstract_User_Torrent_Stats (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_User_Torrent_Stats (Index : Integer)
+      is new T_Abstract_User_Torrent_Stats (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
    type T_Abstract_Users
       (Instance : Cst_String_Access;
        Index    : Integer)
@@ -56,6 +77,9 @@ package Hellish_Database is
       Id : SQL_Field_Integer (Ta_Users, Instance, N_Id, Index);
       Username : SQL_Field_Text (Ta_Users, Instance, N_Username, Index);
       Password : SQL_Field_Text (Ta_Users, Instance, N_Password, Index);
+      Passkey : SQL_Field_Text (Ta_Users, Instance, N_Passkey, Index);
+      Uploaded : SQL_Field_Integer (Ta_Users, Instance, N_Uploaded, Index);
+      Downloaded : SQL_Field_Integer (Ta_Users, Instance, N_Downloaded, Index);
    end record;
 
    type T_Users (Instance : Cst_String_Access)
@@ -68,8 +92,11 @@ package Hellish_Database is
    --  To use aliases in the form name1, name2,...
 
    function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria;
+   function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria;
+   function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    Config : T_Config (null);
    Torrents : T_Torrents (null);
+   User_Torrent_Stats : T_User_Torrent_Stats (null);
    Users : T_Users (null);
 
    procedure Create_Database

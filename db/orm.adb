@@ -16,21 +16,35 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( User_DDR, User_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( User_Torrent_Stat_DDR, User_Torrent_Stat_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+     (Detached_Torrent'Class, Detached_Torrent_Access);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
      (Detached_User'Class, Detached_User_Access);
 
    F_Config_Id      : constant := 0;
    F_Config_Version : constant := 1;
    Alias_Config : constant Alias_Array := (0 => -1);
-   F_Torrents_Id           : constant := 0;
-   F_Torrents_Torrent_File : constant := 1;
-   F_Torrents_Filename     : constant := 2;
-   F_Torrents_Created_By   : constant := 3;
-   Upto_Torrents_0 : constant Counts := ((4,4),(4,4),(4,4),(4,4));
+   F_Torrents_Id         : constant := 0;
+   F_Torrents_Info_Hash  : constant := 1;
+   F_Torrents_Created_By : constant := 2;
+   Counts_Torrents : constant Counts := ((3,3),(9,9),(9,9),(9,9));
+   Upto_Torrents_0 : constant Counts := ((3,3),(3,3),(3,3),(3,3));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
-   F_Users_Id       : constant := 0;
-   F_Users_Username : constant := 1;
-   F_Users_Password : constant := 2;
-   Counts_Users : constant Counts := ((3,3),(3,3),(3,3),(3,3));
+   F_User_Torrent_Stats_By_User    : constant := 0;
+   F_User_Torrent_Stats_Of_Torrent : constant := 1;
+   F_User_Torrent_Stats_Uploaded   : constant := 2;
+   F_User_Torrent_Stats_Downloaded : constant := 3;
+   Upto_User_Torrent_Stats_0 : constant Counts := ((4,4),(4,4),(4,4),(4,4));
+   Upto_User_Torrent_Stats_1 : constant Counts := ((4,4),(10,10),(10,10),(10,10));
+   Alias_User_Torrent_Stats : constant Alias_Array := (-1,3,4,-1,-1,6,0);
+   F_Users_Id         : constant := 0;
+   F_Users_Username   : constant := 1;
+   F_Users_Password   : constant := 2;
+   F_Users_Passkey    : constant := 3;
+   F_Users_Uploaded   : constant := 4;
+   F_Users_Downloaded : constant := 5;
+   Counts_Users : constant Counts := ((6,6),(6,6),(6,6),(6,6));
    Alias_Users : constant Alias_Array := (0 => -1);
 
    pragma Warnings (On);
@@ -43,12 +57,16 @@ package body Orm is
       Session : Session_Type)
      return Detached_Torrent'Class;
    function Detach_No_Lookup
+     (Self    : User_Torrent_Stat'Class;
+      Session : Session_Type)
+     return Detached_User_Torrent_Stat'Class;
+   function Detach_No_Lookup
      (Self    : User'Class;
       Session : Session_Type)
      return Detached_User'Class;
    --  Same as Detach, but does not check the session cache Same as Detach,
    --  but does not check the session cache Same as Detach, but does not check
-   --  the session cache
+   --  the session cache Same as Detach, but does not check the session cache
 
    procedure Do_Query_Config
      (Fields    : in out SQL_Field_List;
@@ -69,6 +87,15 @@ package body Orm is
       Depth     : Natural;
       Follow_LJ : Boolean;
       Pk_Only   : Boolean := False);
+
+   procedure Do_Query_User_Torrent_Stats
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean);
 
    procedure Do_Query_Users
      (Fields    : in out SQL_Field_List;
@@ -154,6 +181,76 @@ package body Orm is
       end if;
    end "=";
 
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : User_Torrent_Stat) return Integer is
+   begin
+      return Integer_Value (Self, F_User_Torrent_Stats_By_User);
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_User_Torrent_Stat) return Integer is
+   begin
+      return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_By_User;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : User_Torrent_Stat) return User'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 then
+         return I_Users.Internal_Element
+           (Self,
+            Upto_User_Torrent_Stats_0 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+
+         return Filter (All_Users, Id => Self.By_User)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User
+     (Self : Detached_User_Torrent_Stat)
+     return Detached_User'Class
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_By_User = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_By_User := new Detached_User'Class'
+           (Get_User (S, Id => D.ORM_By_User));
+      end if;
+      return D.ORM_FK_By_User.all;
+   end By_User;
+
    ----------------
    -- Created_By --
    ----------------
@@ -182,7 +279,7 @@ package body Orm is
          raise Cursor_Has_Moved;
       end if;
 
-      if Self.Depth > 0 and then Self.Data.Follow_LJ then
+      if Self.Depth > 0 then
          return I_Users.Internal_Element
            (Self,
             Upto_Torrents_0 (Self.Depth, Self.Data.Follow_LJ));
@@ -222,23 +319,41 @@ package body Orm is
       return D.ORM_FK_Created_By.all;
    end Created_By;
 
-   --------------
-   -- Filename --
-   --------------
+   ----------------
+   -- Downloaded --
+   ----------------
 
-   function Filename (Self : Torrent) return String is
+   function Downloaded (Self : User) return Integer is
    begin
-      return String_Value (Self, F_Torrents_Filename);
-   end Filename;
+      return Integer_Value (Self, F_Users_Downloaded);
+   end Downloaded;
 
-   --------------
-   -- Filename --
-   --------------
+   ----------------
+   -- Downloaded --
+   ----------------
 
-   function Filename (Self : Detached_Torrent) return String is
+   function Downloaded (Self : Detached_User) return Integer is
    begin
-      return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Filename);
-   end Filename;
+      return User_Data (Self.Unchecked_Get).ORM_Downloaded;
+   end Downloaded;
+
+   ----------------
+   -- Downloaded --
+   ----------------
+
+   function Downloaded (Self : User_Torrent_Stat) return Integer is
+   begin
+      return Integer_Value (Self, F_User_Torrent_Stats_Downloaded);
+   end Downloaded;
+
+   ----------------
+   -- Downloaded --
+   ----------------
+
+   function Downloaded (Self : Detached_User_Torrent_Stat) return Integer is
+   begin
+      return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Downloaded;
+   end Downloaded;
 
    --------
    -- Id --
@@ -294,6 +409,112 @@ package body Orm is
       return Config_Data (Self.Unchecked_Get).ORM_Id;
    end Id;
 
+   ---------------
+   -- Info_Hash --
+   ---------------
+
+   function Info_Hash (Self : Torrent) return String is
+   begin
+      return String_Value (Self, F_Torrents_Info_Hash);
+   end Info_Hash;
+
+   ---------------
+   -- Info_Hash --
+   ---------------
+
+   function Info_Hash (Self : Detached_Torrent) return String is
+   begin
+      return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Info_Hash);
+   end Info_Hash;
+
+   ----------------
+   -- Of_Torrent --
+   ----------------
+
+   function Of_Torrent (Self : User_Torrent_Stat) return Integer is
+   begin
+      return Integer_Value (Self, F_User_Torrent_Stats_Of_Torrent);
+   end Of_Torrent;
+
+   ----------------
+   -- Of_Torrent --
+   ----------------
+
+   function Of_Torrent (Self : Detached_User_Torrent_Stat) return Integer is
+   begin
+      return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Of_Torrent;
+   end Of_Torrent;
+
+   ----------------
+   -- Of_Torrent --
+   ----------------
+
+   function Of_Torrent (Self : User_Torrent_Stat) return Torrent'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 then
+         return I_Torrents.Internal_Element
+           (Self,
+            Upto_User_Torrent_Stats_1 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Of_Torrent";
+         end if;
+
+         return Filter (All_Torrents, Id => Self.Of_Torrent)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end Of_Torrent;
+
+   ----------------
+   -- Of_Torrent --
+   ----------------
+
+   function Of_Torrent
+     (Self : Detached_User_Torrent_Stat)
+     return Detached_Torrent'Class
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_Of_Torrent = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Of_Torrent";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_Of_Torrent := new Detached_Torrent'Class'
+           (Get_Torrent (S, Id => D.ORM_Of_Torrent));
+      end if;
+      return D.ORM_FK_Of_Torrent.all;
+   end Of_Torrent;
+
+   -------------
+   -- Passkey --
+   -------------
+
+   function Passkey (Self : User) return String is
+   begin
+      return String_Value (Self, F_Users_Passkey);
+   end Passkey;
+
+   -------------
+   -- Passkey --
+   -------------
+
+   function Passkey (Self : Detached_User) return String is
+   begin
+      return To_String (User_Data (Self.Unchecked_Get).ORM_Passkey);
+   end Passkey;
+
    --------------
    -- Password --
    --------------
@@ -312,23 +533,77 @@ package body Orm is
       return To_String (User_Data (Self.Unchecked_Get).ORM_Password);
    end Password;
 
-   ------------------
-   -- Torrent_File --
-   ------------------
+   --------------
+   -- Uploaded --
+   --------------
 
-   function Torrent_File (Self : Torrent) return String is
+   function Uploaded (Self : User) return Integer is
    begin
-      return String_Value (Self, F_Torrents_Torrent_File);
-   end Torrent_File;
+      return Integer_Value (Self, F_Users_Uploaded);
+   end Uploaded;
 
-   ------------------
-   -- Torrent_File --
-   ------------------
+   --------------
+   -- Uploaded --
+   --------------
 
-   function Torrent_File (Self : Detached_Torrent) return String is
+   function Uploaded (Self : Detached_User) return Integer is
    begin
-      return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Torrent_File);
-   end Torrent_File;
+      return User_Data (Self.Unchecked_Get).ORM_Uploaded;
+   end Uploaded;
+
+   --------------
+   -- Uploaded --
+   --------------
+
+   function Uploaded (Self : User_Torrent_Stat) return Integer is
+   begin
+      return Integer_Value (Self, F_User_Torrent_Stats_Uploaded);
+   end Uploaded;
+
+   --------------
+   -- Uploaded --
+   --------------
+
+   function Uploaded (Self : Detached_User_Torrent_Stat) return Integer is
+   begin
+      return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Uploaded;
+   end Uploaded;
+
+   --------------------------------------
+   -- User_Torrent_Stats_Of_Torrent_Id --
+   --------------------------------------
+
+   function User_Torrent_Stats_Of_Torrent_Id
+     (Self : Torrent'Class)
+     return User_Torrent_Stats_Managers is
+   begin
+      return Filter (All_User_Torrent_Stats, Of_Torrent => Self.Id);
+   end User_Torrent_Stats_Of_Torrent_Id;
+
+   --------------------------------------
+   -- User_Torrent_Stats_Of_Torrent_Id --
+   --------------------------------------
+
+   function User_Torrent_Stats_Of_Torrent_Id
+     (Self : Detached_Torrent'Class)
+     return User_Torrent_Stats_Managers is
+   begin
+      return Filter (All_User_Torrent_Stats, Of_Torrent => Self.Id);
+   end User_Torrent_Stats_Of_Torrent_Id;
+
+   --------------------------------------
+   -- User_Torrent_Stats_Of_Torrent_Id --
+   --------------------------------------
+
+   function User_Torrent_Stats_Of_Torrent_Id
+     (Self : I_Torrents_Managers'Class)
+     return User_Torrent_Stats_Managers
+   is
+      Q : constant SQL_Query := I_Torrents.Build_Query(Self, +DBA.Torrents.Id);
+   begin
+      return All_User_Torrent_Stats.Filter
+        (SQL_In(DBA.User_Torrent_Stats.Of_Torrent, Q));
+   end User_Torrent_Stats_Of_Torrent_Id;
 
    --------------
    -- Username --
@@ -445,6 +720,17 @@ package body Orm is
       end if;
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach
+     (Self : User_Torrent_Stat'Class)
+     return Detached_User_Torrent_Stat'Class is
+   begin
+      return Detach_No_Lookup (Self, Self.Data.Session);
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -488,24 +774,61 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Torrent_DDR'
-              (Detached_Data with Field_Count => 5, others => <>));
+              (Detached_Data with Field_Count => 4, others => <>));
       end if;
 
       Tmp := Torrent_Data (Result.Unchecked_Get);
       if Self.Depth > 0 then
-         if LJ then
-            FK_Created_By := new Detached_User'Class'(
-               I_Users.Internal_Element
-                 (Self, Upto_Torrents_0 (Self.Depth, LJ)).Detach);
-         end if;
-
+         FK_Created_By := new Detached_User'Class'(
+            I_Users.Internal_Element
+              (Self, Upto_Torrents_0 (Self.Depth, LJ)).Detach);
       end if;
 
-      Tmp.ORM_Created_By      := Integer_Value (Self, F_Torrents_Created_By);
-      Tmp.ORM_FK_Created_By   := FK_Created_By;
-      Tmp.ORM_Filename        := To_Unbounded_String (String_Value (Self, F_Torrents_Filename));
-      Tmp.ORM_Id              := Integer_Value (Self, F_Torrents_Id);
-      Tmp.ORM_Torrent_File    := To_Unbounded_String (String_Value (Self, F_Torrents_Torrent_File));
+      Tmp.ORM_Created_By    := Integer_Value (Self, F_Torrents_Created_By);
+      Tmp.ORM_FK_Created_By := FK_Created_By;
+      Tmp.ORM_Id            := Integer_Value (Self, F_Torrents_Id);
+      Tmp.ORM_Info_Hash     := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
+     (Self    : User_Torrent_Stat'Class;
+      Session : Session_Type)
+     return Detached_User_Torrent_Stat'Class
+   is
+      Default       : Detached_User_Torrent_Stat;
+      Result        : Detached_User_Torrent_Stat'Class := Detached_User_Torrent_Stat'Class (Session.Factory (Self, Default));
+      Fk_By_User    : Detached_User_Access;
+      Fk_Of_Torrent : Detached_Torrent_Access;
+      Lj            : constant Boolean := Self.Data.Follow_LJ;
+      Tmp           : User_Torrent_Stat_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (User_Torrent_Stat_DDR'
+              (Detached_Data with Field_Count => 6, others => <>));
+      end if;
+
+      Tmp := User_Torrent_Stat_Data (Result.Unchecked_Get);
+      if Self.Depth > 0 then
+         FK_By_User := new Detached_User'Class'(
+            I_Users.Internal_Element
+              (Self, Upto_User_Torrent_Stats_0 (Self.Depth, LJ)).Detach);
+         FK_Of_Torrent := new Detached_Torrent'Class'(
+            I_Torrents.Internal_Element
+              (Self, Upto_User_Torrent_Stats_1 (Self.Depth, LJ)).Detach);
+      end if;
+
+      Tmp.ORM_By_User       := Integer_Value (Self, F_User_Torrent_Stats_By_User);
+      Tmp.ORM_Downloaded    := Integer_Value (Self, F_User_Torrent_Stats_Downloaded);
+      Tmp.ORM_FK_By_User    := FK_By_User;
+      Tmp.ORM_FK_Of_Torrent := FK_Of_Torrent;
+      Tmp.ORM_Of_Torrent    := Integer_Value (Self, F_User_Torrent_Stats_Of_Torrent);
+      Tmp.ORM_Uploaded      := Integer_Value (Self, F_User_Torrent_Stats_Uploaded);
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -525,14 +848,17 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (User_DDR'
-              (Detached_Data with Field_Count => 3, others => <>));
+              (Detached_Data with Field_Count => 6, others => <>));
       end if;
 
       Tmp := User_Data (Result.Unchecked_Get);
 
-      Tmp.ORM_Id          := Integer_Value (Self, F_Users_Id);
-      Tmp.ORM_Password    := To_Unbounded_String (String_Value (Self, F_Users_Password));
-      Tmp.ORM_Username    := To_Unbounded_String (String_Value (Self, F_Users_Username));
+      Tmp.ORM_Downloaded    := Integer_Value (Self, F_Users_Downloaded);
+      Tmp.ORM_Id            := Integer_Value (Self, F_Users_Id);
+      Tmp.ORM_Passkey       := To_Unbounded_String (String_Value (Self, F_Users_Passkey));
+      Tmp.ORM_Password      := To_Unbounded_String (String_Value (Self, F_Users_Password));
+      Tmp.ORM_Uploaded      := Integer_Value (Self, F_Users_Uploaded);
+      Tmp.ORM_Username      := To_Unbounded_String (String_Value (Self, F_Users_Username));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -585,8 +911,7 @@ package body Orm is
          Fields := Fields & Table.Id;
       else
          Fields := Fields & Table.Id
-         & Table.Torrent_File
-         & Table.Filename
+         & Table.Info_Hash
          & Table.Created_By;
       end if;
       From := Empty_Table_List;
@@ -594,22 +919,68 @@ package body Orm is
 
          declare
             FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
-         begin if Follow_LJ then
-            From := +Left_Join(Table, FK1, Table.Created_By=FK1.Id);
-         else
-            From := +Table;
+         begin Criteria := Criteria
+         and Table.Created_By = FK1.Id;
+         From := +Table;
+         C2 := No_Criteria;
+         Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
          end if;
-         if Follow_LJ then
-            C2 := No_Criteria;
-            Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
-               Aliases, Depth - 1, Follow_LJ);
-            if Depth > 1 then
-               Criteria := Criteria and C2;
-            end if;
-         end if;
+         From := From & T;
       end;
    end if;
    end Do_Query_Torrents;
+
+   ---------------------------------
+   -- Do_Query_User_Torrent_Stats --
+   ---------------------------------
+
+   procedure Do_Query_User_Torrent_Stats
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean)
+   is
+      Table : T_Numbered_User_Torrent_Stats(Aliases(Base));
+      C2    : Sql_Criteria;
+      T     : SQL_Table_List;
+   begin
+      Fields := Fields & Table.By_User
+      & Table.Of_Torrent
+      & Table.Uploaded
+      & Table.Downloaded;
+      if Depth > 0 then
+
+         declare
+            FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
+            FK2 : T_Numbered_Torrents(Aliases(Aliases(Base + 2)));
+         begin Criteria := Criteria
+         and Table.By_User = FK1.Id
+         and Table.Of_Torrent = FK2.Id;
+         From := +Table;
+         C2 := No_Criteria;
+         Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
+         end if;
+         From := From & T;
+
+         C2 := No_Criteria;
+         Do_Query_Torrents(Fields, T, C2,Aliases(Base + 2),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
+         end if;
+         From := From & T;
+      end;
+   end if;
+   end Do_Query_User_Torrent_Stats;
 
    --------------------
    -- Do_Query_Users --
@@ -633,7 +1004,10 @@ package body Orm is
       else
          Fields := Fields & Table.Id
          & Table.Username
-         & Table.Password;
+         & Table.Password
+         & Table.Passkey
+         & Table.Uploaded
+         & Table.Downloaded;
       end if;
       From := Empty_Table_List;
    end Do_Query_Users;
@@ -643,11 +1017,10 @@ package body Orm is
    ------------
 
    function Filter
-     (Self         : Torrents_Managers'Class;
-      Id           : Integer := -1;
-      Torrent_File : String := No_Update;
-      Filename     : String := No_Update;
-      Created_By   : Integer := -1)
+     (Self       : Torrents_Managers'Class;
+      Id         : Integer := -1;
+      Info_Hash  : String := No_Update;
+      Created_By : Integer := -1)
      return Torrents_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -656,11 +1029,8 @@ package body Orm is
       if Id /= -1 then
          C := C and DBA.Torrents.Id = Id;
       end if;
-      if Torrent_File /= No_Update then
-         C := C and DBA.Torrents.Torrent_File = Torrent_File;
-      end if;
-      if Filename /= No_Update then
-         C := C and DBA.Torrents.Filename = Filename;
+      if Info_Hash /= No_Update then
+         C := C and DBA.Torrents.Info_Hash = Info_Hash;
       end if;
       if Created_By /= -1 then
          C := C and DBA.Torrents.Created_By = Created_By;
@@ -674,10 +1044,13 @@ package body Orm is
    ------------
 
    function Filter
-     (Self     : Users_Managers'Class;
-      Id       : Integer := -1;
-      Username : String := No_Update;
-      Password : String := No_Update)
+     (Self       : Users_Managers'Class;
+      Id         : Integer := -1;
+      Username   : String := No_Update;
+      Password   : String := No_Update;
+      Passkey    : String := No_Update;
+      Uploaded   : Integer := -1;
+      Downloaded : Integer := -1)
      return Users_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -691,6 +1064,15 @@ package body Orm is
       end if;
       if Password /= No_Update then
          C := C and DBA.Users.Password = Password;
+      end if;
+      if Passkey /= No_Update then
+         C := C and DBA.Users.Passkey = Passkey;
+      end if;
+      if Uploaded /= -1 then
+         C := C and DBA.Users.Uploaded = Uploaded;
+      end if;
+      if Downloaded /= -1 then
+         C := C and DBA.Users.Downloaded = Downloaded;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -719,6 +1101,37 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self       : User_Torrent_Stats_Managers'Class;
+      By_User    : Integer := -1;
+      Of_Torrent : Integer := -1;
+      Uploaded   : Integer := -1;
+      Downloaded : Integer := -1)
+     return User_Torrent_Stats_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : User_Torrent_Stats_Managers;
+   begin
+      if By_User /= -1 then
+         C := C and DBA.User_Torrent_Stats.By_User = By_User;
+      end if;
+      if Of_Torrent /= -1 then
+         C := C and DBA.User_Torrent_Stats.Of_Torrent = Of_Torrent;
+      end if;
+      if Uploaded /= -1 then
+         C := C and DBA.User_Torrent_Stats.Uploaded = Uploaded;
+      end if;
+      if Downloaded /= -1 then
+         C := C and DBA.User_Torrent_Stats.Downloaded = Downloaded;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
@@ -735,6 +1148,18 @@ package body Orm is
    overriding procedure Free (Self : in out Torrent_Ddr) is
    begin
       Unchecked_Free (Self.ORM_FK_Created_By);
+
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
+   overriding procedure Free (Self : in out User_Torrent_Stat_Ddr) is
+   begin
+      Unchecked_Free (Self.ORM_FK_By_User);
+      Unchecked_Free (Self.ORM_FK_Of_Torrent);
 
       Free (Detached_Data (Self));
    end Free;
@@ -963,12 +1388,9 @@ package body Orm is
       R          : Forward_Cursor;
    begin
       if Mask (2) then
-         A := A & (DBA.Torrents.Torrent_File = To_String (D.ORM_Torrent_File));
+         A := A & (DBA.Torrents.Info_Hash = To_String (D.ORM_Info_Hash));
       end if;
       if Mask (3) then
-         A := A & (DBA.Torrents.Filename = To_String (D.ORM_Filename));
-      end if;
-      if Mask (4) then
          if D.ORM_Created_By /= -1 then
             A := A & (DBA.Torrents.Created_By = D.ORM_Created_By);
          else
@@ -1004,6 +1426,67 @@ package body Orm is
    ----------------------
 
    overriding procedure Insert_Or_Update
+     (Self        : in out Detached_User_Torrent_Stat;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      pragma Unreferenced (Pk_Modified);
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+      Q : SQL_Query;
+      A : Sql_Assignment := No_Assignment;
+      R : Forward_Cursor;
+   begin
+      if Mask (1) then
+         if D.ORM_By_User /= -1 then
+            A := A & (DBA.User_Torrent_Stats.By_User = D.ORM_By_User);
+         else
+
+            declare
+               D2 : constant User_Data :=
+               User_data (D.ORM_FK_By_User.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_By_User.all);
+               end if;
+
+               A := A & (DBA.User_Torrent_Stats.By_User = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Mask (2) then
+         if D.ORM_Of_Torrent /= -1 then
+            A := A & (DBA.User_Torrent_Stats.Of_Torrent = D.ORM_Of_Torrent);
+         else
+
+            declare
+               D2 : constant Torrent_Data :=
+               Torrent_data (D.ORM_FK_Of_Torrent.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_Of_Torrent.all);
+               end if;
+
+               A := A & (DBA.User_Torrent_Stats.Of_Torrent = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Mask (3) then
+         A := A & (DBA.User_Torrent_Stats.Uploaded = D.ORM_Uploaded);
+      end if;
+      if Mask (4) then
+         A := A & (DBA.User_Torrent_Stats.Downloaded = D.ORM_Downloaded);
+      end if;
+      Q := SQL_Insert (A);
+      R.Fetch (Self.Session.DB, Q);
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
      (Self        : in out Detached_User;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask)
@@ -1019,6 +1502,15 @@ package body Orm is
       end if;
       if Mask (3) then
          A := A & (DBA.Users.Password = To_String (D.ORM_Password));
+      end if;
+      if Mask (4) then
+         A := A & (DBA.Users.Passkey = To_String (D.ORM_Passkey));
+      end if;
+      if Mask (5) then
+         A := A & (DBA.Users.Uploaded = D.ORM_Uploaded);
+      end if;
+      if Mask (6) then
+         A := A & (DBA.Users.Downloaded = D.ORM_Downloaded);
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -1053,6 +1545,16 @@ package body Orm is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
    begin
       Execute (Self.Session.DB, SQL_Delete (DBA.Torrents, DBA.Torrents.Id = D.ORM_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
+   overriding procedure Internal_Delete (Self : Detached_User_Torrent_Stat) is
+      pragma Unreferenced (Self);
+   begin
+      raise Program_Error with "Table User_Torrent_Stats has no primary key";
    end Internal_Delete;
 
    ---------------------
@@ -1098,6 +1600,25 @@ package body Orm is
          0, Alias_Torrents, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Torrents;
 
+   ---------------------------------------
+   -- Internal_Query_User_Torrent_Stats --
+   ---------------------------------------
+
+   procedure Internal_Query_User_Torrent_Stats
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      if PK_Only then
+         raise Program_Error with "Table User_Torrent_Stats has no primary key";
+      end if;
+      Do_Query_User_Torrent_Stats(Fields, From, Criteria,
+         0, Alias_User_Torrent_Stats, Depth, Follow_LJ);
+   end Internal_Query_User_Torrent_Stats;
+
    --------------------------
    -- Internal_Query_Users --
    --------------------------
@@ -1138,6 +1659,18 @@ package body Orm is
       else
          return (0, Self.ORM_Id);
       end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
+   overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key
+   is
+      pragma Unreferenced (Self);
+   begin
+      --  Not cachable, since the PK is not a single integer field
+      return (3000000, No_Primary_Key);
    end Key;
 
    ---------
@@ -1192,6 +1725,19 @@ package body Orm is
       return Result;
    end New_User;
 
+   ---------------------------
+   -- New_User_Torrent_Stat --
+   ---------------------------
+
+   function New_User_Torrent_Stat return Detached_User_Torrent_Stat'Class
+   is
+      Result : Detached_User_Torrent_Stat;
+      Data   : User_Torrent_Stat_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_User_Torrent_Stat;
+
    ----------------
    -- On_Persist --
    ----------------
@@ -1207,6 +1753,57 @@ package body Orm is
       end if;
    end On_Persist;
 
+   ----------------
+   -- On_Persist --
+   ----------------
+
+   overriding procedure On_Persist (Self : Detached_User_Torrent_Stat)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      if Persist_Cascade (Self.Session) then
+         if D.ORM_FK_By_User /= null then
+            Self.Session.Persist (D.ORM_FK_By_User.all);
+         end if;
+         if D.ORM_FK_Of_Torrent /= null then
+            Self.Session.Persist (D.ORM_FK_Of_Torrent.all);
+         end if;
+      end if;
+   end On_Persist;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User (Self : Detached_User_Torrent_Stat; Value : Integer)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value;
+      Self.Set_Modified (1);
+   end Set_By_User;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Detached_User'Class)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value.Id;
+      D.ORM_FK_By_User := new Detached_User'Class'(Value);
+
+      Self.Set_Modified (1);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_By_User.all);
+      end if;
+   end Set_By_User;
+
    --------------------
    -- Set_Created_By --
    --------------------
@@ -1217,7 +1814,7 @@ package body Orm is
    begin
       Unchecked_Free (D.ORM_FK_Created_By);
       D.ORM_Created_By := Value;
-      Self.Set_Modified (4);
+      Self.Set_Modified (3);
    end Set_Created_By;
 
    --------------------
@@ -1234,23 +1831,92 @@ package body Orm is
       D.ORM_Created_By := Value.Id;
       D.ORM_FK_Created_By := new Detached_User'Class'(Value);
 
-      Self.Set_Modified (4);
+      Self.Set_Modified (3);
       if Persist_Cascade (Self.Session) then
          Self.Session.Persist (D.ORM_FK_Created_By.all);
       end if;
    end Set_Created_By;
 
-   ------------------
-   -- Set_Filename --
-   ------------------
+   --------------------
+   -- Set_Downloaded --
+   --------------------
 
-   procedure Set_Filename (Self : Detached_Torrent; Value : String)
+   procedure Set_Downloaded (Self : Detached_User; Value : Integer)
+   is
+      D : constant User_Data := User_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Downloaded := Value;
+      Self.Set_Modified (6);
+   end Set_Downloaded;
+
+   --------------------
+   -- Set_Downloaded --
+   --------------------
+
+   procedure Set_Downloaded (Self : Detached_User_Torrent_Stat; Value : Integer)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Downloaded := Value;
+      Self.Set_Modified (4);
+   end Set_Downloaded;
+
+   -------------------
+   -- Set_Info_Hash --
+   -------------------
+
+   procedure Set_Info_Hash (Self : Detached_Torrent; Value : String)
    is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
    begin
-      D.ORM_Filename := To_Unbounded_String (Value);
-      Self.Set_Modified (3);
-   end Set_Filename;
+      D.ORM_Info_Hash := To_Unbounded_String (Value);
+      Self.Set_Modified (2);
+   end Set_Info_Hash;
+
+   --------------------
+   -- Set_Of_Torrent --
+   --------------------
+
+   procedure Set_Of_Torrent (Self : Detached_User_Torrent_Stat; Value : Integer)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Of_Torrent);
+      D.ORM_Of_Torrent := Value;
+      Self.Set_Modified (2);
+   end Set_Of_Torrent;
+
+   --------------------
+   -- Set_Of_Torrent --
+   --------------------
+
+   procedure Set_Of_Torrent
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Detached_Torrent'Class)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Of_Torrent);
+      D.ORM_Of_Torrent := Value.Id;
+      D.ORM_FK_Of_Torrent := new Detached_Torrent'Class'(Value);
+
+      Self.Set_Modified (2);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_Of_Torrent.all);
+      end if;
+   end Set_Of_Torrent;
+
+   -----------------
+   -- Set_Passkey --
+   -----------------
+
+   procedure Set_Passkey (Self : Detached_User; Value : String)
+   is
+      D : constant User_Data := User_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Passkey := To_Unbounded_String (Value);
+      Self.Set_Modified (4);
+   end Set_Passkey;
 
    ------------------
    -- Set_Password --
@@ -1264,17 +1930,29 @@ package body Orm is
       Self.Set_Modified (3);
    end Set_Password;
 
-   ----------------------
-   -- Set_Torrent_File --
-   ----------------------
+   ------------------
+   -- Set_Uploaded --
+   ------------------
 
-   procedure Set_Torrent_File (Self : Detached_Torrent; Value : String)
+   procedure Set_Uploaded (Self : Detached_User; Value : Integer)
    is
-      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+      D : constant User_Data := User_Data (Self.Unchecked_Get);
    begin
-      D.ORM_Torrent_File := To_Unbounded_String (Value);
-      Self.Set_Modified (2);
-   end Set_Torrent_File;
+      D.ORM_Uploaded := Value;
+      Self.Set_Modified (5);
+   end Set_Uploaded;
+
+   ------------------
+   -- Set_Uploaded --
+   ------------------
+
+   procedure Set_Uploaded (Self : Detached_User_Torrent_Stat; Value : Integer)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Uploaded := Value;
+      Self.Set_Modified (3);
+   end Set_Uploaded;
 
    ------------------
    -- Set_Username --
@@ -1299,5 +1977,40 @@ package body Orm is
       D.ORM_Version := Value;
       Self.Set_Modified (2);
    end Set_Version;
+
+   -------------------
+   -- Torrent_Stats --
+   -------------------
+
+   function Torrent_Stats (Self : User'Class) return User_Torrent_Stats_Managers
+   is
+   begin
+      return Filter (All_User_Torrent_Stats, By_User => Self.Id);
+   end Torrent_Stats;
+
+   -------------------
+   -- Torrent_Stats --
+   -------------------
+
+   function Torrent_Stats
+     (Self : Detached_User'Class)
+     return User_Torrent_Stats_Managers is
+   begin
+      return Filter (All_User_Torrent_Stats, By_User => Self.Id);
+   end Torrent_Stats;
+
+   -------------------
+   -- Torrent_Stats --
+   -------------------
+
+   function Torrent_Stats
+     (Self : I_Users_Managers'Class)
+     return User_Torrent_Stats_Managers
+   is
+      Q : constant SQL_Query := I_Users.Build_Query(Self, +DBA.Users.Id);
+   begin
+      return All_User_Torrent_Stats.Filter
+        (SQL_In(DBA.User_Torrent_Stats.By_User, Q));
+   end Torrent_Stats;
 end Orm;
 

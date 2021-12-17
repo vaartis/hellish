@@ -1,0 +1,3 @@
+[submodule "deps/libsodium-ada"]
+	path = deps/libsodium-ada
+	url = https://github.com/jrmarino/libsodium-ada

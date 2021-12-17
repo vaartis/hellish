@@ -2,7 +2,7 @@ with Ada.Strings.Hash;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Containers.Vectors;
-with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Indefinite_Holders;
 with Ada.Text_Io; use Ada.Text_Io;
 
@@ -18,11 +18,9 @@ package Hellish_Web.Bencoder is
      (Index_Type => Natural, Element_Type => Bencode_Value_Holders.Holder);
    use Bencode_Vectors;
 
-   package Bencode_Maps is new Ada.Containers.Indefinite_Hashed_Maps
-     (Key_Type => String,
-      Element_Type => Bencode_Value_Holders.Holder,
-      Hash => Ada.Strings.Hash,
-      Equivalent_Keys => "=");
+   package Bencode_Maps is new Ada.Containers.Ordered_Maps
+     (Key_Type => Unbounded_String,
+      Element_Type => Bencode_Value_Holders.Holder);
    use Bencode_Maps;
 
    type Bencode_String is new Bencode_Value with record
@@ -41,6 +39,7 @@ package Hellish_Web.Bencoder is
       Value : Bencode_Maps.Map;
    end record;
 
+   function Encode(Value : Unbounded_String) return Holder;
    function Encode(Value : String) return Holder;
    function Encode(Value : Natural) return Holder;
    function Encode(Value : Bencode_Vectors.Vector) return Holder;

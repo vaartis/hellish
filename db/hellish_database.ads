@@ -34,8 +34,9 @@ package Hellish_Database is
    is abstract new SQL_Table (Ta_Torrents, Instance, Index) with
    record
       Id : SQL_Field_Integer (Ta_Torrents, Instance, N_Id, Index);
-      Bencoded : SQL_Field_Text (Ta_Torrents, Instance, N_Bencoded, Index);
+      Torrent_File : SQL_Field_Text (Ta_Torrents, Instance, N_Torrent_File, Index);
       Filename : SQL_Field_Text (Ta_Torrents, Instance, N_Filename, Index);
+      Created_By : SQL_Field_Integer (Ta_Torrents, Instance, N_Created_By, Index);
    end record;
 
    type T_Torrents (Instance : Cst_String_Access)
@@ -47,8 +48,29 @@ package Hellish_Database is
       is new T_Abstract_Torrents (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   type T_Abstract_Users
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Users, Instance, Index) with
+   record
+      Id : SQL_Field_Integer (Ta_Users, Instance, N_Id, Index);
+      Username : SQL_Field_Text (Ta_Users, Instance, N_Username, Index);
+      Password : SQL_Field_Text (Ta_Users, Instance, N_Password, Index);
+   end record;
+
+   type T_Users (Instance : Cst_String_Access)
+      is new T_Abstract_Users (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Users (Index : Integer)
+      is new T_Abstract_Users (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
+   function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria;
    Config : T_Config (null);
    Torrents : T_Torrents (null);
+   Users : T_Users (null);
 
    procedure Create_Database
       (DB : not null access GNATCOLL.SQL.Exec.Database_Connection_Record'Class);

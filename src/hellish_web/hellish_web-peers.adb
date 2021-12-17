@@ -74,7 +74,7 @@ package body Hellish_Web.Peers is
                      end if;
                   end loop;
 
-                  Result_Map.Include("peers", Encode(To_String(Compact_String)));
+                  Result_Map.Include(To_Unbounded_String("peers"), Encode(To_String(Compact_String)));
                end;
             else
                -- Full format
@@ -88,9 +88,9 @@ package body Hellish_Web.Peers is
                            Peer_Bencode : Bencode_Maps.Map;
                            Test : String := Ip_Port_Bytes(The_Peer);
                         begin
-                           Peer_Bencode.Include("peer id", Encode(To_String(The_Peer.Peer_id)));
-                           Peer_Bencode.Include("port", Encode(The_Peer.Port));
-                           Peer_Bencode.Include("ip", Encode(To_String(The_Peer.Ip)));
+                           Peer_Bencode.Include(To_Unbounded_String("peer id"), Encode(To_String(The_Peer.Peer_id)));
+                           Peer_Bencode.Include(To_Unbounded_String("port"), Encode(The_Peer.Port));
+                           Peer_Bencode.Include(To_Unbounded_String("ip"), Encode(To_String(The_Peer.Ip)));
 
                            Peer_Bencodes.Append(Encode(Peer_Bencode));
                            exit when Natural(Peer_Bencodes.Length) > Options.Num_Want;
@@ -98,20 +98,21 @@ package body Hellish_Web.Peers is
                      end if;
                   end loop;
 
-                  Result_Map.Include("peers", Encode(Peer_Bencodes));
+                  Result_Map.Include(To_Unbounded_String("peers"), Encode(Peer_Bencodes));
                end;
             end if;
 
             declare
                Stats : Scrape_Stat_Data := Scrape_Stats(Info_Hash);
             begin
-               Result_Map.Include("complete", Encode(Stats.Complete));
-               Result_Map.Include("incomplete", Encode(Stats.Incomplete));
-               Result_Map.Include("downloaded", Encode((if Saved_Stats_Map.Contains(Info_Hash) then Saved_Stats_Map(Info_Hash).Downloaded else 0)));
+               Result_Map.Include(To_Unbounded_String("complete"), Encode(Stats.Complete));
+               Result_Map.Include(To_Unbounded_String("incomplete"), Encode(Stats.Incomplete));
+               Result_Map.Include(To_Unbounded_String("downloaded"),
+                                  Encode((if Saved_Stats_Map.Contains(Info_Hash) then Saved_Stats_Map(Info_Hash).Downloaded else 0)));
             end;
          end if;
 
-         Result_Map.Include("interval", Encode(60 * 5));
+         Result_Map.Include(To_Unbounded_String("interval"), Encode(60 * 5));
 
          return Encode(Result_Map);
       end Encode_Hash_Peers_Response;

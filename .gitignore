@@ -3,3 +3,6 @@ bin/
 lib/
 alire/
 config/
+
+session.data
+uploads/

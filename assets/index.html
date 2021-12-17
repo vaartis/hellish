@@ -16,8 +16,14 @@
         Current leechers: <b>@_current_leechers_@</b>
     </p>
 
+    @@IF@@ @_EXIST:username_@
+
+    <p>Welcome, <b>@_username_@</b></p>
+
     <form enctype="multipart/form-data" ACTION="/api/upload" method="POST">
         <input NAME="file" TYPE="file" >
         <INPUT TYPE="submit" NAME="go" value="Send File">
     </form>
+
+    @@END_IF@@
 </body>

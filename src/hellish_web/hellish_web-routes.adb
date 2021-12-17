@@ -3,19 +3,31 @@ with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
+with Ada.Directories;
 with Ada.Containers.Indefinite_Holders;
+with Ada.Calendar;
 
-with Aws.Server.Log;
-with Aws.Config;
-with Aws.Services.Dispatchers.URI;
-with AWS.Mime;
-with Aws.Parameters;
+with GNAT.SHA1;
+
+with
+  Aws.Cookie,
+  Aws.Session,
+  Aws.Server.Log,
+  Aws.Config,
+  Aws.Services.Dispatchers.Uri,
+  AWS.Mime,
+  Aws.Parameters,
+  Aws.Messages;
 
 with Templates_Parser; use Templates_Parser;
+
+with Gnatcoll.Json;
 
 with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
 with Hellish_Web.Database;
+
+with Orm; use Orm;
 
 package body Hellish_Web.Routes is
    function To_Hex_string(Input : String) return String is
@@ -44,6 +56,15 @@ package body Hellish_Web.Routes is
 
       return To_String(Result);
    end;
+
+   function Request_Session(Request : Status.Data) return Session.Id is
+   begin
+      if Cookie.Exists(Request, Server.Session_Name) then
+         return Session.Value(Cookie.Get(Request, Server.Session_Name));
+      else
+         return Status.Session(Request);
+      end if;
+   end Request_Session;
 
    function Dispatch
      (Handler : in Announce_Handler;
@@ -146,14 +167,14 @@ package body Hellish_Web.Routes is
 
             File_Stats : Bencoder.Bencode_Maps.Map;
          begin
-            File_Stats.Include("complete", Bencoder.Encode(Stats.Complete));
-            File_Stats.Include("incomplete", Bencoder.Encode(Stats.Incomplete));
-            File_Stats.Include("downloaded", Bencoder.Encode(Stats.Downloaded));
+            File_Stats.Include(To_Unbounded_String("complete"), Bencoder.Encode(Stats.Complete));
+            File_Stats.Include(To_Unbounded_String("incomplete"), Bencoder.Encode(Stats.Incomplete));
+            File_Stats.Include(To_Unbounded_String("downloaded"), Bencoder.Encode(Stats.Downloaded));
 
             Files.Append(Bencoder.Encode(File_Stats));
          end;
       end loop;
-      Result_Map.Include("files", Bencoder.Encode(Files));
+      Result_Map.Include(To_Unbounded_String("files"), Bencoder.Encode(Files));
 
       return Response.Build(Mime.Text_Plain, Bencoder.Encode(Result_Map).Element.Encoded);
    end Dispatch;
@@ -162,11 +183,22 @@ package body Hellish_Web.Routes is
      (Handler : in Index_Handler;
       Request : in Status.Data) return Response.Data is
       Total_Stats : Peers.Total_Stats := Peers.Protected_Map.Total_Stat_Data;
-      Translations : Translate_Table := (1 => Assoc("total_known", Total_Stats.Known),
-                                         2 => Assoc("total_downloaded", Total_Stats.Downloaded),
-                                         3 => Assoc("current_seeders", Total_Stats.Seeders),
-                                         4 => Assoc("current_leechers", Total_Stats.Leechers));
+      Translations : Translate_Set;
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
    begin
+      Insert(Translations, Assoc("total_known", Total_Stats.Known));
+      Insert(Translations, Assoc("total_downloaded", Total_Stats.Downloaded));
+      Insert(Translations, Assoc("current_seeders", Total_Stats.Seeders));
+      Insert(Translations, Assoc("current_leechers", Total_Stats.Leechers));
+
+      Put_Line(Session.Image(Session_Id));
+
+      if Username'Length > 0 then
+         Insert(Translations, Assoc("username", Username));
+      end if;
+
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/index.html", Translations)));
    end Dispatch;
@@ -179,22 +211,118 @@ package body Hellish_Web.Routes is
       Params : constant Parameters.List := Status.Parameters(Request);
       File_Path : String := Params.Get("file");
       File_Name : String := Params.Get("file", 2);
-      File : File_Type;
 
-      Contents_Str : String (1..1);
-      Contents : Unbounded_String;
-      --Contents : Bencoder.Bencode_Value_Holders.Holder;
+      use Ada.Directories;
+      Uploads_Path : constant String := "uploads/torrents/";
+
+      use Gnatcoll.Json;
+      Result : Json_Value := Create_Object;
+
+      use Orm;
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
    begin
-      Open(File, Mode => In_File, Name => File_Path);
-      while not End_Of_File(File) loop
-         Get_Immediate(File, Contents_Str(1));
-         Append(Contents, Contents_Str);
-      end loop;
-      Close(File);
+      if Username'Length = 0 then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
 
-      --Contents := Bencoder.Decode(File);
+      declare
+         use Bencoder;
+         File : File_Type;
 
-      return Response.Build(Mime.Text_Html, "");
+         Decoded : Bencode_Value_Holders.Holder;
+         Bencoded_Info : Unbounded_String;
+      begin
+         Open(File, Mode => In_File, Name => File_Path);
+         Decoded := Decode(File);
+         Close(File);
+
+         Bencoded_Info := Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info")).Element.Element.Encoded;
+         declare
+            Sha1_Hash : String := Gnat.Sha1.Digest(To_String(Bencoded_Info));
+            New_Name : String := Compose(Name => Sha1_Hash, Extension => "torrent");
+            Uploaded_Path : String := Compose(Containing_Directory => Uploads_Path,Name => New_Name);
+         begin
+            Create_Path(Uploads_Path);
+            Copy_File(File_Path, Uploaded_Path);
+
+            Database.Create_Torrent(Filename => File_Name, Username => Username, Torrent_File => New_Name);
+         end;
+      end;
+
+      Result.Set_Field("ok", True);
+      return Response.Build(Mime.Application_Json, String'(Result.write));
+   end Dispatch;
+
+   function Dispatch(Handler : in Api_User_Register_Handler;
+                     Request : in Status.Data) return Response.Data is
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Username : String := Params.Get("username");
+      Password : String := Params.Get("password");
+
+      Min_Name_Length : constant Positive := 1;
+      Min_Pwd_Length : constant Positive := 8;
+
+      use Gnatcoll.Json;
+      Result : Json_Value := Create_Object;
+   begin
+      if Username'Length < Min_Name_Length then
+         Result.Set_Field("ok", False);
+         Result.Set_Field("error", "Username must be at least" & Min_Name_Length'Image & " characters long");
+
+         goto Finish;
+      end if;
+      if Password'Length < Min_Pwd_Length then
+         Result.Set_Field("ok", False);
+         Result.Set_Field("error", "Password must be at least" & Min_Pwd_Length'Image & " characters long");
+
+         goto Finish;
+      end if;
+      declare
+         Created : Boolean := Database.Create_User(Username, Password);
+      begin
+         if not Created then
+            Result.Set_Field("ok", False);
+            Result.Set_Field("error", "Username already taken");
+
+            goto Finish;
+         end if;
+      end;
+
+      Result.Set_Field("ok", True);
+
+      <<Finish>>
+      return Response.Build(Mime.Application_Json, String'(Result.Write));
+   end Dispatch;
+
+   overriding function Dispatch(Handler : in Api_User_Login_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Username : String := Params.Get("username");
+      Password : String := Params.Get("password");
+
+      Success : Boolean := Database.Verify_User_Credentials(Username, Password);
+
+      use Gnatcoll.Json;
+      Result : Json_Value := Create_Object;
+
+      -- Always associate a new session with the request on login,
+      -- doesn't seem to work well otherwise
+      Session_Id : Session.ID := Status.Session(Request);
+   begin
+      Result.Set_Field("ok", Success);
+      if Success then
+         declare
+            User : Detached_User'Class := Database.Get_User(Username);
+         begin
+            Put_Line(Session.Image(Session_Id));
+
+            Session.Set(Session_Id, "username", User.Username);
+            Session.Save(Session_File_Name);
+         end;
+      end if;
+
+      return Response.Build(Mime.Application_Json, String'(Result.Write));
    end Dispatch;
 
    -- Entrypoint
@@ -203,18 +331,26 @@ package body Hellish_Web.Routes is
    begin
       Database.Init;
 
+      if Ada.Directories.Exists(Session_File_Name) then
+         Session.Load(Session_File_Name);
+      end if;
+
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register(Root, "/announce", Announce);
       Services.Dispatchers.Uri.Register(Root, "/scrape", Scrape);
 
+      --Services.Dispatchers.Uri.Register(Root, "/register", Register);
+
+      Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
+      Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");
 
-      Put_Line("Started on http://" & Config.Server_Host(Conf)
+      Put_Line("Started on http://" & Aws.Config.Server_Host(Conf)
                  -- Trim the number string on the left because it has a space for some reason
-                 & ":" & Trim(Config.Server_Port(Conf)'Image, Ada.Strings.Left));
+                 & ":" & Trim(Aws.Config.Server_Port(Conf)'Image, Ada.Strings.Left));
       Server.Wait(Server.Q_Key_Pressed);
 
       Server.Shutdown(Http);

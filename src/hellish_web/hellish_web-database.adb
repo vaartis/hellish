@@ -1,17 +1,21 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Directories; use Ada.Directories;
+
 with Gnatcoll.Traces; use Gnatcoll.Traces;
+with Gnatcoll.Sql; use Gnatcoll.Sql;
 with Gnatcoll.Sql.Sessions; use Gnatcoll.Sql.Sessions;
 with Gnatcoll.Sql.Inspect; use Gnatcoll.Sql.Inspect;
 with Gnatcoll.Vfs; use Gnatcoll.Vfs;
-with Ada.Directories; use Ada.Directories;
+
+with Sodium.Functions;
 
 with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 1;
+   Latest_Version : Natural := 0;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -52,6 +56,12 @@ package body Hellish_Web.Database is
 
          Start_Search(Search => Dir_Search, Directory => "db/migrations", Pattern => Trim(Current_Version'Image, Ada.Strings.Left) & "_*.sql");
 
+         if not More_Entries(Dir_Search) then
+            Put_Line("No migrations for version" & Current_Version'Image);
+
+            goto After_Migration;
+         end if;
+
          Get_Next_Entry(Dir_Search, Dir);
          declare
             Sql_File : File_Type;
@@ -80,6 +90,8 @@ package body Hellish_Web.Database is
             Config.Set_Version(Current_Version);
             Session.Commit;
          end;
+
+         <<After_Migration>>
          End_Search(Dir_Search);
       end loop;
    end Migrate;
@@ -90,19 +102,87 @@ package body Hellish_Web.Database is
 
       declare
          Session : Session_Type := Get_New_Session;
-         --The_Torrent : Detached_Torrent'Class := Get_Torrent(Session, Id => 1);
       begin
-
-
-
          GNATCOLL.Traces.Parse_Config("+");
 
          Migrate(Session);
          Session.Commit;
-
-         --The_Torrent.Set_Bencoded("test");
-         --Session.Commit;
-         null;
       end;
    end Init;
+
+   function User_Exists(Name : String; Session : Session_Type) return Boolean is
+      Query : Prepared_Statement :=
+        Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
+      Cur : Direct_Cursor;
+   begin
+      Cur.Fetch(Session.Db, Query, Params => (1 => +Name));
+
+      return Cur.Has_Row;
+   end;
+
+   function Create_User(Name, Password : String) return Boolean is
+      use Sodium.Functions;
+
+      Password_Hash : Any_Hash :=
+        Generate_Password_Hash(Criticality => Online_Interactive, Password => Password);
+
+      The_User: Detached_User'Class := New_User;
+
+      Session : Session_Type := Get_New_Session;
+   begin
+      if not User_Exists(Name, Session) then
+         The_User.Set_Username(Name);
+         The_User.Set_Password(Password_Hash);
+
+         Session.Persist(The_User);
+         Session.Commit;
+
+         return True;
+      end if;
+
+      return False;
+   end Create_User;
+
+   function Get_User(Name : String; Session : Session_Type := Get_New_Session) return Detached_User'Class is
+      use Hellish_Database;
+
+      Query : Prepared_Statement :=
+        Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
+
+      Manager : Users_Managers := All_Users;
+      Cur : Direct_User_List := Manager.Get_Direct(Session);
+   begin
+      -- Stupid workaround to actually run the fetch instead of whatever
+      -- is done by the manager. Probably runs the query twice.
+      Cur.Fetch(Session.Db, Query, Params => (1 => +Name));
+
+      if Cur.Has_Row then
+         return Cur.Element.Detach;
+      else
+         return No_Detached_User;
+      end if;
+   end Get_User;
+
+   function Verify_User_Credentials(Name, Password : String) return Boolean is
+      use Sodium.Functions;
+      use Hellish_Database;
+
+      User_Data : Detached_User'Class := Get_User(Name);
+   begin
+      return Detached_User(User_Data) /= No_Detached_User and then Password_Hash_Matches(User_Data.Password, Password);
+   end Verify_User_Credentials;
+
+   procedure Create_Torrent(Filename, Username, Torrent_File : String) is
+      Session : Session_Type := Get_New_Session;
+
+      Created_By : Detached_User'Class := Get_User(Username, Session);
+      The_Torrent : Detached_Torrent'Class := New_Torrent;
+   begin
+      The_Torrent.Set_Filename(Filename);
+      The_Torrent.Set_Torrent_File(Torrent_File);
+      The_Torrent.Set_Created_By(Created_By);
+
+      Session.Persist(The_Torrent);
+      Session.Commit;
+   end Create_Torrent;
 end;

@@ -1,3 +1,6 @@
+-- Submodules
+with "deps/libsodium-ada/default.gpr";
+
 -- From the system
 with "gnatcoll_postgres.gpr";
 
@@ -81,5 +84,9 @@ project Hellish is
    package Binder is
       for Switches ("Ada") use ("-Es"); --  Symbolic traceback
    end Binder;
+
+   package Linker is
+      for Switches ("Ada") use ("-lsodium");
+   end Linker;
 
 end Hellish;

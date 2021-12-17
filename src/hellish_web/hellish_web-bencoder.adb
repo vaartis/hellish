@@ -9,6 +9,15 @@ package body Hellish_Web.Bencoder is
                                    Encoded => To_Unbounded_String("i" & Trim(Value'Image, Ada.Strings.Left) & 'e')));
    end Encode;
 
+   function Encode(Value : Unbounded_String) return Holder is
+      String_Length : constant Natural := Length(Value);
+      Formatted_String : constant Unbounded_String := Trim(String_Length'Image, Ada.Strings.Left) & ":" & Value;
+   begin
+      return
+        To_Holder(Bencode_String'(Value => Value,
+                                  Encoded => Formatted_String));
+   end Encode;
+
    function Encode(Value : String) return Holder is
       String_Length : constant Natural := Value'Length;
       Formatted_String : constant String := Trim(String_Length'Image, Ada.Strings.Left) & ":" & Value;
@@ -53,7 +62,7 @@ package body Hellish_Web.Bencoder is
 
    procedure Include(The_Map : in out Bencode_Dict; Key : String; Value : Bencode_Value_Holders.Holder) is
    begin
-      The_Map.Value.Include(Key, Value);
+      The_Map.Value.Include(To_Unbounded_String(Key), Value);
       -- Update the encoded value
       The_Map.Encoded := Encode_Map(The_Map.Value);
    end;
@@ -61,7 +70,7 @@ package body Hellish_Web.Bencoder is
    function With_Failure_Reason(reason : String) return Holder is
       Result : Bencode_Maps.Map;
    begin
-      Include(Result, "failure reason", Encode(Reason));
+      Include(Result, To_Unbounded_String("failure reason"), Encode(Reason));
 
       return Encode(Result);
    end With_Failure_Reason;
@@ -202,7 +211,7 @@ package body Hellish_Web.Bencoder is
          Look_Ahead(File, Char, Eol);
          exit when Char = 'e';
 
-         Result.Include(To_String(Bencode_String((Decode_String(File).Element)).Value),
+         Result.Include(Bencode_String((Decode_String(File).Element)).Value,
                         Decode(File));
       end loop;
       return Encode(Result);

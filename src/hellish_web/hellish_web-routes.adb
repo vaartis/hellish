@@ -116,6 +116,11 @@ package body Hellish_Web.Routes is
                                                       then Params.Get("ip")
                                                       else Aws.Status.Peername(Request));
       begin
+         if Detached_Torrent(Database.Get_Torrent_By_Hash(Info_Hash_Hex)) = No_Detached_Torrent then
+            Result := Bencoder.With_Failure_Reason("Unregistered torrent");
+            goto Finish;
+         end if;
+
          if Params.Get("event") = "stopped" then
                Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));
          else

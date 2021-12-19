@@ -255,4 +255,19 @@ package body Hellish_Web.Database is
          Session.Commit;
       end;
    end Update_Torrent_Up_Down;
+
+   function Get_Torrent_By_Hash(Info_Hash : String) return Detached_Torrent'Class is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      Manager : Torrents_Managers := All_Torrents.Filter(Info_Hash => Info_Hash);
+      List : Torrent_List := Manager.Get(Session);
+   begin
+      if List.Has_Row then
+         return List.Element.Detach;
+      else
+         return No_Detached_Torrent;
+      end if;
+   end Get_Torrent_By_Hash;
 end;

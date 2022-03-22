@@ -3,10 +3,9 @@
     <meta charset="UTF-8">
 
     <style>
-     body {
-         --bg-color: #1e191e;
-         --text-color: #e4d5e8;
+     @@INCLUDE@@ variables.css
 
+     body {
          background: var(--bg-color);
          color: var(--text-color);
      }
@@ -17,8 +16,8 @@
          top: 50%;
          transform: translate(-50%, -50%);
          padding: 25px 25px 10px 25px;
-         border: 3px solid #6b1048;
-         background: #6b1048;
+         border: 3px solid var(--panel-color);
+         background: var(--panel-color);
          border-radius: 25px;
      }
 
@@ -33,7 +32,7 @@
      }
 
      .login-input-field {
-         background: #421e47;
+         background: var(--input-color);
          color: var(--text-color);
          border: hidden;
          border-radius: 10px;
@@ -49,7 +48,7 @@
          font-size: 18px;
          float: right;
 
-         background: #421e47;
+         background: var(--input-color);
          color: var(--text-color);
 
          border: hidden;

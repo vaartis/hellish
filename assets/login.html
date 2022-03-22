@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+     body {
+         --bg-color: #1e191e;
+         --text-color: #e4d5e8;
+
+         background: var(--bg-color);
+         color: var(--text-color);
+     }
+
+     .login-container {
+         position: absolute;
+         left: 50%;
+         top: 50%;
+         transform: translate(-50%, -50%);
+         padding: 25px 25px 10px 25px;
+         border: 3px solid #6b1048;
+         background: #6b1048;
+         border-radius: 25px;
+     }
+
+     .login-input-container {
+         margin-bottom: 1em;
+     }
+
+     .login-input-label {
+         display: inline-block;
+         width: 6em;
+         font-weight: bold;
+     }
+
+     .login-input-field {
+         background: #421e47;
+         color: var(--text-color);
+         border: hidden;
+         border-radius: 10px;
+
+         padding-left: 5px;
+         padding-right: 5px;
+     }
+
+     .login-button {
+         padding: 1em;
+
+         font-weight: bold;
+         font-size: 18px;
+         float: right;
+
+         background: #421e47;
+         color: var(--text-color);
+
+         border: hidden;
+         border-radius: 10px;
+     }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <form enctype="multipart/form-data" ACTION="/api/user/login" method="POST">
+            <div class="login-input-container">
+                <label class="login-input-label" for="login-input">Username</label>
+                <input class="login-input-field" id="login-input" name="username" />
+            </div>
+            <div class="login-input-container">
+                <label class="login-input-label" for="password-input">Password</label>
+                <input class="login-input-field" id="password-input" name="password" type="password" />
+            </div>
+
+            <input class="login-button" type="submit" value="Log in!">
+        </form>
+    </div>
+</body>

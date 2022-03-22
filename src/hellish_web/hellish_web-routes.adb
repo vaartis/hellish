@@ -229,10 +229,28 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("username", The_User.Username));
             Insert(Translations, Assoc("passkey", The_User.Passkey));
          end;
+      else
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
       end if;
 
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/index.html", Translations)));
+   end Dispatch;
+
+   function Dispatch
+     (Handler : in Login_Handler;
+      Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+   begin
+      if Username'Length > 0 then
+         -- Redirect to the main page
+         return Response.Url(Location => "/");
+      end if;
+
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/login.html")));
    end Dispatch;
 
    -- API
@@ -350,10 +368,13 @@ package body Hellish_Web.Routes is
          begin
             Session.Set(Session_Id, "username", User.Username);
             Session.Save(Session_File_Name);
-         end;
-      end if;
 
-      return Response.Build(Mime.Application_Json, String'(Result.Write));
+            -- Redirect to login page
+            return Response.Url(Location => "/");
+         end;
+      else
+         return Response.Url(Location => "/login");
+      end if;
    end Dispatch;
 
    -- Entrypoint
@@ -369,6 +390,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
+      Services.Dispatchers.Uri.Register(Root, "/login", Login);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 

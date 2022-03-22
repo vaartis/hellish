@@ -368,7 +368,7 @@ package body Hellish_Web.Routes is
 
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
-      Services.Dispatchers.Uri.Register(Root, "/(\w+)/scrape", Scrape);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 

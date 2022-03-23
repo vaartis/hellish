@@ -45,6 +45,13 @@ package body Hellish_Database is
          & "|downloaded|Integer|||" & ASCII.LF
          & "|UNIQUE:|by_user,of_torrent|user_torrent_unique" & ASCII.LF
          & "" & ASCII.LF
+         & "|TABLE| invites" & ASCII.LF
+         & "|id|AUTOINCREMENT|PK||" & ASCII.LF
+         & "|value|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
+         & "|activated|boolean|NOT NULL||" & ASCII.LF
+         & "|by_user|FK users|NOT NULL||" & ASCII.LF
+         & "|for_user|FK users|,UNIQUE||" & ASCII.LF
+         & "" & ASCII.LF
          & "";
       F : File_Schema_IO;
       D : DB_Schema_IO;

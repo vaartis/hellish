@@ -21,3 +21,11 @@
 | of_torrent | FK torrents             | NOT NULL            |   |   |
 | uploaded   | INTEGER                 |                     |   |   |
 | downloaded | INTEGER                 |                     |   |   |
+
+
+| TABLE     | invites              | invite                  |   |   |
+| id        | AUTOINCREMENT        | PK                      |   |   |
+| value     | TEXT                 | NOT NULL, UNIQUE, INDEX |   |   |
+| activated | BOOLEAN              | NOT NULL                |   |   |
+| by_user   | FK users(invites)    | NOT NULL                |   |   |
+| for_user  | FK users(invited_by) | UNIQUE                  |   |   |

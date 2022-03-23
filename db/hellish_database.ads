@@ -28,6 +28,27 @@ package Hellish_Database is
       is new T_Abstract_Config (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   type T_Abstract_Invites
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Invites, Instance, Index) with
+   record
+      Id : SQL_Field_Integer (Ta_Invites, Instance, N_Id, Index);
+      Value : SQL_Field_Text (Ta_Invites, Instance, N_Value, Index);
+      Activated : SQL_Field_Boolean (Ta_Invites, Instance, N_Activated, Index);
+      By_User : SQL_Field_Integer (Ta_Invites, Instance, N_By_User, Index);
+      For_User : SQL_Field_Integer (Ta_Invites, Instance, N_For_User, Index);
+   end record;
+
+   type T_Invites (Instance : Cst_String_Access)
+      is new T_Abstract_Invites (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Invites (Index : Integer)
+      is new T_Abstract_Invites (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
    type T_Abstract_Torrents
       (Instance : Cst_String_Access;
        Index    : Integer)
@@ -95,6 +116,7 @@ package Hellish_Database is
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    Config : T_Config (null);
+   Invites : T_Invites (null);
    Torrents : T_Torrents (null);
    User_Torrent_Stats : T_User_Torrent_Stats (null);
    Users : T_Users (null);

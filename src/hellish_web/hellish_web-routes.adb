@@ -9,6 +9,7 @@ with Ada.Calendar;
 
 with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.SHA1;
+with GNAT.Command_Line;
 
 with
   Aws.Cookie,
@@ -220,7 +221,7 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("current_seeders", Total_Stats.Seeders));
       Insert(Translations, Assoc("current_leechers", Total_Stats.Leechers));
 
-      if Username'Length > 0 then
+      if Database.User_Exists(Username) then
          declare
             The_User : Detached_User'Class := Database.Get_User(Username);
          begin
@@ -243,14 +244,46 @@ package body Hellish_Web.Routes is
       Request : in Status.Data) return Response.Data is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Error_Param : String := Params.Get("error");
+      Translations : Translate_Set;
    begin
-      if Username'Length > 0 then
+      if Database.User_Exists(Username) then
          -- Redirect to the main page
          return Response.Url(Location => "/");
       end if;
 
+
+      if Error_Param'Length > 0 then
+         Insert(Translations, Assoc("error", Error_Param));
+      end if;
+
       return Response.Build(Mime.Text_Html,
-                            String'(Templates_Parser.Parse("assets/login.html")));
+                            String'(Templates_Parser.Parse("assets/login.html", Translations)));
+   end Dispatch;
+
+   function Dispatch
+     (Handler : in Register_Handler;
+      Request : in Status.Data) return Response.Data is
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Error_Param : String := Params.Get("error");
+      Translations : Translate_Set;
+   begin
+      if Database.User_Exists(Username) then
+         -- Redirect to the main page
+         return Response.Url(Location => "/");
+      end if;
+      if Error_Param'Length > 0 then
+         Insert(Translations, Assoc("error", Error_Param));
+      end if;
+
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/register.html", Translations)));
    end Dispatch;
 
    -- API
@@ -271,7 +304,7 @@ package body Hellish_Web.Routes is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
    begin
-      if Username'Length = 0 then
+      if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
       end if;
 
@@ -310,40 +343,53 @@ package body Hellish_Web.Routes is
       Params : constant Parameters.List := Status.Parameters(Request);
       Username : String := Params.Get("username");
       Password : String := Params.Get("password");
+      Invite : String := Params.Get("invite");
 
       Min_Name_Length : constant Positive := 1;
       Min_Pwd_Length : constant Positive := 8;
 
-      use Gnatcoll.Json;
-      Result : Json_Value := Create_Object;
+      package Indefinite_String_Holders is new Ada.Containers.Indefinite_Holders(String);
+      use Indefinite_String_Holders;
+
+      Error_String : Indefinite_String_Holders.Holder;
    begin
       if Username'Length < Min_Name_Length then
-         Result.Set_Field("ok", False);
-         Result.Set_Field("error", "Username must be at least" & Min_Name_Length'Image & " characters long");
+         Error_String := To_Holder("Username must be at least" & Min_Name_Length'Image & " characters long");
 
          goto Finish;
       end if;
       if Password'Length < Min_Pwd_Length then
-         Result.Set_Field("ok", False);
-         Result.Set_Field("error", "Password must be at least" & Min_Pwd_Length'Image & " characters long");
+         Error_String := To_Holder("Password must be at least" & Min_Pwd_Length'Image & " characters long");
 
          goto Finish;
       end if;
+      if Invite_Required and then not Database.Invite_Valid(Invite) then
+         Error_String := To_Holder("Invalid invite");
+
+         goto Finish;
+      end if;
+
       declare
-         Created : Boolean := Database.Create_User(Username, Password);
+         New_User : Detached_User'Class := No_Detached_User;
+         Created : Boolean := Database.Create_User(Username, Password, New_User);
       begin
          if not Created then
-            Result.Set_Field("ok", False);
-            Result.Set_Field("error", "Username already taken");
+            Error_String := To_Holder("Username already taken");
 
             goto Finish;
          end if;
+
+         if Invite_Required then
+            Database.Invite_Use(Invite, New_User);
+         end if;
       end;
 
-      Result.Set_Field("ok", True);
-
-      <<Finish>>
-      return Response.Build(Mime.Application_Json, String'(Result.Write));
+   <<Finish>>
+      if Error_String.Is_Empty then
+         return Response.Url(Location => "/login");
+      else
+         return Response.Url(Location => "/register?error=" & Error_String.Element);
+      end if;
    end Dispatch;
 
    overriding function Dispatch(Handler : in Api_User_Login_Handler;
@@ -354,14 +400,10 @@ package body Hellish_Web.Routes is
 
       Success : Boolean := Database.Verify_User_Credentials(Username, Password);
 
-      use Gnatcoll.Json;
-      Result : Json_Value := Create_Object;
-
       -- Always associate a new session with the request on login,
       -- doesn't seem to work well otherwise
       Session_Id : Session.ID := Status.Session(Request);
    begin
-      Result.Set_Field("ok", Success);
       if Success then
          declare
             User : Detached_User'Class := Database.Get_User(Username);
@@ -373,14 +415,48 @@ package body Hellish_Web.Routes is
             return Response.Url(Location => "/");
          end;
       else
-         return Response.Url(Location => "/login");
+         return Response.Url(Location => "/login?error=Invalid username or password");
       end if;
+   end Dispatch;
+
+   overriding function Dispatch(Handler : in Api_Invite_New_Handler;
+                                Request : in Status.Data) return Response.Data is
+      use Gnatcoll.Json;
+      Result : Json_Value := Create_Object;
+
+      -- Always associate a new session with the request on login,
+      -- doesn't seem to work well otherwise
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+
+      declare
+         The_User : Detached_User'Class := Database.Get_User(Username);
+         The_Invite : String := Database.Create_Invite(The_User);
+      begin
+         Result.Set_Field("ok", True);
+         Result.Set_Field("invite", The_Invite);
+
+         return Response.Build(Mime.Application_Json, String'(Result.Write));
+      end;
    end Dispatch;
 
    -- Entrypoint
 
    procedure Run_Server is
+      use GNAT.Command_Line;
    begin
+      case Getopt("-invite-not-required") is
+         when '-' =>
+            if Full_Switch = "-invite-not-required" then
+               Invite_Required := False;
+            end if;
+         when others => null;
+      end case;
+
       Database.Init;
 
       if Ada.Directories.Exists(Session_File_Name) then
@@ -391,12 +467,15 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
       Services.Dispatchers.Uri.Register(Root, "/login", Login);
+      Services.Dispatchers.Uri.Register(Root, "/register", Register);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
+
+      Services.Dispatchers.Uri.Register(Root, "/api/invite/new", Api_Invite_New);
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");

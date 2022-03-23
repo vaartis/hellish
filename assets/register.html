@@ -64,7 +64,7 @@
 </head>
 <body>
     <div class="login-container">
-        <form enctype="multipart/form-data" ACTION="/api/user/login" method="POST">
+        <form enctype="multipart/form-data" ACTION="/api/user/register" method="POST">
             <div class="login-input-container">
                 <label class="login-input-label" for="login-input">Username</label>
                 <input class="login-input-field" id="login-input" name="username" />
@@ -73,6 +73,10 @@
                 <label class="login-input-label" for="password-input">Password</label>
                 <input class="login-input-field" id="password-input" name="password" type="password" />
             </div>
+            <div class="login-input-container">
+                <label class="login-input-label" for="invite-input">Invite</label>
+                <input class="login-input-field" id="invite-input" name="invite" />
+            </div>
 
             @@IF@@ @_EXIST:error_@
             <div class="login-error">
@@ -80,7 +84,7 @@
             </div>
             @@END_IF@@
 
-            <input class="login-button" type="submit" value="Log in!">
+            <input class="login-button" type="submit" value="Register?">
         </form>
     </div>
 </body>

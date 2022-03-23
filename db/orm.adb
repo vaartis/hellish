@@ -12,6 +12,8 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Config_DDR, Config_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( Invite_DDR, Invite_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Torrent_DDR, Torrent_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( User_DDR, User_Data);
@@ -25,6 +27,14 @@ package body Orm is
    F_Config_Id      : constant := 0;
    F_Config_Version : constant := 1;
    Alias_Config : constant Alias_Array := (0 => -1);
+   F_Invites_Id        : constant := 0;
+   F_Invites_Value     : constant := 1;
+   F_Invites_Activated : constant := 2;
+   F_Invites_By_User   : constant := 3;
+   F_Invites_For_User  : constant := 4;
+   Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
+   Upto_Invites_1 : constant Counts := ((5,5),(11,11),(11,11),(11,11));
+   Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
    F_Torrents_Id         : constant := 0;
    F_Torrents_Info_Hash  : constant := 1;
    F_Torrents_Created_By : constant := 2;
@@ -53,6 +63,10 @@ package body Orm is
       Session : Session_Type)
      return Detached_Config'Class;
    function Detach_No_Lookup
+     (Self    : Invite'Class;
+      Session : Session_Type)
+     return Detached_Invite'Class;
+   function Detach_No_Lookup
      (Self    : Torrent'Class;
       Session : Session_Type)
      return Detached_Torrent'Class;
@@ -67,8 +81,19 @@ package body Orm is
    --  Same as Detach, but does not check the session cache Same as Detach,
    --  but does not check the session cache Same as Detach, but does not check
    --  the session cache Same as Detach, but does not check the session cache
+   --  Same as Detach, but does not check the session cache
 
    procedure Do_Query_Config
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Do_Query_Invites
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -181,6 +206,49 @@ package body Orm is
       end if;
    end "=";
 
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Invite; Op2 : Invite) return Boolean is
+   begin
+      return Integer'(Op1.Id) = Op2.Id;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Detached_Invite; Op2 : Detached_Invite) return Boolean
+   is
+   begin
+      if Op1.Is_Null then
+         return Op2.Is_Null;
+      elsif Op2.Is_Null then
+         return False;
+      else
+         return Integer'(Op1.Id) = Op2.Id;
+      end if;
+   end "=";
+
+   ---------------
+   -- Activated --
+   ---------------
+
+   function Activated (Self : Invite) return Boolean is
+   begin
+      return Boolean_Value (Self, F_Invites_Activated);
+   end Activated;
+
+   ---------------
+   -- Activated --
+   ---------------
+
+   function Activated (Self : Detached_Invite) return Boolean is
+   begin
+      return Invite_Data (Self.Unchecked_Get).ORM_Activated;
+   end Activated;
+
    -------------
    -- By_User --
    -------------
@@ -233,6 +301,74 @@ package body Orm is
      return Detached_User'Class
    is
       D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_By_User = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_By_User := new Detached_User'Class'
+           (Get_User (S, Id => D.ORM_By_User));
+      end if;
+      return D.ORM_FK_By_User.all;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Invite) return Integer is
+   begin
+      return Integer_Value (Self, F_Invites_By_User);
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_Invite) return Integer is
+   begin
+      return Invite_Data (Self.Unchecked_Get).ORM_By_User;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Invite) return User'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 then
+         return I_Users.Internal_Element
+           (Self,
+            Upto_Invites_0 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+
+         return Filter (All_Users, Id => Self.By_User)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_Invite) return Detached_User'Class
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
       S : Session_Type;
    begin
       if D.ORM_FK_By_User = null then
@@ -355,6 +491,74 @@ package body Orm is
       return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Downloaded;
    end Downloaded;
 
+   --------------
+   -- For_User --
+   --------------
+
+   function For_User (Self : Invite) return Integer is
+   begin
+      return Integer_Value (Self, F_Invites_For_User);
+   end For_User;
+
+   --------------
+   -- For_User --
+   --------------
+
+   function For_User (Self : Detached_Invite) return Integer is
+   begin
+      return Invite_Data (Self.Unchecked_Get).ORM_For_User;
+   end For_User;
+
+   --------------
+   -- For_User --
+   --------------
+
+   function For_User (Self : Invite) return User'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 and then Self.Data.Follow_LJ then
+         return I_Users.Internal_Element
+           (Self,
+            Upto_Invites_1 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for For_User";
+         end if;
+
+         return Filter (All_Users, Id => Self.For_User)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end For_User;
+
+   --------------
+   -- For_User --
+   --------------
+
+   function For_User (Self : Detached_Invite) return Detached_User'Class
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_For_User = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for For_User";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_For_User := new Detached_User'Class'
+           (Get_User (S, Id => D.ORM_For_User));
+      end if;
+      return D.ORM_FK_For_User.all;
+   end For_User;
+
    --------
    -- Id --
    --------
@@ -407,6 +611,24 @@ package body Orm is
    function Id (Self : Detached_Config) return Integer is
    begin
       return Config_Data (Self.Unchecked_Get).ORM_Id;
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Invite) return Integer is
+   begin
+      return Integer_Value (Self, F_Invites_Id);
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Detached_Invite) return Integer is
+   begin
+      return Invite_Data (Self.Unchecked_Get).ORM_Id;
    end Id;
 
    ---------------
@@ -623,6 +845,24 @@ package body Orm is
       return To_String (User_Data (Self.Unchecked_Get).ORM_Username);
    end Username;
 
+   -----------
+   -- Value --
+   -----------
+
+   function Value (Self : Invite) return String is
+   begin
+      return String_Value (Self, F_Invites_Value);
+   end Value;
+
+   -----------
+   -- Value --
+   -----------
+
+   function Value (Self : Detached_Invite) return String is
+   begin
+      return To_String (Invite_Data (Self.Unchecked_Get).ORM_Value);
+   end Value;
+
    -------------
    -- Version --
    -------------
@@ -731,6 +971,21 @@ package body Orm is
       return Detach_No_Lookup (Self, Self.Data.Session);
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach (Self : Invite'Class) return Detached_Invite'Class
+   is
+      R : constant Detached_Invite'Class := From_Cache (Self.Data.Session, Self.Id);
+   begin
+      if R.Is_Null then
+         return Detach_No_Lookup (Self, Self.Data.Session);
+      else
+         return R;
+      end if;
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -753,6 +1008,51 @@ package body Orm is
 
       Tmp.ORM_Id         := Integer_Value (Self, F_Config_Id);
       Tmp.ORM_Version    := Integer_Value (Self, F_Config_Version);
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
+     (Self    : Invite'Class;
+      Session : Session_Type)
+     return Detached_Invite'Class
+   is
+      Default     : Detached_Invite;
+      Result      : Detached_Invite'Class := Detached_Invite'Class (Session.Factory (Self, Default));
+      Fk_By_User  : Detached_User_Access;
+      Fk_For_User : Detached_User_Access;
+      Lj          : constant Boolean := Self.Data.Follow_LJ;
+      Tmp         : Invite_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (Invite_DDR'
+              (Detached_Data with Field_Count => 7, others => <>));
+      end if;
+
+      Tmp := Invite_Data (Result.Unchecked_Get);
+      if Self.Depth > 0 then
+         FK_By_User := new Detached_User'Class'(
+            I_Users.Internal_Element
+              (Self, Upto_Invites_0 (Self.Depth, LJ)).Detach);
+         if LJ then
+            FK_For_User := new Detached_User'Class'(
+               I_Users.Internal_Element
+                 (Self, Upto_Invites_1 (Self.Depth, LJ)).Detach);
+         end if;
+
+      end if;
+
+      Tmp.ORM_Activated    := Boolean_Value (Self, F_Invites_Activated);
+      Tmp.ORM_By_User      := Integer_Value (Self, F_Invites_By_User);
+      Tmp.ORM_FK_By_User   := FK_By_User;
+      Tmp.ORM_FK_For_User  := FK_For_User;
+      Tmp.ORM_For_User     := Integer_Value (Self, F_Invites_For_User);
+      Tmp.ORM_Id           := Integer_Value (Self, F_Invites_Id);
+      Tmp.ORM_Value        := To_Unbounded_String (String_Value (Self, F_Invites_Value));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -888,6 +1188,66 @@ package body Orm is
       end if;
       From := Empty_Table_List;
    end Do_Query_Config;
+
+   ----------------------
+   -- Do_Query_Invites --
+   ----------------------
+
+   procedure Do_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False)
+   is
+      Table : T_Numbered_Invites(Aliases(Base));
+      C2    : Sql_Criteria;
+      T     : SQL_Table_List;
+   begin
+      if PK_Only then
+         Fields := Fields & Table.Id;
+      else
+         Fields := Fields & Table.Id
+         & Table.Value
+         & Table.Activated
+         & Table.By_User
+         & Table.For_User;
+      end if;
+      From := Empty_Table_List;
+      if Depth > 0 then
+
+         declare
+            FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
+            FK2 : T_Numbered_Users(Aliases(Aliases(Base + 2)));
+         begin Criteria := Criteria
+         and Table.By_User = FK1.Id;
+         if Follow_LJ then
+            From := +Left_Join(Table, FK2, Table.For_User=FK2.Id);
+         else
+            From := +Table;
+         end if;
+         C2 := No_Criteria;
+         Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
+         end if;
+         From := From & T;
+
+         if Follow_LJ then
+            C2 := No_Criteria;
+            Do_Query_Users(Fields, T, C2,Aliases(Base + 2),
+               Aliases, Depth - 1, Follow_LJ);
+            if Depth > 1 then
+               Criteria := Criteria and C2;
+            end if;
+         end if;
+      end;
+   end if;
+   end Do_Query_Invites;
 
    -----------------------
    -- Do_Query_Torrents --
@@ -1132,12 +1492,59 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self      : Invites_Managers'Class;
+      Id        : Integer := -1;
+      Value     : String := No_Update;
+      Activated : Triboolean := Indeterminate;
+      By_User   : Integer := -1;
+      For_User  : Integer := -1)
+     return Invites_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : Invites_Managers;
+   begin
+      if Id /= -1 then
+         C := C and DBA.Invites.Id = Id;
+      end if;
+      if Value /= No_Update then
+         C := C and DBA.Invites.Value = Value;
+      end if;
+      if Activated /= Indeterminate then
+         C := C and DBA.Invites.Activated = To_Boolean(Activated);
+      end if;
+      if By_User /= -1 then
+         C := C and DBA.Invites.By_User = By_User;
+      end if;
+      if For_User /= -1 then
+         C := C and DBA.Invites.For_User = For_User;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
 
    overriding procedure Free (Self : in out Config_Ddr) is
    begin
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
+   overriding procedure Free (Self : in out Invite_Ddr) is
+   begin
+      Unchecked_Free (Self.ORM_FK_By_User);
+      Unchecked_Free (Self.ORM_FK_For_User);
+
       Free (Detached_Data (Self));
    end Free;
 
@@ -1210,6 +1617,18 @@ package body Orm is
    end From_Cache;
 
    ----------------
+   -- From_Cache --
+   ----------------
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Invite'Class is
+   begin
+      return Detached_Invite'Class (Session.From_Cache ((4000000, Id), No_Detached_Invite));
+   end From_Cache;
+
+   ----------------
    -- Get_Config --
    ----------------
 
@@ -1252,6 +1671,50 @@ package body Orm is
          end;
       end if;
    end Get_Config;
+
+   ----------------
+   -- Get_Invite --
+   ----------------
+
+   function Get_Invite
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Invite'Class
+   is
+      R : constant Detached_Invite'Class := From_Cache (Session, Id);
+   begin
+      if not R.Is_Null then
+         return R;
+      else
+
+         declare
+            M : Invites_Managers := Filter
+              (All_Invites,
+               Id => Id);
+            L : I_Invites.List;
+         begin
+            M.Select_Related
+              (Depth, Follow_Left_Join => Follow_Left_Join);
+            M.Limit (1);
+            L := M.Get(Session);
+            if not L.Has_Row then
+               return No_Detached_Invite;
+            else
+
+               declare
+                  E : constant Invite := L.Element;
+               begin
+                  --  Workaround bug in gnat which is missing a call
+                  --  to Finalize if we do not reset the list (K321-012)
+                  L := I_Invites.Empty_List;
+                  return E.Detach_No_Lookup (Session);
+               end;
+            end if;
+         end;
+      end if;
+   end Get_Invite;
 
    -----------------
    -- Get_Torrent --
@@ -1369,6 +1832,76 @@ package body Orm is
       if Missing_PK and then Success (Self.Session.DB) then
          PK_Modified := True;
          D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Config.Id);
+      end if;
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Invite;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      D          : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+      Q          : SQL_Query;
+      A          : Sql_Assignment := No_Assignment;
+      Missing_Pk : constant Boolean := D.ORM_Id = -1;
+      R          : Forward_Cursor;
+   begin
+      if Mask (2) then
+         A := A & (DBA.Invites.Value = To_String (D.ORM_Value));
+      end if;
+      if Mask (3) then
+         A := A & (DBA.Invites.Activated = D.ORM_Activated);
+      end if;
+      if Mask (4) then
+         if D.ORM_By_User /= -1 then
+            A := A & (DBA.Invites.By_User = D.ORM_By_User);
+         else
+
+            declare
+               D2 : constant User_Data :=
+               User_data (D.ORM_FK_By_User.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_By_User.all);
+               end if;
+
+               A := A & (DBA.Invites.By_User = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Mask (5) then
+         if D.ORM_For_User /= -1 then
+            A := A & (DBA.Invites.For_User = D.ORM_For_User);
+         else
+
+            declare
+               D2 : constant User_Data :=
+               User_data (D.ORM_FK_For_User.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_For_User.all);
+               end if;
+
+               A := A & (DBA.Invites.For_User = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Missing_PK then
+         Q := SQL_Insert (A);
+      else
+         Q := SQL_Update (DBA.Invites, A, DBA.Invites.Id = D.ORM_Id);
+      end if;
+      R.Fetch (Self.Session.DB, Q);
+
+      if Missing_PK and then Success (Self.Session.DB) then
+         PK_Modified := True;
+         D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Invites.Id);
       end if;
    end Insert_Or_Update;
 
@@ -1540,6 +2073,17 @@ package body Orm is
    -- Internal_Delete --
    ---------------------
 
+   overriding procedure Internal_Delete (Self : Detached_Invite)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      Execute (Self.Session.DB, SQL_Delete (DBA.Invites, DBA.Invites.Id = D.ORM_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
    overriding procedure Internal_Delete (Self : Detached_Torrent)
    is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
@@ -1583,6 +2127,22 @@ package body Orm is
       Do_Query_Config(Fields, From, Criteria,
          0, Alias_Config, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Config;
+
+   ----------------------------
+   -- Internal_Query_Invites --
+   ----------------------------
+
+   procedure Internal_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      Do_Query_Invites(Fields, From, Criteria,
+         0, Alias_Invites, Depth, Follow_LJ, PK_Only);
+   end Internal_Query_Invites;
 
    -----------------------------
    -- Internal_Query_Torrents --
@@ -1635,6 +2195,66 @@ package body Orm is
          0, Alias_Users, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Users;
 
+   ----------------
+   -- Invited_By --
+   ----------------
+
+   function Invited_By (Self : User'Class) return Invites_Managers is
+   begin
+      return Filter (All_Invites, For_User => Self.Id);
+   end Invited_By;
+
+   ----------------
+   -- Invited_By --
+   ----------------
+
+   function Invited_By (Self : Detached_User'Class) return Invites_Managers is
+   begin
+      return Filter (All_Invites, For_User => Self.Id);
+   end Invited_By;
+
+   ----------------
+   -- Invited_By --
+   ----------------
+
+   function Invited_By (Self : I_Users_Managers'Class) return Invites_Managers
+   is
+      Q : constant SQL_Query := I_Users.Build_Query(Self, +DBA.Users.Id);
+   begin
+      return All_Invites.Filter
+        (SQL_In(DBA.Invites.For_User, Q));
+   end Invited_By;
+
+   -------------
+   -- Invites --
+   -------------
+
+   function Invites (Self : User'Class) return Invites_Managers is
+   begin
+      return Filter (All_Invites, By_User => Self.Id);
+   end Invites;
+
+   -------------
+   -- Invites --
+   -------------
+
+   function Invites (Self : Detached_User'Class) return Invites_Managers is
+   begin
+      return Filter (All_Invites, By_User => Self.Id);
+   end Invites;
+
+   -------------
+   -- Invites --
+   -------------
+
+   function Invites (Self : I_Users_Managers'Class) return Invites_Managers
+   is
+      Q : constant SQL_Query := I_Users.Build_Query(Self, +DBA.Users.Id);
+   begin
+      return All_Invites.Filter
+        (SQL_In(DBA.Invites.By_User, Q));
+   end Invites;
+
    ---------
    -- Key --
    ---------
@@ -1645,6 +2265,19 @@ package body Orm is
          return (2000000, No_Primary_Key);
       else
          return (2000000, Self.ORM_Id);
+      end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
+   overriding function Key (Self : Invite_Ddr) return Element_Key is
+   begin
+      if Self.ORM_Id = -1 then
+         return (4000000, No_Primary_Key);
+      else
+         return (4000000, Self.ORM_Id);
       end if;
    end Key;
 
@@ -1699,6 +2332,19 @@ package body Orm is
       return Result;
    end New_Config;
 
+   ----------------
+   -- New_Invite --
+   ----------------
+
+   function New_Invite return Detached_Invite'Class
+   is
+      Result : Detached_Invite;
+      Data   : Invite_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_Invite;
+
    -----------------
    -- New_Torrent --
    -----------------
@@ -1742,6 +2388,24 @@ package body Orm is
    -- On_Persist --
    ----------------
 
+   overriding procedure On_Persist (Self : Detached_Invite)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      if Persist_Cascade (Self.Session) then
+         if D.ORM_FK_By_User /= null then
+            Self.Session.Persist (D.ORM_FK_By_User.all);
+         end if;
+         if D.ORM_FK_For_User /= null then
+            Self.Session.Persist (D.ORM_FK_For_User.all);
+         end if;
+      end if;
+   end On_Persist;
+
+   ----------------
+   -- On_Persist --
+   ----------------
+
    overriding procedure On_Persist (Self : Detached_Torrent)
    is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
@@ -1771,6 +2435,18 @@ package body Orm is
       end if;
    end On_Persist;
 
+   -------------------
+   -- Set_Activated --
+   -------------------
+
+   procedure Set_Activated (Self : Detached_Invite; Value : Boolean)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Activated := Value;
+      Self.Set_Modified (3);
+   end Set_Activated;
+
    -----------------
    -- Set_By_User --
    -----------------
@@ -1799,6 +2475,37 @@ package body Orm is
       D.ORM_FK_By_User := new Detached_User'Class'(Value);
 
       Self.Set_Modified (1);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_By_User.all);
+      end if;
+   end Set_By_User;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User (Self : Detached_Invite; Value : Integer)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value;
+      Self.Set_Modified (4);
+   end Set_By_User;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User (Self : Detached_Invite; Value : Detached_User'Class)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value.Id;
+      D.ORM_FK_By_User := new Detached_User'Class'(Value);
+
+      Self.Set_Modified (4);
       if Persist_Cascade (Self.Session) then
          Self.Session.Persist (D.ORM_FK_By_User.all);
       end if;
@@ -1860,6 +2567,37 @@ package body Orm is
       D.ORM_Downloaded := Value;
       Self.Set_Modified (4);
    end Set_Downloaded;
+
+   ------------------
+   -- Set_For_User --
+   ------------------
+
+   procedure Set_For_User (Self : Detached_Invite; Value : Integer)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_For_User);
+      D.ORM_For_User := Value;
+      Self.Set_Modified (5);
+   end Set_For_User;
+
+   ------------------
+   -- Set_For_User --
+   ------------------
+
+   procedure Set_For_User (Self : Detached_Invite; Value : Detached_User'Class)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_For_User);
+      D.ORM_For_User := Value.Id;
+      D.ORM_FK_For_User := new Detached_User'Class'(Value);
+
+      Self.Set_Modified (5);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_For_User.all);
+      end if;
+   end Set_For_User;
 
    -------------------
    -- Set_Info_Hash --
@@ -1965,6 +2703,18 @@ package body Orm is
       D.ORM_Username := To_Unbounded_String (Value);
       Self.Set_Modified (2);
    end Set_Username;
+
+   ---------------
+   -- Set_Value --
+   ---------------
+
+   procedure Set_Value (Self : Detached_Invite; Value : String)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Value := To_Unbounded_String (Value);
+      Self.Set_Modified (2);
+   end Set_Value;
 
    -----------------
    -- Set_Version --

@@ -4,6 +4,7 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Directories; use Ada.Directories;
 
 with Gnatcoll.Traces; use Gnatcoll.Traces;
+with Gnatcoll.Tribooleans; use Gnatcoll.Tribooleans;
 with Gnatcoll.Sql; use Gnatcoll.Sql;
 with Gnatcoll.Sql.Sessions; use Gnatcoll.Sql.Sessions;
 with Gnatcoll.Sql.Inspect; use Gnatcoll.Sql.Inspect;
@@ -110,7 +111,7 @@ package body Hellish_Web.Database is
       end;
    end Init;
 
-   function User_Exists(Name : String; Session : Session_Type) return Boolean is
+   function User_Exists(Name : String; Session : Session_Type := Get_New_Session) return Boolean is
       Query : Prepared_Statement :=
         Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
       Cur : Direct_Cursor;
@@ -120,7 +121,7 @@ package body Hellish_Web.Database is
       return Cur.Has_Row;
    end;
 
-   function Create_User(Name, Password : String) return Boolean is
+   function Create_User(Name, Password : String; Created_User : out Detached_User'Class) return Boolean is
       use Sodium.Functions;
 
       Password_Hash : Any_Hash :=
@@ -140,8 +141,12 @@ package body Hellish_Web.Database is
          Session.Persist(The_User);
          Session.Commit;
 
+         Created_User := The_User;
+
          return True;
       end if;
+
+      Created_User := Detached_User'Class(No_Detached_User);
 
       return False;
    end Create_User;
@@ -270,4 +275,61 @@ package body Hellish_Web.Database is
          return No_Detached_Torrent;
       end if;
    end Get_Torrent_By_Hash;
+
+   function Create_Invite(From_User : Detached_User'Class) return String is
+      use Sodium.Functions;
+
+      Session : Session_Type := Get_New_Session;
+      Manager : Invites_Managers := All_Invites.Filter(By_User => From_User.Id, Activated => To_Triboolean(False));
+      List : Invite_List := Manager.Get(Session);
+   begin
+      if List.Has_Row then
+         return List.Element.Value;
+      end if;
+
+      declare
+         The_Invite : Detached_Invite'Class := New_Invite;
+      begin
+         The_Invite.Set_By_User(From_User);
+         The_Invite.Set_Value(As_Hexidecimal(Random_Hash_Key(32)));
+         The_Invite.Set_Activated(False);
+
+         Session.Persist(The_Invite);
+         Session.Commit;
+
+         return The_Invite.Value;
+      end;
+   end Create_Invite;
+
+   function Invite_Valid(Invite : String) return Boolean is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+      Manager : Invites_Managers := All_Invites.Filter(Value => Invite);
+      List : Invite_List := Manager.Get(Session);
+   begin
+      if List.Has_Row then
+         return not List.Element.Activated;
+      end if;
+
+      return False;
+   end Invite_Valid;
+
+   procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class) is
+      Session : Session_Type := Get_New_Session;
+
+      Manager : Invites_Managers := All_Invites.Filter(Value => Invite);
+      List : Invite_List := Manager.Get(Session);
+   begin
+      if List.Has_Row then
+         declare
+            The_Invite : Detached_Invite'Class := List.Element.Detach;
+         begin
+            The_Invite.Set_Activated(True);
+            The_Invite.Set_For_User(Invited_User.Id);
+            Session.Persist(The_Invite);
+            Session.Commit;
+         end;
+      end if;
+   end Invite_Use;
 end;

@@ -44,6 +44,14 @@ package Orm is
    No_Detached_Config : constant Detached_Config;
    No_Config : constant Config;
 
+   type Invite is new Orm_Element with null record;
+   type Invite_DDR is new Detached_Data (7) with private;
+   type Detached_Invite is  --  Get() returns a Invite_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_Invite_Access is access all Detached_Invite'Class;
+   No_Detached_Invite : constant Detached_Invite;
+   No_Invite : constant Invite;
+
    type Torrent is new Orm_Element with null record;
    type Torrent_DDR is new Detached_Data (4) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
@@ -216,11 +224,64 @@ package Orm is
 
    function New_User_Torrent_Stat return Detached_User_Torrent_Stat'Class;
 
+   -----------------------
+   -- Elements: Invites --
+   -----------------------
+
+   function "=" (Op1 : Invite; Op2 : Invite) return Boolean;
+   function "=" (Op1 : Detached_Invite; Op2 : Detached_Invite) return Boolean;
+   --  Compares two elements using only the primary keys. All other fields are
+   --  ignored
+
+   function Activated (Self : Invite) return Boolean;
+   function Activated (Self : Detached_Invite) return Boolean;
+   procedure Set_Activated (Self : Detached_Invite; Value : Boolean);
+
+   function By_User (Self : Invite) return Integer;
+   function By_User (Self : Detached_Invite) return Integer;
+   procedure Set_By_User (Self : Detached_Invite; Value : Integer);
+   function By_User (Self : Invite) return User'Class;
+   function By_User (Self : Detached_Invite) return Detached_User'Class;
+   procedure Set_By_User (Self : Detached_Invite; Value : Detached_User'Class);
+
+   function For_User (Self : Invite) return Integer;
+   function For_User (Self : Detached_Invite) return Integer;
+   procedure Set_For_User (Self : Detached_Invite; Value : Integer);
+   function For_User (Self : Invite) return User'Class;
+   function For_User (Self : Detached_Invite) return Detached_User'Class;
+   procedure Set_For_User (Self : Detached_Invite; Value : Detached_User'Class);
+
+   function Id (Self : Invite) return Integer;
+   function Id (Self : Detached_Invite) return Integer;
+
+   function Value (Self : Invite) return String;
+   function Value (Self : Detached_Invite) return String;
+   procedure Set_Value (Self : Detached_Invite; Value : String);
+
+   function Detach (Self : Invite'Class) return Detached_Invite'Class;
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Invite'Class;
+   --  Check whether there is already an element with this primary key. If
+   --  not, the returned value will be a null element (test with Is_Null)
+
+   function New_Invite return Detached_Invite'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
 
    procedure Internal_Query_Config
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_Invites
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -268,6 +329,19 @@ package Orm is
    Empty_Config_List : constant Config_List := I_Config.Empty_List;
    Empty_Direct_Config_List : constant Direct_Config_List :=
    I_Config.Empty_Direct_List;
+
+   type I_Invites_Managers is abstract new Manager with null record;
+   package I_Invites is new Generic_Managers
+     (I_Invites_Managers, Invite, Related_Depth, DBA.Invites,
+      Internal_Query_Invites);
+   type Invites_Managers is new I_Invites.Manager with null record;
+   subtype Invites_Stmt is I_Invites.ORM_Prepared_Statement;
+
+   subtype Invite_List is I_Invites.List;
+   subtype Direct_Invite_List is I_Invites.Direct_List;
+   Empty_Invite_List : constant Invite_List := I_Invites.Empty_List;
+   Empty_Direct_Invite_List : constant Direct_Invite_List :=
+   I_Invites.Empty_Direct_List;
 
    type I_Torrents_Managers is abstract new Manager with null record;
    package I_Torrents is new Generic_Managers
@@ -366,6 +440,14 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_User'Class;
 
+   function Invited_By (Self : User'Class) return Invites_Managers;
+   function Invited_By (Self : Detached_User'Class) return Invites_Managers;
+   function Invited_By (Self : I_Users_Managers'Class) return Invites_Managers;
+
+   function Invites (Self : User'Class) return Invites_Managers;
+   function Invites (Self : Detached_User'Class) return Invites_Managers;
+   function Invites (Self : I_Users_Managers'Class) return Invites_Managers;
+
    function Torrent_Stats (Self : User'Class) return User_Torrent_Stats_Managers;
    function Torrent_Stats
      (Self : Detached_User'Class)
@@ -403,12 +485,35 @@ package Orm is
       Downloaded : Integer := -1)
      return User_Torrent_Stats_Managers;
 
+   ----------------------
+   -- Manager: Invites --
+   ----------------------
+
+   function Filter
+     (Self      : Invites_Managers'Class;
+      Id        : Integer := -1;
+      Value     : String := No_Update;
+      Activated : Triboolean := Indeterminate;
+      By_User   : Integer := -1;
+      For_User  : Integer := -1)
+     return Invites_Managers;
+
+   function Get_Invite
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Invite'Class;
+
    --------------
    -- Managers --
    --------------
 
    All_Config : constant Config_Managers :=
      (I_Config.All_Managers with null record);
+
+   All_Invites : constant Invites_Managers :=
+     (I_Invites.All_Managers with null record);
 
    All_Torrents : constant Torrents_Managers :=
      (I_Torrents.All_Managers with null record);
@@ -425,12 +530,17 @@ package Orm is
    --------------
 
    overriding procedure Free (Self : in out Config_Ddr);
+   overriding procedure Free (Self : in out Invite_Ddr);
    overriding procedure Free (Self : in out Torrent_Ddr);
    overriding procedure Free (Self : in out User_Torrent_Stat_Ddr);
    overriding procedure Free (Self : in out User_Ddr);
 
    overriding procedure Insert_Or_Update
      (Self        : in out Detached_Config;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Invite;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
@@ -447,15 +557,18 @@ package Orm is
       Mask        : Dirty_Mask);
 
    overriding procedure Internal_Delete (Self : Detached_Config);
+   overriding procedure Internal_Delete (Self : Detached_Invite);
    overriding procedure Internal_Delete (Self : Detached_Torrent);
    overriding procedure Internal_Delete (Self : Detached_User_Torrent_Stat);
    overriding procedure Internal_Delete (Self : Detached_User);
 
    overriding function Key (Self : Config_Ddr) return Element_Key;
+   overriding function Key (Self : Invite_Ddr) return Element_Key;
    overriding function Key (Self : Torrent_Ddr) return Element_Key;
    overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key;
    overriding function Key (Self : User_Ddr) return Element_Key;
 
+   overriding procedure On_Persist (Self : Detached_Invite);
    overriding procedure On_Persist (Self : Detached_Torrent);
    overriding procedure On_Persist (Self : Detached_User_Torrent_Stat);
 
@@ -466,6 +579,17 @@ private
        ORM_Version    : Integer := -1;
     end record;
     type Config_Data is access all Config_DDR;
+    
+    type Invite_DDR is new Detached_Data (7) with record
+       ORM_Activated    : Boolean := False;
+       ORM_By_User      : Integer := -1;
+       ORM_FK_By_User   : Detached_User_Access := null;
+       ORM_FK_For_User  : Detached_User_Access := null;
+       ORM_For_User     : Integer := -1;
+       ORM_Id           : Integer := -1;
+       ORM_Value        : Unbounded_String := Null_Unbounded_String;
+    end record;
+    type Invite_Data is access all Invite_DDR;
     
     type Torrent_DDR is new Detached_Data (4) with record
        ORM_Created_By    : Integer := -1;
@@ -500,6 +624,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Config : constant Config :=(No_Orm_Element with null record);
     No_Detached_Config : constant Detached_Config :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_Invite
+       is new Sessions.Detached_Element with null record;
+    No_Invite : constant Invite :=(No_Orm_Element with null record);
+    No_Detached_Invite : constant Detached_Invite :=
       (Sessions.Detached_Element with null record);
  
     type Detached_Torrent

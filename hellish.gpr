@@ -78,7 +78,8 @@ project Hellish is
         Contracts_Switches &
         ("-gnatw.X", -- Disable warnings for No_Exception_Propagation
          "-gnatQ", -- Don't quit. Generate ALI and tree files even if illegalities
-         "-gnatf");
+         "-gnatf",
+         "-gnatv");
    end Compiler;
 
    package Binder is

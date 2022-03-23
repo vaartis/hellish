@@ -1,9 +1,36 @@
 <!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
-    <h1>Hellish tracker</h1>
+    <style>
+     @@INCLUDE@@ variables.css
+
+     body {
+         background: var(--bg-color);
+         color: var(--text-color);
+     }
+
+     .user-info {
+         float: right;
+         margin-right: 1em;
+     }
+
+     .upload {
+         color: #54c977;
+     }
+
+     .download {
+         color: #c96454;
+     }
+    </style>
 </head>
 <body>
+    <div class="user-info">
+        <b>@_username_@</b>
+        <div>
+            <span class="upload">▲ @_uploaded_@GiB</span>
+            <span class="download">▼ @_downloaded_@GiB</span>
+        </div>
+    </div>
     <p>
         Total known torrents: <b>@_total_known_@</b>
     </p>

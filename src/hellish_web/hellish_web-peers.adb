@@ -11,8 +11,8 @@ package body Hellish_Web.Peers is
       procedure Add(Info_Hash : String; Joined_Peer : Peer; The_User : Detached_User'Class) is
          Peer_Id : String := To_String(Joined_Peer.Peer_Id);
 
-         Uploaded_Diff : Natural := 0;
-         Downloaded_Diff : Natural := 0;
+         Uploaded_Diff : Long_Long_Integer := 0;
+         Downloaded_Diff : Long_Long_Integer := 0;
       begin
          if not Torrent_Map.Contains(Info_Hash) then
             declare

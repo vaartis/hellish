@@ -211,7 +211,7 @@ package body Hellish_Web.Database is
    end Create_Torrent;
 
    procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;
-                                    Uploaded_Diff : Natural; Downloaded_Diff : Natural) is
+                                    Uploaded_Diff : Long_Long_Integer; Downloaded_Diff : Long_Long_Integer) is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -236,10 +236,12 @@ package body Hellish_Web.Database is
          -- So SQL queries are used instead. Also, commit doesn't work properly if not called
          -- after every operation explicitly, so do that too.
          declare
+            -- Use whatever value we had for addition instead of letting the database do it,
+            -- because this form of addition just doesn't work with long integers for some reason.
             Query : Sql_Query := Sql_Update
               (Table => User_Torrent_Stats,
-               Set => (User_Torrent_Stats.Uploaded = User_Torrent_Stats.Uploaded + Uploaded_Diff)
-                 & (User_Torrent_Stats.Downloaded = User_Torrent_Stats.Downloaded + Downloaded_Diff),
+               Set => (User_Torrent_Stats.Uploaded = S_List.Element.Uploaded + Uploaded_Diff)
+                 & (User_Torrent_Stats.Downloaded = S_List.Element.Downloaded + Downloaded_Diff),
                Where => (User_Torrent_Stats.By_User = User.Id) and (User_Torrent_Stats.Of_Torrent = T_List.Element.Id));
          begin
             Execute(Session.Db, Query);
@@ -252,8 +254,8 @@ package body Hellish_Web.Database is
          Query : Sql_Query :=
            Sql_Update
              (Table => Users,
-              Set => (Users.Uploaded = Users.Uploaded + Uploaded_diff)
-                & (Users.Downloaded = Users.Downloaded + Downloaded_Diff),
+              Set => (Users.Uploaded = User.Uploaded + Uploaded_diff)
+                & (Users.Downloaded = User.Downloaded + Downloaded_Diff),
              Where => Users.Id = User.Id);
       begin
          Execute(Session.Db, Query);

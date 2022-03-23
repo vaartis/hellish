@@ -8,8 +8,8 @@
 | username   | TEXT          | NOT NULL, UNIQUE, INDEX |   |   |
 | password   | TEXT          | NOT NULL                |   |   |
 | passkey    | TEXT          | NOT NULL, UNIQUE, INDEX |   |   |
-| uploaded   | INTEGER       |                         | 0 |   |
-| downloaded | INTEGER       |                         | 0 |   |
+| uploaded   | BIGINT        |                         | 0 |   |
+| downloaded | BIGINT        |                         | 0 |   |
 
 | TABLE   | config        | config   |   |   |
 | id      | AUTOINCREMENT | PK       |   |   |
@@ -19,8 +19,8 @@
 | UNIQUE:    | by_user,of_torrent      | user_torrent_unique |   |   |
 | by_user    | FK users(torrent_stats) | NOT NULL            |   |   |
 | of_torrent | FK torrents             | NOT NULL            |   |   |
-| uploaded   | INTEGER                 |                     |   |   |
-| downloaded | INTEGER                 |                     |   |   |
+| uploaded   | BIGINT                  |                     |   |   |
+| downloaded | BIGINT                  |                     |   |   |
 
 
 | TABLE     | invites              | invite                  |   |   |

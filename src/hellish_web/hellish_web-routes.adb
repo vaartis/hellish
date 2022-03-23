@@ -1,5 +1,6 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
+with Ada.Float_Text_Io; use Ada.Float_Text_Io;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
@@ -133,9 +134,9 @@ package body Hellish_Web.Routes is
                                     (Peer_Id => To_Unbounded_String(Params.Get("peer_id")),
                                      Ip => Ip,
                                      Port => Positive'Value(Params.Get("port")),
-                                     Uploaded => Natural'Value(Params.Get("uploaded")),
-                                     Downloaded => Natural'Value(Params.Get("downloaded")),
-                                     Left => Natural'Value(Params.Get("left"))),
+                                     Uploaded => Long_Long_Integer'Value(Params.Get("uploaded")),
+                                     Downloaded => Long_Long_Integer'Value(Params.Get("downloaded")),
+                                     Left => Long_Long_Integer'Value(Params.Get("left"))),
                                     User);
          end if;
 
@@ -216,24 +217,33 @@ package body Hellish_Web.Routes is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
    begin
+      if not Database.User_Exists(Username) then
+         return Response.Url(Location => "/login");
+      end if;
+
       Insert(Translations, Assoc("total_known", Total_Stats.Known));
       Insert(Translations, Assoc("total_downloaded", Total_Stats.Downloaded));
       Insert(Translations, Assoc("current_seeders", Total_Stats.Seeders));
       Insert(Translations, Assoc("current_leechers", Total_Stats.Leechers));
 
-      if Database.User_Exists(Username) then
-         declare
-            The_User : Detached_User'Class := Database.Get_User(Username);
-         begin
-            Insert(Translations,
-                   Assoc("host", Aws.Config.Server_Host(Conf) & ":" & Trim(Aws.Config.Server_Port(Conf)'Image, Ada.Strings.Left)));
-            Insert(Translations, Assoc("username", The_User.Username));
-            Insert(Translations, Assoc("passkey", The_User.Passkey));
-         end;
-      else
-         -- Redirect to the login page
-         return Response.Url(Location => "/login");
-      end if;
+      declare
+         The_User : Detached_User'Class := Database.Get_User(Username);
+         Upload_Gb : Float := Float(The_User.Uploaded) / 1024.0 / 1024.0 / 1024.0;
+         Download_Gb : Float := Float(The_User.Downloaded) / 1024.0 / 1024.0 / 1024.0;
+
+         Formatted_Str : String (1 .. 32);
+      begin
+         Put(Formatted_Str, Upload_Gb, Aft => 2, Exp => 0);
+         Insert(Translations, Assoc("uploaded", Trim(Formatted_Str, Ada.Strings.Both)));
+
+         Put(Formatted_Str, Download_Gb, Aft => 2, Exp => 0);
+         Insert(Translations, Assoc("downloaded", Trim(Formatted_Str, Ada.Strings.Both)));
+
+         Insert(Translations,
+                Assoc("host", Aws.Config.Server_Host(Conf) & ":" & Trim(Aws.Config.Server_Port(Conf)'Image, Ada.Strings.Left)));
+         Insert(Translations, Assoc("username", The_User.Username));
+         Insert(Translations, Assoc("passkey", The_User.Passkey));
+      end;
 
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/index.html", Translations)));

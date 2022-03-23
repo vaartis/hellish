@@ -123,9 +123,9 @@ package Orm is
    --  Compares two elements using only the primary keys. All other fields are
    --  ignored
 
-   function Downloaded (Self : User) return Integer;
-   function Downloaded (Self : Detached_User) return Integer;
-   procedure Set_Downloaded (Self : Detached_User; Value : Integer);
+   function Downloaded (Self : User) return Long_Long_Integer;
+   function Downloaded (Self : Detached_User) return Long_Long_Integer;
+   procedure Set_Downloaded (Self : Detached_User; Value : Long_Long_Integer);
 
    function Id (Self : User) return Integer;
    function Id (Self : Detached_User) return Integer;
@@ -138,9 +138,9 @@ package Orm is
    function Password (Self : Detached_User) return String;
    procedure Set_Password (Self : Detached_User; Value : String);
 
-   function Uploaded (Self : User) return Integer;
-   function Uploaded (Self : Detached_User) return Integer;
-   procedure Set_Uploaded (Self : Detached_User; Value : Integer);
+   function Uploaded (Self : User) return Long_Long_Integer;
+   function Uploaded (Self : Detached_User) return Long_Long_Integer;
+   procedure Set_Uploaded (Self : Detached_User; Value : Long_Long_Integer);
 
    function Username (Self : User) return String;
    function Username (Self : Detached_User) return String;
@@ -199,9 +199,13 @@ package Orm is
      (Self  : Detached_User_Torrent_Stat;
       Value : Detached_User'Class);
 
-   function Downloaded (Self : User_Torrent_Stat) return Integer;
-   function Downloaded (Self : Detached_User_Torrent_Stat) return Integer;
-   procedure Set_Downloaded (Self : Detached_User_Torrent_Stat; Value : Integer);
+   function Downloaded (Self : User_Torrent_Stat) return Long_Long_Integer;
+   function Downloaded
+     (Self : Detached_User_Torrent_Stat)
+     return Long_Long_Integer;
+   procedure Set_Downloaded
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Long_Long_Integer);
 
    function Of_Torrent (Self : User_Torrent_Stat) return Integer;
    function Of_Torrent (Self : Detached_User_Torrent_Stat) return Integer;
@@ -214,9 +218,13 @@ package Orm is
      (Self  : Detached_User_Torrent_Stat;
       Value : Detached_Torrent'Class);
 
-   function Uploaded (Self : User_Torrent_Stat) return Integer;
-   function Uploaded (Self : Detached_User_Torrent_Stat) return Integer;
-   procedure Set_Uploaded (Self : Detached_User_Torrent_Stat; Value : Integer);
+   function Uploaded (Self : User_Torrent_Stat) return Long_Long_Integer;
+   function Uploaded
+     (Self : Detached_User_Torrent_Stat)
+     return Long_Long_Integer;
+   procedure Set_Uploaded
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Long_Long_Integer);
 
    function Detach
      (Self : User_Torrent_Stat'Class)
@@ -429,8 +437,8 @@ package Orm is
       Username   : String := No_Update;
       Password   : String := No_Update;
       Passkey    : String := No_Update;
-      Uploaded   : Integer := -1;
-      Downloaded : Integer := -1)
+      Uploaded   : Long_Long_Integer := -1;
+      Downloaded : Long_Long_Integer := -1)
      return Users_Managers;
 
    function Get_User
@@ -481,8 +489,8 @@ package Orm is
      (Self       : User_Torrent_Stats_Managers'Class;
       By_User    : Integer := -1;
       Of_Torrent : Integer := -1;
-      Uploaded   : Integer := -1;
-      Downloaded : Integer := -1)
+      Uploaded   : Long_Long_Integer := -1;
+      Downloaded : Long_Long_Integer := -1)
      return User_Torrent_Stats_Managers;
 
    ----------------------
@@ -601,20 +609,20 @@ private
     
     type User_Torrent_Stat_DDR is new Detached_Data (6) with record
        ORM_By_User       : Integer := -1;
-       ORM_Downloaded    : Integer := -1;
+       ORM_Downloaded    : Long_Long_Integer := -1;
        ORM_FK_By_User    : Detached_User_Access := null;
        ORM_FK_Of_Torrent : Detached_Torrent_Access := null;
        ORM_Of_Torrent    : Integer := -1;
-       ORM_Uploaded      : Integer := -1;
+       ORM_Uploaded      : Long_Long_Integer := -1;
     end record;
     type User_Torrent_Stat_Data is access all User_Torrent_Stat_DDR;
     
     type User_DDR is new Detached_Data (6) with record
-       ORM_Downloaded    : Integer := 0;
+       ORM_Downloaded    : Long_Long_Integer := 0;
        ORM_Id            : Integer := -1;
        ORM_Passkey       : Unbounded_String := Null_Unbounded_String;
        ORM_Password      : Unbounded_String := Null_Unbounded_String;
-       ORM_Uploaded      : Integer := 0;
+       ORM_Uploaded      : Long_Long_Integer := 0;
        ORM_Username      : Unbounded_String := Null_Unbounded_String;
     end record;
     type User_Data is access all User_DDR;

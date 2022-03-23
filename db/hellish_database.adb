@@ -31,8 +31,8 @@ package body Hellish_Database is
          & "|username|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
          & "|password|Text|NOT NULL||" & ASCII.LF
          & "|passkey|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
-         & "|uploaded|Integer||0|" & ASCII.LF
-         & "|downloaded|Integer||0|" & ASCII.LF
+         & "|uploaded|bigint||0|" & ASCII.LF
+         & "|downloaded|bigint||0|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| config" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
@@ -41,8 +41,8 @@ package body Hellish_Database is
          & "|TABLE| user_torrent_stats" & ASCII.LF
          & "|by_user|FK users|NOT NULL||" & ASCII.LF
          & "|of_torrent|FK torrents|NOT NULL||" & ASCII.LF
-         & "|uploaded|Integer|||" & ASCII.LF
-         & "|downloaded|Integer|||" & ASCII.LF
+         & "|uploaded|bigint|||" & ASCII.LF
+         & "|downloaded|bigint|||" & ASCII.LF
          & "|UNIQUE:|by_user,of_torrent|user_torrent_unique" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| invites" & ASCII.LF

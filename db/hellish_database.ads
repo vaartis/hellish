@@ -77,8 +77,8 @@ package Hellish_Database is
    record
       By_User : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_By_User, Index);
       Of_Torrent : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Of_Torrent, Index);
-      Uploaded : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Uploaded, Index);
-      Downloaded : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Downloaded, Index);
+      Uploaded : SQL_Field_Bigint (Ta_User_Torrent_Stats, Instance, N_Uploaded, Index);
+      Downloaded : SQL_Field_Bigint (Ta_User_Torrent_Stats, Instance, N_Downloaded, Index);
    end record;
 
    type T_User_Torrent_Stats (Instance : Cst_String_Access)
@@ -99,8 +99,8 @@ package Hellish_Database is
       Username : SQL_Field_Text (Ta_Users, Instance, N_Username, Index);
       Password : SQL_Field_Text (Ta_Users, Instance, N_Password, Index);
       Passkey : SQL_Field_Text (Ta_Users, Instance, N_Passkey, Index);
-      Uploaded : SQL_Field_Integer (Ta_Users, Instance, N_Uploaded, Index);
-      Downloaded : SQL_Field_Integer (Ta_Users, Instance, N_Downloaded, Index);
+      Uploaded : SQL_Field_Bigint (Ta_Users, Instance, N_Uploaded, Index);
+      Downloaded : SQL_Field_Bigint (Ta_Users, Instance, N_Downloaded, Index);
    end record;
 
    type T_Users (Instance : Cst_String_Access)

@@ -11,9 +11,9 @@ package Hellish_Web.Peers is
       Peer_Id: Unbounded_String;
       Ip: Unbounded_String;
       Port: Positive;
-      Uploaded: Natural;
-      Downloaded: Natural;
-      Left: Natural;
+      Uploaded: Long_Long_Integer;
+      Downloaded: Long_Long_Integer;
+      Left: Long_Long_Integer;
    end record;
 
    package Peer_Maps is new

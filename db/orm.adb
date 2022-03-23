@@ -459,16 +459,16 @@ package body Orm is
    -- Downloaded --
    ----------------
 
-   function Downloaded (Self : User) return Integer is
+   function Downloaded (Self : User) return Long_Long_Integer is
    begin
-      return Integer_Value (Self, F_Users_Downloaded);
+      return Bigint_Value (Self, F_Users_Downloaded);
    end Downloaded;
 
    ----------------
    -- Downloaded --
    ----------------
 
-   function Downloaded (Self : Detached_User) return Integer is
+   function Downloaded (Self : Detached_User) return Long_Long_Integer is
    begin
       return User_Data (Self.Unchecked_Get).ORM_Downloaded;
    end Downloaded;
@@ -477,16 +477,18 @@ package body Orm is
    -- Downloaded --
    ----------------
 
-   function Downloaded (Self : User_Torrent_Stat) return Integer is
+   function Downloaded (Self : User_Torrent_Stat) return Long_Long_Integer is
    begin
-      return Integer_Value (Self, F_User_Torrent_Stats_Downloaded);
+      return Bigint_Value (Self, F_User_Torrent_Stats_Downloaded);
    end Downloaded;
 
    ----------------
    -- Downloaded --
    ----------------
 
-   function Downloaded (Self : Detached_User_Torrent_Stat) return Integer is
+   function Downloaded
+     (Self : Detached_User_Torrent_Stat)
+     return Long_Long_Integer is
    begin
       return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Downloaded;
    end Downloaded;
@@ -759,16 +761,16 @@ package body Orm is
    -- Uploaded --
    --------------
 
-   function Uploaded (Self : User) return Integer is
+   function Uploaded (Self : User) return Long_Long_Integer is
    begin
-      return Integer_Value (Self, F_Users_Uploaded);
+      return Bigint_Value (Self, F_Users_Uploaded);
    end Uploaded;
 
    --------------
    -- Uploaded --
    --------------
 
-   function Uploaded (Self : Detached_User) return Integer is
+   function Uploaded (Self : Detached_User) return Long_Long_Integer is
    begin
       return User_Data (Self.Unchecked_Get).ORM_Uploaded;
    end Uploaded;
@@ -777,16 +779,18 @@ package body Orm is
    -- Uploaded --
    --------------
 
-   function Uploaded (Self : User_Torrent_Stat) return Integer is
+   function Uploaded (Self : User_Torrent_Stat) return Long_Long_Integer is
    begin
-      return Integer_Value (Self, F_User_Torrent_Stats_Uploaded);
+      return Bigint_Value (Self, F_User_Torrent_Stats_Uploaded);
    end Uploaded;
 
    --------------
    -- Uploaded --
    --------------
 
-   function Uploaded (Self : Detached_User_Torrent_Stat) return Integer is
+   function Uploaded
+     (Self : Detached_User_Torrent_Stat)
+     return Long_Long_Integer is
    begin
       return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Uploaded;
    end Uploaded;
@@ -1124,11 +1128,11 @@ package body Orm is
       end if;
 
       Tmp.ORM_By_User       := Integer_Value (Self, F_User_Torrent_Stats_By_User);
-      Tmp.ORM_Downloaded    := Integer_Value (Self, F_User_Torrent_Stats_Downloaded);
+      Tmp.ORM_Downloaded    := Bigint_Value (Self, F_User_Torrent_Stats_Downloaded);
       Tmp.ORM_FK_By_User    := FK_By_User;
       Tmp.ORM_FK_Of_Torrent := FK_Of_Torrent;
       Tmp.ORM_Of_Torrent    := Integer_Value (Self, F_User_Torrent_Stats_Of_Torrent);
-      Tmp.ORM_Uploaded      := Integer_Value (Self, F_User_Torrent_Stats_Uploaded);
+      Tmp.ORM_Uploaded      := Bigint_Value (Self, F_User_Torrent_Stats_Uploaded);
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1153,11 +1157,11 @@ package body Orm is
 
       Tmp := User_Data (Result.Unchecked_Get);
 
-      Tmp.ORM_Downloaded    := Integer_Value (Self, F_Users_Downloaded);
+      Tmp.ORM_Downloaded    := Bigint_Value (Self, F_Users_Downloaded);
       Tmp.ORM_Id            := Integer_Value (Self, F_Users_Id);
       Tmp.ORM_Passkey       := To_Unbounded_String (String_Value (Self, F_Users_Passkey));
       Tmp.ORM_Password      := To_Unbounded_String (String_Value (Self, F_Users_Password));
-      Tmp.ORM_Uploaded      := Integer_Value (Self, F_Users_Uploaded);
+      Tmp.ORM_Uploaded      := Bigint_Value (Self, F_Users_Uploaded);
       Tmp.ORM_Username      := To_Unbounded_String (String_Value (Self, F_Users_Username));
       Session.Persist (Result);
       return Result;
@@ -1409,8 +1413,8 @@ package body Orm is
       Username   : String := No_Update;
       Password   : String := No_Update;
       Passkey    : String := No_Update;
-      Uploaded   : Integer := -1;
-      Downloaded : Integer := -1)
+      Uploaded   : Long_Long_Integer := -1;
+      Downloaded : Long_Long_Integer := -1)
      return Users_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -1469,8 +1473,8 @@ package body Orm is
      (Self       : User_Torrent_Stats_Managers'Class;
       By_User    : Integer := -1;
       Of_Torrent : Integer := -1;
-      Uploaded   : Integer := -1;
-      Downloaded : Integer := -1)
+      Uploaded   : Long_Long_Integer := -1;
+      Downloaded : Long_Long_Integer := -1)
      return User_Torrent_Stats_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2548,7 +2552,7 @@ package body Orm is
    -- Set_Downloaded --
    --------------------
 
-   procedure Set_Downloaded (Self : Detached_User; Value : Integer)
+   procedure Set_Downloaded (Self : Detached_User; Value : Long_Long_Integer)
    is
       D : constant User_Data := User_Data (Self.Unchecked_Get);
    begin
@@ -2560,7 +2564,9 @@ package body Orm is
    -- Set_Downloaded --
    --------------------
 
-   procedure Set_Downloaded (Self : Detached_User_Torrent_Stat; Value : Integer)
+   procedure Set_Downloaded
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Long_Long_Integer)
    is
       D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
    begin
@@ -2672,7 +2678,7 @@ package body Orm is
    -- Set_Uploaded --
    ------------------
 
-   procedure Set_Uploaded (Self : Detached_User; Value : Integer)
+   procedure Set_Uploaded (Self : Detached_User; Value : Long_Long_Integer)
    is
       D : constant User_Data := User_Data (Self.Unchecked_Get);
    begin
@@ -2684,7 +2690,9 @@ package body Orm is
    -- Set_Uploaded --
    ------------------
 
-   procedure Set_Uploaded (Self : Detached_User_Torrent_Stat; Value : Integer)
+   procedure Set_Uploaded
+     (Self  : Detached_User_Torrent_Stat;
+      Value : Long_Long_Integer)
    is
       D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
    begin

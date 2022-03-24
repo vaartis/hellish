@@ -23,7 +23,8 @@ with
   Aws.Headers,
   Aws.Resources,
   Aws.Resources.Streams.Memory.ZLib,
-  Aws.Translator;
+  Aws.Translator,
+  Aws.Response.Set;
 
 with Templates_Parser; use Templates_Parser;
 
@@ -534,6 +535,19 @@ package body Hellish_Web.Routes is
       end if;
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Api_User_Logout_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Result : Response.Data := Response.Url("/login");
+   begin
+      Session.Delete(Session_Id);
+      Session.Save(Session_File_Name);
+
+      Response.Set.Clear_Session(Result);
+
+      return Result;
+   end Dispatch;
+
    overriding function Dispatch(Handler : in Api_Invite_New_Handler;
                                 Request : in Status.Data) return Response.Data is
       use Gnatcoll.Json;
@@ -589,6 +603,7 @@ package body Hellish_Web.Routes is
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
+      Services.Dispatchers.Uri.Register(Root, "/api/user/logout", Api_User_Logout);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
 
       Services.Dispatchers.Uri.Register(Root, "/api/invite/new", Api_Invite_New);

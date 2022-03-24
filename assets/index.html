@@ -9,6 +9,12 @@
          color: var(--text-color);
      }
 
+     .link-button {
+         color: var(--text-color);
+         text-decoration: none;
+         font-weight: bold;
+     }
+
      .user-info {
          float: right;
          margin-right: 1em;
@@ -33,6 +39,9 @@
         <div>
             <span class="upload">▲ @_uploaded_@GiB</span>
             <span class="download">▼ @_downloaded_@GiB</span>
+        </div>
+        <div>
+            <a class="link-button" href="/api/user/logout">Log out</a>
         </div>
     </div>
     <p>

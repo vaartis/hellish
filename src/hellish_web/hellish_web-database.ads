@@ -16,11 +16,13 @@ package Hellish_Web.Database is
    function Get_User(Name : String) return Detached_User'Class;
    function User_Exists(Name : String; Session : Session_Type := Get_New_Session) return Boolean;
    function Get_User_By_Passkey(Passkey : String) return Detached_User'Class;
+   function Get_User_Torrents(Name : String) return Torrent_List;
 
    procedure Create_Torrent(Username, Info_Hash : String);
    procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;
                                     Uploaded_Diff : Long_Long_Integer; Downloaded_Diff : Long_Long_Integer);
    function Get_Torrent_By_Hash(Info_Hash : String) return Detached_Torrent'Class;
+   function Get_Torrent(Id : Natural) return Detached_Torrent'Class;
 
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;

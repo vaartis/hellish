@@ -1,7 +1,6 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Float_Text_Io; use Ada.Float_Text_Io;
-with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
 with Ada.Directories;
@@ -20,7 +19,11 @@ with
   Aws.Services.Dispatchers.Uri,
   AWS.Mime,
   Aws.Parameters,
-  Aws.Messages;
+  Aws.Messages,
+  Aws.Headers,
+  Aws.Resources,
+  Aws.Resources.Streams.Memory.ZLib,
+  Aws.Translator;
 
 with Templates_Parser; use Templates_Parser;
 
@@ -86,7 +89,7 @@ package body Hellish_Web.Routes is
       Match(Announce_Passkey_Matcher, Uri, Matches);
       declare
          Match : Match_Location := Matches(1);
-         Passkey : String := Uri(Matches(1).First..Matches(1).Last);
+         Passkey : String := Uri(Match.First..Match.Last);
       begin
          User := Detached_User(Database.Get_User_By_Passkey(Passkey));
 
@@ -239,10 +242,45 @@ package body Hellish_Web.Routes is
          Put(Formatted_Str, Download_Gb, Aft => 2, Exp => 0);
          Insert(Translations, Assoc("downloaded", Trim(Formatted_Str, Ada.Strings.Both)));
 
-         Insert(Translations,
-                Assoc("host", Aws.Config.Server_Host(Conf) & ":" & Trim(Aws.Config.Server_Port(Conf)'Image, Ada.Strings.Left)));
+         Insert(Translations, Assoc("host", Host));
          Insert(Translations, Assoc("username", The_User.Username));
          Insert(Translations, Assoc("passkey", The_User.Passkey));
+
+         declare
+            Torrent_Ids : Vector_Tag;
+            Torrent_Names : Vector_Tag;
+
+            List : Torrent_List := Database.Get_User_Torrents(Username);
+         begin
+            while List.Has_Row loop
+               declare
+                  use Ada.Directories;
+                  use Bencoder;
+
+                  File_Path : String := Compose(Containing_Directory => Uploads_Path,
+                                                Name => List.Element.Info_Hash,
+                                                Extension => "torrent");
+                  File : File_Type;
+                  Decoded : Bencode_Value_Holders.Holder;
+                  Bencoded_Info : Bencode_Value_Holders.Holder;
+               begin
+                  Open(File, Mode => In_File, Name => File_Path);
+                  Decoded := Decode(File);
+                  Close(File);
+
+                  Bencoded_Info := Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info"));
+                  Torrent_Names := Torrent_Names &
+                    Bencode_String(Bencode_Dict(Bencoded_Info.Element).Value(To_Unbounded_String("name")).Element.Element).Value;
+               end;
+
+               Torrent_Ids := Torrent_Ids & List.Element.Id;
+
+               List.Next;
+            end loop;
+
+            Insert(Translations, Assoc("torrent_id", Torrent_Ids));
+            Insert(Translations, Assoc("torrent_name", Torrent_Names));
+         end;
       end;
 
       return Response.Build(Mime.Text_Html,
@@ -296,6 +334,74 @@ package body Hellish_Web.Routes is
                             String'(Templates_Parser.Parse("assets/register.html", Translations)));
    end Dispatch;
 
+   Download_Id_Matcher : constant Pattern_Matcher := Compile("/download/(\d+)");
+   function Dispatch
+     (Handler : in Download_Handler;
+      Request : in Status.Data) return Response.Data is
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Matches : Match_Array (0..1);
+      Uri : String := Status.Uri(Request);
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      Match(Download_Id_Matcher, Uri, Matches);
+      declare
+         use Ada.Directories;
+         use Bencoder;
+
+         Match : Match_Location := Matches(1);
+         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+
+         User : Detached_User'Class := Database.Get_User(Username);
+         Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
+
+         File_Path : String := Compose(Containing_Directory => Uploads_Path,
+                                       Name => Torrent.Info_Hash,
+                                       Extension => "torrent");
+         User_Announce_Url : String := "http://" & Host & "/" & User.Passkey & "/announce";
+
+         File : File_Type;
+         Decoded : Bencode_Dict;
+         Bencoded_Info : Bencode_Value_Holders.Holder;
+
+         File_Name : Unbounded_String;
+      begin
+         Open(File, Mode => In_File, Name => File_Path);
+         Decoded := Bencode_Dict(Decode(File).Element);
+         Close(File);
+
+         Bencoded_Info := Decoded.Value(To_Unbounded_String("info"));
+         File_Name := Bencode_String(Bencode_Dict(Bencoded_Info.Element).Value(To_Unbounded_String("name")).Element.Element).Value;
+
+         Decoded.Include("announce", Encode(User_Announce_Url));
+
+         declare
+            use Aws.Resources.Streams.Memory.ZLib;
+
+            Data : not null access Resources.Streams.Memory.Zlib.Stream_Type
+              := new Resources.Streams.Memory.Zlib.Stream_Type;
+
+            Sent_Name : String := Compose(Name => Base_Name(To_String(File_Name)), Extension => "torrent");
+         begin
+            Deflate_Initialize(Data.all);
+            Append(Data.all,
+                   Translator.To_Stream_Element_Array(To_String(Decoded.Encoded)),
+                   Trim => False);
+
+            return Response.Stream("application/x-bittorrent",
+                                   Resources.Streams.Stream_Access(Data),
+                                   Disposition => Response.Attachment,
+                                   User_Filename => Sent_Name);
+         end;
+      end;
+   end Dispatch;
+
    -- API
 
    function Dispatch
@@ -305,9 +411,8 @@ package body Hellish_Web.Routes is
       File_Path : String := Params.Get("file");
 
       use Ada.Directories;
-      Uploads_Path : constant String := "uploads/torrents/";
-
       use Gnatcoll.Json;
+
       Result : Json_Value := Create_Object;
 
       use Orm;
@@ -474,10 +579,11 @@ package body Hellish_Web.Routes is
       end if;
 
       Services.Dispatchers.Uri.Register(Root, "/", Index);
-      Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
-      Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
       Services.Dispatchers.Uri.Register(Root, "/login", Login);
       Services.Dispatchers.Uri.Register(Root, "/register", Register);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/download/(\d+)", Download);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 

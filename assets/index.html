@@ -21,6 +21,10 @@
      .download {
          color: #c96454;
      }
+
+     td, th {
+         padding: 1em;
+     }
     </style>
 </head>
 <body>
@@ -44,8 +48,6 @@
         Current leechers: <b>@_current_leechers_@</b>
     </p>
 
-    @@IF@@ @_EXIST:username_@
-
     <p>Welcome, <b>@_username_@</b></p>
 
     <p>Your announce URL is <b>http://@_host_@/@_passkey_@/announce</b> </p>
@@ -55,5 +57,22 @@
         <input type="submit" name="go" value="Send File">
     </form>
 
-    @@END_IF@@
+    <div>
+        <p>
+            <b>Uploaded by you:</b>
+        </p>
+
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Download</th>
+            </tr>
+            @@TABLE@@
+            <tr>
+                <td>@_torrent_name_@</td>
+                <td><a href="/download/@_torrent_id_@">Download</a></td>
+            </tr>
+            @@END_TABLE@@
+        </table>
+    </div>
 </body>

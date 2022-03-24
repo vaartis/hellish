@@ -188,6 +188,18 @@ package body Hellish_Web.Database is
       end if;
    end Get_User_By_Passkey;
 
+   function Get_User_Torrents(Name : String) return Torrent_List is
+      use Hellish_Database;
+
+      The_User : Detached_User'Class := Get_User(Name);
+
+      Session : Session_Type := Get_New_Session;
+      Created_Manager : Torrents_Managers := The_User.Created_Torrents;
+      List : Torrent_List := Created_Manager.Get(Session);
+   begin
+      return List;
+   end Get_User_Torrents;
+
    function Verify_User_Credentials(Name, Password : String) return Boolean is
       use Sodium.Functions;
       use Hellish_Database;
@@ -277,6 +289,14 @@ package body Hellish_Web.Database is
          return No_Detached_Torrent;
       end if;
    end Get_Torrent_By_Hash;
+
+   function Get_Torrent(Id : Natural) return Detached_Torrent'Class is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+   begin
+      return Get_Torrent(Session, Id => Id);
+   end Get_Torrent;
 
    function Create_Invite(From_User : Detached_User'Class) return String is
       use Sodium.Functions;

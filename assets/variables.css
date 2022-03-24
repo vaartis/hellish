@@ -6,3 +6,13 @@
     --error-color: #f77178;
     --link-color: #9bd7f7;
 }
+
+.hellish-input-field {
+    background: var(--input-color);
+    color: var(--text-color);
+    border: hidden;
+    border-radius: 10px;
+
+    padding-left: 5px;
+    padding-right: 5px;
+}

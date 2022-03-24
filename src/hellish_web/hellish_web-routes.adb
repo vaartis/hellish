@@ -403,6 +403,30 @@ package body Hellish_Web.Routes is
       end;
    end Dispatch;
 
+   function Dispatch
+     (Handler : in Upload_Handler;
+      Request : in Status.Data) return Response.Data is
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+      declare
+         User : Detached_User'Class := Database.Get_User(Username);
+      begin
+         Insert(Translations, Assoc("host", Host));
+         Insert(Translations, Assoc("passkey", User.Passkey));
+      end;
+
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/upload.html", Translations)));
+   end Dispatch;
+
    -- API
 
    function Dispatch
@@ -598,6 +622,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/announce", Announce);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/download/(\d+)", Download);
+      Services.Dispatchers.Uri.Register(Root, "/upload", Upload);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 

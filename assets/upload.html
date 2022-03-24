@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ variables.css
+
+     body {
+         background: var(--bg-color);
+         color: var(--text-color);
+     }
+
+     .centered {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%, 0%);
+     }
+
+     .text-centered {
+         text-align: center;
+     }
+
+     .upload-button {
+         padding: 0.8em;
+         margin-top: 1em;
+
+         font-weight: bold;
+         font-size: 18px;
+
+         background: var(--input-color);
+         color: var(--text-color);
+
+         border: hidden;
+         border-radius: 10px;
+
+         display: block;
+     }
+
+     .upload-file {
+         margin-top: 1em;
+     }
+
+     td:nth-child(odd) {
+         border-right: solid var(--panel-color) 2px;
+         padding-right: 2em;
+     }
+     td:nth-child(even) {
+         padding-left: 1em;
+     }
+
+     .upload-input {
+         width: 450px;
+     }
+    </style>
+</head>
+<body>
+    <div class="centered">
+        <p class="text-centered">Announce URL</p>
+        <p class="text-centered">
+            <b>http://@_host_@/@_passkey_@/announce</b>
+        </p>
+
+        <form id="upload-form" enctype="multipart/form-data" ACTION="/api/upload" method="POST">
+            <table>
+                <tr>
+                    <td>File</td>
+                    <td>
+                        <input required class="upload-file" name="file" id="file" type="file">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Name</td>
+                    <td>
+                        <input required class="hellish-input-field upload-input" name="name">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Description</td>
+                    <td>
+                        <textarea form="upload-form" class="hellish-input-field upload-input" type="textbox" name="name"
+                                  rows="15">
+                        </textarea>
+                    </td>
+                </tr>
+            </table>
+
+            <input class="upload-button" type="submit" name="go" value="Upload!">
+        </form>
+    </div>
+</body>

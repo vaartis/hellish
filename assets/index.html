@@ -18,8 +18,29 @@
      }
 
      td, th {
-         padding: 1em;
+         padding: 0.5em;
      }
+
+     .torrents-box {
+         background: var(--panel-color);
+         border: hidden;
+         border-radius: 10px;
+
+         width: 300px;
+         padding: 10px;
+
+         white-space: pre-line;
+     }
+
+     /*
+     td:nth-child(odd) {
+         border-right: solid var(--input-color) 2px;
+         padding-right: 2em;
+     }
+     td:nth-child(even) {
+         padding-left: 1em;
+     }
+     */
     </style>
 </head>
 <body>
@@ -52,15 +73,8 @@
     </p>
 
     <div>
-        <p>
-            <b>Uploaded by you:</b>
-        </p>
-
-        <table>
-            <tr>
-                <th></th>
-                <th>Info</th>
-            </tr>
+        <h3>Uploaded by you</h3>
+        <table class="torrents-box">
             @@TABLE@@
             <tr>
                 <td><a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a></td>

@@ -19,6 +19,7 @@ private
    type Register_Handler is new Dispatchers.Handler with null record;
    type Download_Handler is new Dispatchers.Handler with null record;
    type Upload_Handler is new Dispatchers.Handler with null record;
+   type View_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -27,6 +28,8 @@ private
    overriding function Dispatch(Handler : in Register_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Download_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Upload_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in View_Handler; Request : in Status.Data) return Response.Data;
+
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -35,6 +38,7 @@ private
    overriding function Clone(Element : in Register_Handler) return Register_Handler is (Element);
    overriding function Clone(Element : in Download_Handler) return Download_Handler is (Element);
    overriding function Clone(Element : in Upload_Handler) return Upload_Handler is (Element);
+   overriding function Clone(Element : in View_Handler) return View_Handler is (Element);
 
    Index : Index_Handler;
    Announce : Announce_Handler;
@@ -43,6 +47,7 @@ private
    Register : Register_Handler;
    Download : Download_Handler;
    Upload : Upload_Handler;
+   View : View_Handler;
 
    -- API
 

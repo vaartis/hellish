@@ -77,6 +77,24 @@ package body Hellish_Web.Routes is
       end if;
    end Request_Session;
 
+   function Decoded_Torrent(The_Torrent : Detached_Torrent'Class) return Bencoder.Bencode_Value_Holders.Holder is
+      use Ada.Directories;
+      use Bencoder;
+
+      File_Path : String := Compose(Containing_Directory => Uploads_Path,
+                                    Name => The_Torrent.Info_Hash,
+                                    Extension => "torrent");
+      File : File_Type;
+      Decoded : Bencode_Value_Holders.Holder;
+      Bencoded_Info : Bencode_Value_Holders.Holder;
+   begin
+      Open(File, Mode => In_File, Name => File_Path);
+      Decoded := Decode(File);
+      Close(File);
+
+      return Decoded;
+   end Decoded_Torrent;
+
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
 
    function Dispatch
@@ -258,26 +276,7 @@ package body Hellish_Web.Routes is
             List : Torrent_List := Database.Get_User_Torrents(Username);
          begin
             while List.Has_Row loop
-               declare
-                  use Ada.Directories;
-                  use Bencoder;
-
-                  File_Path : String := Compose(Containing_Directory => Uploads_Path,
-                                                Name => List.Element.Info_Hash,
-                                                Extension => "torrent");
-                  File : File_Type;
-                  Decoded : Bencode_Value_Holders.Holder;
-                  Bencoded_Info : Bencode_Value_Holders.Holder;
-               begin
-                  Open(File, Mode => In_File, Name => File_Path);
-                  Decoded := Decode(File);
-                  Close(File);
-
-                  Bencoded_Info := Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info"));
-                  Torrent_Names := Torrent_Names & List.Element.Display_Name;
-                  -- Bencode_String(Bencode_Dict(Bencoded_Info.Element).Value(To_Unbounded_String("name")).Element.Element).Value;
-               end;
-
+               Torrent_Names := Torrent_Names & List.Element.Display_Name;
                Torrent_Ids := Torrent_Ids & List.Element.Id;
 
                List.Next;
@@ -429,6 +428,84 @@ package body Hellish_Web.Routes is
 
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/upload.html", Translations)));
+   end Dispatch;
+
+   View_Id_Matcher : constant Pattern_Matcher := Compile("/view/(\d+)");
+   function Dispatch
+     (Handler : in View_Handler;
+      Request : in Status.Data) return Response.Data is
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Matches : Match_Array (0..1);
+      Uri : String := Status.Uri(Request);
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      Match(View_Id_Matcher, Uri, Matches);
+       declare
+         use Bencoder;
+
+         Match : Match_Location := Matches(1);
+         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+
+         The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
+         Decoded : Bencode_Dict := Bencode_Dict(Decoded_Torrent(The_Torrent).Element);
+         Bencoded_Info : Bencode_Dict := Bencode_Dict(Decoded.Value(To_Unbounded_String("info")).Element.Element);
+         Uploader : Detached_User'Class := Database.Get_User(The_Torrent.Created_By);
+
+         Original_File_Name : Unbounded_String;
+
+         File_Names : Vector_Tag;
+         File_Sizes : Vector_Tag;
+         Translations : Translate_Set;
+      begin
+         Original_File_Name :=
+           Bencode_String(Bencoded_Info.Value(To_Unbounded_String("name")).Element.Element).Value;
+
+         Insert(Translations, Assoc("id", Id));
+         Insert(Translations, Assoc("display_name", The_Torrent.Display_Name));
+         Insert(Translations, Assoc("description", The_Torrent.Description));
+         Insert(Translations, Assoc("original_name", Original_File_Name));
+         Insert(Translations, Assoc("uploader", Uploader.Username));
+
+         if Bencoded_Info.Value.Contains(To_Unbounded_String("files")) then
+            declare
+               Files : Bencode_List :=
+                 Bencode_List(Bencoded_Info.Value(To_Unbounded_String("files")).Element.Element);
+            begin
+               for Bencoded_File of Files.Value loop
+                  declare
+                     File : Bencode_Dict := Bencode_Dict(Bencoded_File.Element);
+                     File_Path_List : Bencode_List := Bencode_List(File.Value(To_Unbounded_String("path")).Element.Element);
+
+                     File_Path : Unbounded_String;
+                  begin
+                     for Path_Part of File_Path_List.Value loop
+                        File_Path := File_Path & "/" & Bencode_String(Path_Part.Element).Value;
+                     end loop;
+
+                  File_Names := File_Names & File_Path;
+                  File_Sizes := File_Sizes &
+                    Trim(Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value'Image, Ada.Strings.Left);
+                  end;
+               end loop;
+            end;
+         else
+            File_Names := File_Names & ("/" & Original_File_Name);
+            File_Sizes := File_Sizes &
+              Trim(Bencode_Integer(Bencoded_Info.Value(To_Unbounded_String("length")).Element.Element).Value'Image, Ada.Strings.Left);
+         end if;
+         Insert(Translations, Assoc("file_name", File_Names));
+         Insert(Translations, Assoc("file_size", File_Sizes));
+
+         return Response.Build(Mime.Text_Html,
+                               String'(Templates_Parser.Parse("assets/view.html", Translations)));
+      end;
    end Dispatch;
 
    -- API
@@ -634,12 +711,7 @@ package body Hellish_Web.Routes is
         "<pre>" & GNAT.Traceback.Symbolic.Symbolic_Traceback(E) & "</pre></body>";
    begin
       Answer := Response.Build(Mime.Text_Html, Response_Html);
-
-      -- Reload the session file, as it seems to get unload on crash
-      if Ada.Directories.Exists(Session_File_Name) then
-         Session.Load(Session_File_Name);
-      end if;
-   end;
+   end Exception_Handler;
 
    procedure Run_Server is
       use GNAT.Command_Line;
@@ -667,6 +739,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/(\w+)/scrape", Scrape);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/download/(\d+)", Download);
       Services.Dispatchers.Uri.Register(Root, "/upload", Upload);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/view/(\d+)", View);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 

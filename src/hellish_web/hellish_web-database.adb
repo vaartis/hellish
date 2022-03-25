@@ -173,6 +173,14 @@ package body Hellish_Web.Database is
       end if;
    end Get_User;
 
+   function Get_User(Id : Natural) return Detached_User'Class is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+   begin
+      return Orm.Get_User(Session, Id);
+   end Get_User;
+
    function Get_User_By_Passkey(Passkey : String) return Detached_User'Class is
       use Hellish_Database;
 

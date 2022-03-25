@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .page-container {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%, 0);
+     }
+
+     .downloads-box {
+         background: var(--panel-color);
+         border: hidden;
+         border-radius: 10px;
+
+         width: 650px;
+         padding: 10px;
+     }
+
+     .description-box {
+         background: var(--panel-color);
+         border: hidden;
+         border-radius: 10px;
+
+         width: 650px;
+         padding: 10px;
+
+         white-space: pre-line;
+     }
+
+     td:nth-child(odd) {
+         border-right: solid var(--input-color) 2px;
+         padding-right: 2em;
+     }
+     td:nth-child(even) {
+         padding-left: 1em;
+     }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+    <div>
+        <h2>@_display_name_@</h2>
+        <div>Uploader: <i>@_uploader_@</i></div>
+        <p>
+            <h3>Description</h3>
+            <div class="description-box">@_description_@</div>
+        </p>
+    </div>
+
+    <div>
+        [ <a class="link-button" href="/download/@_id_@">Download</a> ]
+    </div>
+
+    <div>
+        <h2>Files</h2>
+        <table class="downloads-box">
+            <tr>
+                <th>Path</th>
+                <th>Size</th>
+            </tr>
+            @@TABLE@@
+            <tr>
+                <td>@_file_name_@</td>
+                <td>@_file_size_@</td>
+            </tr>
+            @@END_TABLE@@
+        </table>
+    </div>
+    </div>
+</body>

@@ -131,7 +131,7 @@ package body Hellish_Web.Peers is
             end;
          end if;
 
-         Result_Map.Include(To_Unbounded_String("interval"), Encode(60 * 5));
+         Result_Map.Include(To_Unbounded_String("interval"), Encode(Natural'(60 * 5)));
 
          return Encode(Result_Map);
       end Encode_Hash_Peers_Response;

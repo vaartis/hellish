@@ -28,7 +28,7 @@ package Hellish_Web.Bencoder is
    end record;
 
    type Bencode_Integer is new Bencode_Value with record
-      Value : Natural;
+      Value : Long_Long_Integer;
    end record;
 
    type Bencode_List is new Bencode_Value with record
@@ -41,7 +41,8 @@ package Hellish_Web.Bencoder is
 
    function Encode(Value : Unbounded_String) return Holder;
    function Encode(Value : String) return Holder;
-   function Encode(Value : Natural) return Holder;
+   function Encode(Value : Long_Long_Integer) return Holder;
+   function Encode(Value : Natural) return Holder is (Encode(Long_Long_Integer(Value)));
    function Encode(Value : Bencode_Vectors.Vector) return Holder;
    function Encode(The_Map : Bencode_Maps.Map) return Holder;
 

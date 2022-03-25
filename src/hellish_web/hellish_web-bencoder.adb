@@ -2,7 +2,7 @@ with Ada.Integer_Text_Io;
 use Ada.Integer_Text_Io;
 
 package body Hellish_Web.Bencoder is
-   function Encode(Value : Natural) return Holder is
+   function Encode(Value : Long_Long_Integer) return Holder is
    begin
       return
         To_Holder(Bencode_Integer'(Value => Value,

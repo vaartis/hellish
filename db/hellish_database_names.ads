@@ -18,6 +18,10 @@ package Hellish_Database_Names is
    N_By_User : constant Cst_String_Access := NC_by_user'Access;
    NC_Created_By : aliased constant String := "created_by";
    N_Created_By : constant Cst_String_Access := NC_created_by'Access;
+   NC_Description : aliased constant String := "description";
+   N_Description : constant Cst_String_Access := NC_description'Access;
+   NC_Display_Name : aliased constant String := "display_name";
+   N_Display_Name : constant Cst_String_Access := NC_display_name'Access;
    NC_Downloaded : aliased constant String := "downloaded";
    N_Downloaded : constant Cst_String_Access := NC_downloaded'Access;
    NC_For_User : aliased constant String := "for_user";

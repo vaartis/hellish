@@ -209,15 +209,9 @@ package body Hellish_Web.Database is
       return Detached_User(User_Data) /= No_Detached_User and then Password_Hash_Matches(User_Data.Password, Password);
    end Verify_User_Credentials;
 
-   procedure Create_Torrent(Username, Info_Hash : String) is
+   procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class) is
       Session : Session_Type := Get_New_Session;
-
-      Created_By : Detached_User'Class := Get_User(Username);
-      The_Torrent : Detached_Torrent'Class := New_Torrent;
    begin
-      The_Torrent.Set_Info_Hash(Info_Hash);
-      The_Torrent.Set_Created_By(Created_By);
-
       Session.Persist(The_Torrent);
       Session.Commit;
    end Create_Torrent;

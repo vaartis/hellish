@@ -53,7 +53,7 @@ package Orm is
    No_Invite : constant Invite;
 
    type Torrent is new Orm_Element with null record;
-   type Torrent_DDR is new Detached_Data (4) with private;
+   type Torrent_DDR is new Detached_Data (6) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
    new Sessions.Detached_Element with private;
    type Detached_Torrent_Access is access all Detached_Torrent'Class;
@@ -94,6 +94,14 @@ package Orm is
    procedure Set_Created_By
      (Self  : Detached_Torrent;
       Value : Detached_User'Class);
+
+   function Description (Self : Torrent) return String;
+   function Description (Self : Detached_Torrent) return String;
+   procedure Set_Description (Self : Detached_Torrent; Value : String);
+
+   function Display_Name (Self : Torrent) return String;
+   function Display_Name (Self : Detached_Torrent) return String;
+   procedure Set_Display_Name (Self : Detached_Torrent; Value : String);
 
    function Id (Self : Torrent) return Integer;
    function Id (Self : Detached_Torrent) return Integer;
@@ -406,10 +414,12 @@ package Orm is
      return User_Torrent_Stats_Managers;
 
    function Filter
-     (Self       : Torrents_Managers'Class;
-      Id         : Integer := -1;
-      Info_Hash  : String := No_Update;
-      Created_By : Integer := -1)
+     (Self         : Torrents_Managers'Class;
+      Id           : Integer := -1;
+      Info_Hash    : String := No_Update;
+      Created_By   : Integer := -1;
+      Display_Name : String := No_Update;
+      Description  : String := No_Update)
      return Torrents_Managers;
 
    function Get_Torrent
@@ -599,11 +609,13 @@ private
     end record;
     type Invite_Data is access all Invite_DDR;
     
-    type Torrent_DDR is new Detached_Data (4) with record
-       ORM_Created_By    : Integer := -1;
-       ORM_FK_Created_By : Detached_User_Access := null;
-       ORM_Id            : Integer := -1;
-       ORM_Info_Hash     : Unbounded_String := Null_Unbounded_String;
+    type Torrent_DDR is new Detached_Data (6) with record
+       ORM_Created_By      : Integer := -1;
+       ORM_Description     : Unbounded_String := Null_Unbounded_String;
+       ORM_Display_Name    : Unbounded_String := Null_Unbounded_String;
+       ORM_FK_Created_By   : Detached_User_Access := null;
+       ORM_Id              : Integer := -1;
+       ORM_Info_Hash       : Unbounded_String := Null_Unbounded_String;
     end record;
     type Torrent_Data is access all Torrent_DDR;
     

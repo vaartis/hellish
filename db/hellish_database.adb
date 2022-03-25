@@ -25,6 +25,8 @@ package body Hellish_Database is
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
          & "|info_hash|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
          & "|created_by|FK users|NOT NULL||" & ASCII.LF
+         & "|display_name|Text|NOT NULL||" & ASCII.LF
+         & "|description|Text|NOT NULL||" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| users" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF

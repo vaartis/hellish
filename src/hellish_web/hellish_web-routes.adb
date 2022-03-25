@@ -3,6 +3,7 @@ with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Float_Text_Io; use Ada.Float_Text_Io;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
+with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Directories;
 with Ada.Containers.Indefinite_Holders;
 with Ada.Calendar;
@@ -10,6 +11,7 @@ with Ada.Calendar;
 with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.SHA1;
 with GNAT.Command_Line;
+with GNAT.Traceback.Symbolic;
 
 with
   Aws.Cookie,
@@ -24,7 +26,9 @@ with
   Aws.Resources,
   Aws.Resources.Streams.Memory.ZLib,
   Aws.Translator,
-  Aws.Response.Set;
+  Aws.Response.Set,
+  Aws.Log,
+  Aws.Exceptions;
 
 with Templates_Parser; use Templates_Parser;
 
@@ -270,8 +274,8 @@ package body Hellish_Web.Routes is
                   Close(File);
 
                   Bencoded_Info := Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info"));
-                  Torrent_Names := Torrent_Names &
-                    Bencode_String(Bencode_Dict(Bencoded_Info.Element).Value(To_Unbounded_String("name")).Element.Element).Value;
+                  Torrent_Names := Torrent_Names & List.Element.Display_Name;
+                  -- Bencode_String(Bencode_Dict(Bencoded_Info.Element).Value(To_Unbounded_String("name")).Element.Element).Value;
                end;
 
                Torrent_Ids := Torrent_Ids & List.Element.Id;
@@ -432,15 +436,15 @@ package body Hellish_Web.Routes is
    function Dispatch
      (Handler : in Api_Upload_Handler;
       Request : in Status.Data) return Response.Data is
-      Params : constant Parameters.List := Status.Parameters(Request);
-      File_Path : String := Params.Get("file");
-
       use Ada.Directories;
-      use Gnatcoll.Json;
-
-      Result : Json_Value := Create_Object;
-
       use Orm;
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+
+      File_Path : String := Params.Get("file");
+      Display_Name : String := Params.Get("name");
+      Description : String := Params.Get("description");
+
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
    begin
@@ -464,18 +468,30 @@ package body Hellish_Web.Routes is
             Sha1_Hash : String := Gnat.Sha1.Digest(To_String(Bencoded_Info));
             New_Name : String := Compose(Name => Sha1_Hash, Extension => "torrent");
             Uploaded_Path : String := Compose(Containing_Directory => Uploads_Path,Name => New_Name);
+
+            Created_By : Detached_User'Class := Database.Get_User(Username);
+            Maybe_Existing : Detached_Torrent'Class := Database.Get_Torrent_By_Hash(Sha1_Hash);
+            The_Torrent : Detached_Torrent'Class := New_Torrent;
          begin
+            if Detached_Torrent(Maybe_Existing) /= No_Detached_Torrent then
+               return Response.Url("/upload?error=Torrent with this hash already exists&existing_id="
+                                     & Trim(Maybe_Existing.Id'Image, Ada.Strings.Left));
+            end if;
+
             Create_Path(Uploads_Path);
             Copy_File(File_Path, Uploaded_Path);
 
+            The_Torrent.Set_Info_Hash(Sha1_Hash);
+            The_Torrent.Set_Created_By(Created_By);
+            The_Torrent.Set_Display_Name(Display_Name);
+            The_Torrent.Set_Description(Description);
             -- Only really need to save the hash, since it's the filename. Things like actual file name and such
             -- are encoded in the torrent file itself
-            Database.Create_Torrent(Username => Username, Info_Hash => Sha1_Hash);
+            Database.Create_Torrent(The_Torrent);
+
+            return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left));
          end;
       end;
-
-      Result.Set_Field("ok", True);
-      return Response.Build(Mime.Application_Json, String'(Result.write));
    end Dispatch;
 
    function Dispatch(Handler : in Api_User_Register_Handler;
@@ -526,7 +542,16 @@ package body Hellish_Web.Routes is
 
    <<Finish>>
       if Error_String.Is_Empty then
-         return Response.Url(Location => "/login");
+         declare
+            -- Always associate a new session with the request on login,
+            -- doesn't seem to work well otherwise
+            Session_Id : Session.ID := Status.Session(Request);
+         begin
+            Session.Set(Session_Id, "username", Username);
+            Session.Save(Session_File_Name);
+
+            return Response.Url(Location => "/login");
+         end;
       else
          return Response.Url(Location => "/register?error=" & Error_String.Element);
       end if;
@@ -599,9 +624,28 @@ package body Hellish_Web.Routes is
 
    -- Entrypoint
 
+   procedure Exception_Handler(E : Exception_Occurrence;
+                               Log    : in out Aws.Log.Object;
+                               Error  : Aws.Exceptions.Data;
+                               Answer : in out Response.Data) is
+      Response_Html : String := "<!DOCTYPE HTML><body>" &
+        "<b>" & Exception_Name(E) & "</b>" &
+        "<pre>" & Exception_Information(E) & "</pre>" &
+        "<pre>" & GNAT.Traceback.Symbolic.Symbolic_Traceback(E) & "</pre></body>";
+   begin
+      Answer := Response.Build(Mime.Text_Html, Response_Html);
+
+      -- Reload the session file, as it seems to get unload on crash
+      if Ada.Directories.Exists(Session_File_Name) then
+         Session.Load(Session_File_Name);
+      end if;
+   end;
+
    procedure Run_Server is
       use GNAT.Command_Line;
    begin
+      Server.Set_Unexpected_Exception_Handler(Http, Exception_Handler'Access);
+
       case Getopt("-invite-not-required") is
          when '-' =>
             if Full_Switch = "-invite-not-required" then

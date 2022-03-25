@@ -62,15 +62,6 @@
         Current leechers: <b>@_current_leechers_@</b>
     </p>
 
-    <p>Welcome, <b>@_username_@</b></p>
-
-    <p>Your announce URL is <b>http://@_host_@/@_passkey_@/announce</b> </p>
-
-    <form enctype="multipart/form-data" ACTION="/api/upload" method="POST">
-        <input name="file" type="file" >
-        <input type="submit" name="go" value="Send File">
-    </form>
-
     <div>
         <p>
             <b>Uploaded by you:</b>
@@ -78,13 +69,12 @@
 
         <table>
             <tr>
-                <th>Name</th>
-                <th>Download</th>
+                <th></th>
+                <th>Info</th>
             </tr>
             @@TABLE@@
             <tr>
-                <td>@_torrent_name_@</td>
-                <td><a href="/download/@_torrent_id_@">Download</a></td>
+                <td><a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a></td>
             </tr>
             @@END_TABLE@@
         </table>

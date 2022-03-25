@@ -59,6 +59,8 @@ package Hellish_Database is
       --  The SHA1 hash of the torrent
 
       Created_By : SQL_Field_Integer (Ta_Torrents, Instance, N_Created_By, Index);
+      Display_Name : SQL_Field_Text (Ta_Torrents, Instance, N_Display_Name, Index);
+      Description : SQL_Field_Text (Ta_Torrents, Instance, N_Description, Index);
    end record;
 
    type T_Torrents (Instance : Cst_String_Access)

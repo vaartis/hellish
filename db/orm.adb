@@ -35,11 +35,13 @@ package body Orm is
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Upto_Invites_1 : constant Counts := ((5,5),(11,11),(11,11),(11,11));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
-   F_Torrents_Id         : constant := 0;
-   F_Torrents_Info_Hash  : constant := 1;
-   F_Torrents_Created_By : constant := 2;
-   Counts_Torrents : constant Counts := ((3,3),(9,9),(9,9),(9,9));
-   Upto_Torrents_0 : constant Counts := ((3,3),(3,3),(3,3),(3,3));
+   F_Torrents_Id           : constant := 0;
+   F_Torrents_Info_Hash    : constant := 1;
+   F_Torrents_Created_By   : constant := 2;
+   F_Torrents_Display_Name : constant := 3;
+   F_Torrents_Description  : constant := 4;
+   Counts_Torrents : constant Counts := ((5,5),(11,11),(11,11),(11,11));
+   Upto_Torrents_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
    F_User_Torrent_Stats_By_User    : constant := 0;
    F_User_Torrent_Stats_Of_Torrent : constant := 1;
@@ -454,6 +456,42 @@ package body Orm is
       end if;
       return D.ORM_FK_Created_By.all;
    end Created_By;
+
+   -----------------
+   -- Description --
+   -----------------
+
+   function Description (Self : Torrent) return String is
+   begin
+      return String_Value (Self, F_Torrents_Description);
+   end Description;
+
+   -----------------
+   -- Description --
+   -----------------
+
+   function Description (Self : Detached_Torrent) return String is
+   begin
+      return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Description);
+   end Description;
+
+   ------------------
+   -- Display_Name --
+   ------------------
+
+   function Display_Name (Self : Torrent) return String is
+   begin
+      return String_Value (Self, F_Torrents_Display_Name);
+   end Display_Name;
+
+   ------------------
+   -- Display_Name --
+   ------------------
+
+   function Display_Name (Self : Detached_Torrent) return String is
+   begin
+      return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Display_Name);
+   end Display_Name;
 
    ----------------
    -- Downloaded --
@@ -1078,7 +1116,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Torrent_DDR'
-              (Detached_Data with Field_Count => 4, others => <>));
+              (Detached_Data with Field_Count => 6, others => <>));
       end if;
 
       Tmp := Torrent_Data (Result.Unchecked_Get);
@@ -1088,10 +1126,12 @@ package body Orm is
               (Self, Upto_Torrents_0 (Self.Depth, LJ)).Detach);
       end if;
 
-      Tmp.ORM_Created_By    := Integer_Value (Self, F_Torrents_Created_By);
-      Tmp.ORM_FK_Created_By := FK_Created_By;
-      Tmp.ORM_Id            := Integer_Value (Self, F_Torrents_Id);
-      Tmp.ORM_Info_Hash     := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
+      Tmp.ORM_Created_By      := Integer_Value (Self, F_Torrents_Created_By);
+      Tmp.ORM_Description     := To_Unbounded_String (String_Value (Self, F_Torrents_Description));
+      Tmp.ORM_Display_Name    := To_Unbounded_String (String_Value (Self, F_Torrents_Display_Name));
+      Tmp.ORM_FK_Created_By   := FK_Created_By;
+      Tmp.ORM_Id              := Integer_Value (Self, F_Torrents_Id);
+      Tmp.ORM_Info_Hash       := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1276,7 +1316,9 @@ package body Orm is
       else
          Fields := Fields & Table.Id
          & Table.Info_Hash
-         & Table.Created_By;
+         & Table.Created_By
+         & Table.Display_Name
+         & Table.Description;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -1381,10 +1423,12 @@ package body Orm is
    ------------
 
    function Filter
-     (Self       : Torrents_Managers'Class;
-      Id         : Integer := -1;
-      Info_Hash  : String := No_Update;
-      Created_By : Integer := -1)
+     (Self         : Torrents_Managers'Class;
+      Id           : Integer := -1;
+      Info_Hash    : String := No_Update;
+      Created_By   : Integer := -1;
+      Display_Name : String := No_Update;
+      Description  : String := No_Update)
      return Torrents_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -1398,6 +1442,12 @@ package body Orm is
       end if;
       if Created_By /= -1 then
          C := C and DBA.Torrents.Created_By = Created_By;
+      end if;
+      if Display_Name /= No_Update then
+         C := C and DBA.Torrents.Display_Name = Display_Name;
+      end if;
+      if Description /= No_Update then
+         C := C and DBA.Torrents.Description = Description;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -1944,6 +1994,12 @@ package body Orm is
                A := A & (DBA.Torrents.Created_By = D2.ORM_Id);
             end;
          end if;
+      end if;
+      if Mask (4) then
+         A := A & (DBA.Torrents.Display_Name = To_String (D.ORM_Display_Name));
+      end if;
+      if Mask (5) then
+         A := A & (DBA.Torrents.Description = To_String (D.ORM_Description));
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -2547,6 +2603,30 @@ package body Orm is
          Self.Session.Persist (D.ORM_FK_Created_By.all);
       end if;
    end Set_Created_By;
+
+   ---------------------
+   -- Set_Description --
+   ---------------------
+
+   procedure Set_Description (Self : Detached_Torrent; Value : String)
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Description := To_Unbounded_String (Value);
+      Self.Set_Modified (5);
+   end Set_Description;
+
+   ----------------------
+   -- Set_Display_Name --
+   ----------------------
+
+   procedure Set_Display_Name (Self : Detached_Torrent; Value : String)
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Display_Name := To_Unbounded_String (Value);
+      Self.Set_Modified (4);
+   end Set_Display_Name;
 
    --------------------
    -- Set_Downloaded --

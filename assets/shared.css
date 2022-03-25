@@ -16,3 +16,14 @@
     padding-left: 5px;
     padding-right: 5px;
 }
+
+body {
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+.link-button {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: bold;
+}

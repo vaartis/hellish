@@ -1,9 +1,4 @@
-@@INCLUDE@@ variables.css
-
-body {
-    background: var(--bg-color);
-    color: var(--text-color);
-}
+@@INCLUDE@@ shared.css
 
 .login-container {
     position: absolute;

@@ -193,6 +193,9 @@ package body Hellish_Web.Bencoder is
       end loop;
       -- Always 'e'
       Get_Immediate(File, Char);
+      if Char /= 'e' then
+         raise Decode_Error with "Expected a list to end with e, but instead found" & Char & File_At(File);
+      end if;
 
       return Encode(Result);
    end Decode_list;
@@ -214,6 +217,13 @@ package body Hellish_Web.Bencoder is
          Result.Include(Bencode_String((Decode_String(File).Element)).Value,
                         Decode(File));
       end loop;
+
+      -- Always 'e'
+      Get_Immediate(File, Char);
+      if Char /= 'e' then
+         raise Decode_Error with "Expected a list to end with e, but instead found" & Char & File_At(File);
+      end if;
+
       return Encode(Result);
    end Decode_Dict;
 

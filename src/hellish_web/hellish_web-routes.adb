@@ -181,21 +181,21 @@ package body Hellish_Web.Routes is
             goto Finish;
          end if;
 
+         if Params.Get("event") = "completed" then
+            -- Increment the downloaded count
+            Database.Snatch_Torrent(Info_Hash_Hex);
+         end if;
+
+         Peers.Protected_Map.Add(Info_Hash_Hex,
+                                 (Peer_Id => To_Unbounded_String(Params.Get("peer_id")),
+                                  Ip => Ip,
+                                  Port => Positive'Value(Params.Get("port")),
+                                  Uploaded => Long_Long_Integer'Value(Params.Get("uploaded")),
+                                  Downloaded => Long_Long_Integer'Value(Params.Get("downloaded")),
+                                  Left => Long_Long_Integer'Value(Params.Get("left"))),
+                                 User);
          if Params.Get("event") = "stopped" then
                Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));
-         else
-            if Params.Get("event") = "completed" then
-               -- Increment the downloaded count
-               Peers.Protected_Map.Downloaded(Info_Hash_Hex);
-            end if;
-            Peers.Protected_Map.Add(Info_Hash_Hex,
-                                    (Peer_Id => To_Unbounded_String(Params.Get("peer_id")),
-                                     Ip => Ip,
-                                     Port => Positive'Value(Params.Get("port")),
-                                     Uploaded => Long_Long_Integer'Value(Params.Get("uploaded")),
-                                     Downloaded => Long_Long_Integer'Value(Params.Get("downloaded")),
-                                     Left => Long_Long_Integer'Value(Params.Get("left"))),
-                                    User);
          end if;
 
          declare
@@ -279,8 +279,6 @@ package body Hellish_Web.Routes is
          return Response.Url(Location => "/login");
       end if;
 
-      Insert(Translations, Assoc("total_known", Total_Stats.Known));
-      Insert(Translations, Assoc("total_downloaded", Total_Stats.Downloaded));
       Insert(Translations, Assoc("current_seeders", Total_Stats.Seeders));
       Insert(Translations, Assoc("current_leechers", Total_Stats.Leechers));
 
@@ -540,6 +538,14 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("file_name", File_Names));
          Insert(Translations, Assoc("file_size", File_Sizes));
 
+         declare
+            Peer_Data : Peers.Scrape_Stat_data := Peers.Protected_Map.Scrape_Stats(The_Torrent.Info_Hash);
+         begin
+            Insert(Translations, Assoc("seeding", Peer_Data.Complete));
+            Insert(Translations, Assoc("leeching", Peer_Data.Incomplete));
+            Insert(Translations, Assoc("snatches", The_Torrent.Snatches));
+         end;
+
          if Error /= "" then
             Insert(Translations, Assoc("error", Error));
          end if;
@@ -664,6 +670,7 @@ package body Hellish_Web.Routes is
             The_Torrent.Set_Created_By(Created_By);
             The_Torrent.Set_Display_Name(Display_Name);
             The_Torrent.Set_Description(Description);
+            The_Torrent.Set_Snatches(0);
             -- Only really need to save the hash, since it's the filename. Things like actual file name and such
             -- are encoded in the torrent file itself
             Database.Create_Torrent(The_Torrent);
@@ -775,7 +782,7 @@ package body Hellish_Web.Routes is
       Session.Delete(Session_Id);
       Session.Save(Session_File_Name);
 
-      Response.Set.Clear_Session(Result);
+      Response.Set.Add_Header(Result, "Set-Cookie", AWS.Server.Session_Name & "=; Path=/");
 
       return Result;
    end Dispatch;

@@ -40,8 +40,9 @@ package body Orm is
    F_Torrents_Created_By   : constant := 2;
    F_Torrents_Display_Name : constant := 3;
    F_Torrents_Description  : constant := 4;
-   Counts_Torrents : constant Counts := ((5,5),(11,11),(11,11),(11,11));
-   Upto_Torrents_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
+   F_Torrents_Snatches     : constant := 5;
+   Counts_Torrents : constant Counts := ((6,6),(12,12),(12,12),(12,12));
+   Upto_Torrents_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
    F_User_Torrent_Stats_By_User    : constant := 0;
    F_User_Torrent_Stats_Of_Torrent : constant := 1;
@@ -796,6 +797,24 @@ package body Orm is
    end Password;
 
    --------------
+   -- Snatches --
+   --------------
+
+   function Snatches (Self : Torrent) return Integer is
+   begin
+      return Integer_Value (Self, F_Torrents_Snatches);
+   end Snatches;
+
+   --------------
+   -- Snatches --
+   --------------
+
+   function Snatches (Self : Detached_Torrent) return Integer is
+   begin
+      return Torrent_Data (Self.Unchecked_Get).ORM_Snatches;
+   end Snatches;
+
+   --------------
    -- Uploaded --
    --------------
 
@@ -1116,7 +1135,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Torrent_DDR'
-              (Detached_Data with Field_Count => 6, others => <>));
+              (Detached_Data with Field_Count => 7, others => <>));
       end if;
 
       Tmp := Torrent_Data (Result.Unchecked_Get);
@@ -1132,6 +1151,7 @@ package body Orm is
       Tmp.ORM_FK_Created_By   := FK_Created_By;
       Tmp.ORM_Id              := Integer_Value (Self, F_Torrents_Id);
       Tmp.ORM_Info_Hash       := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
+      Tmp.ORM_Snatches        := Integer_Value (Self, F_Torrents_Snatches);
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1318,7 +1338,8 @@ package body Orm is
          & Table.Info_Hash
          & Table.Created_By
          & Table.Display_Name
-         & Table.Description;
+         & Table.Description
+         & Table.Snatches;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -1428,7 +1449,8 @@ package body Orm is
       Info_Hash    : String := No_Update;
       Created_By   : Integer := -1;
       Display_Name : String := No_Update;
-      Description  : String := No_Update)
+      Description  : String := No_Update;
+      Snatches     : Integer := -1)
      return Torrents_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -1448,6 +1470,9 @@ package body Orm is
       end if;
       if Description /= No_Update then
          C := C and DBA.Torrents.Description = Description;
+      end if;
+      if Snatches /= -1 then
+         C := C and DBA.Torrents.Snatches = Snatches;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -2000,6 +2025,9 @@ package body Orm is
       end if;
       if Mask (5) then
          A := A & (DBA.Torrents.Description = To_String (D.ORM_Description));
+      end if;
+      if Mask (6) then
+         A := A & (DBA.Torrents.Snatches = D.ORM_Snatches);
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -2753,6 +2781,18 @@ package body Orm is
       D.ORM_Password := To_Unbounded_String (Value);
       Self.Set_Modified (3);
    end Set_Password;
+
+   ------------------
+   -- Set_Snatches --
+   ------------------
+
+   procedure Set_Snatches (Self : Detached_Torrent; Value : Integer)
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Snatches := Value;
+      Self.Set_Modified (6);
+   end Set_Snatches;
 
    ------------------
    -- Set_Uploaded --

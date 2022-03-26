@@ -2,6 +2,7 @@ with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Directories; use Ada.Directories;
+with Ada.Characters.Latin_1;
 
 with Gnatcoll.Traces; use Gnatcoll.Traces;
 with Gnatcoll.Tribooleans; use Gnatcoll.Tribooleans;
@@ -104,19 +105,19 @@ package body Hellish_Web.Database is
       declare
          Session : Session_Type := Get_New_Session;
       begin
-         GNATCOLL.Traces.Parse_Config("+");
+         GNATCOLL.Traces.Parse_Config("+"); -- & Ada.Characters.Latin_1.Lf & "SQL.*=yes");
 
          Migrate(Session);
          Session.Commit;
       end;
    end Init;
 
+   User_Exists_Query : Prepared_Statement :=
+     Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
    function User_Exists(Name : String; Session : Session_Type := Get_New_Session) return Boolean is
-      Query : Prepared_Statement :=
-        Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
       Cur : Direct_Cursor;
    begin
-      Cur.Fetch(Session.Db, Query, Params => (1 => +Name));
+      Cur.Fetch(Session.Db, User_Exists_Query, Params => (1 => +Name));
 
       return Cur.Has_Row;
    end;
@@ -151,20 +152,19 @@ package body Hellish_Web.Database is
       return False;
    end Create_User;
 
+   Get_User_Query : Prepared_Statement :=
+        Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
    function Get_User(Name : String) return Detached_User'Class is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
-
-      Query : Prepared_Statement :=
-        Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
 
       Manager : Users_Managers := All_Users;
       Cur : Direct_User_List := Manager.Get_Direct(Session);
    begin
       -- Stupid workaround to actually run the fetch instead of whatever
       -- is done by the manager. Probably runs the query twice.
-      Cur.Fetch(Session.Db, Query, Params => (1 => +Name));
+      Cur.Fetch(Session.Db, Get_User_Query, Params => (1 => +Name));
 
       if Cur.Has_Row then
          return Cur.Element.Detach;
@@ -233,6 +233,14 @@ package body Hellish_Web.Database is
       Session.Commit;
    end Create_Torrent;
 
+   Update_User_Torrent_Stats_Stmt : Prepared_Statement :=
+     Prepare("UPDATE user_torrent_stats SET " &
+               "uploaded=uploaded + $3, downloaded=downloaded + $4 WHERE by_user = $1 AND of_torrent = $2;",
+             On_Server => True);
+   Update_User_Stats : Prepared_Statement :=
+     Prepare("UPDATE users SET " &
+               "uploaded=uploaded + $2, downloaded=downloaded + $3 WHERE id = $1;",
+             On_Server => True);
    procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;
                                     Uploaded_Diff : Long_Long_Integer; Downloaded_Diff : Long_Long_Integer) is
       use Hellish_Database;
@@ -253,43 +261,23 @@ package body Hellish_Web.Database is
          Stats.Set_Downloaded(Downloaded_Diff);
 
          Session.Persist(Stats);
-         Session.Commit;
       else
          -- Updating fields in gnatcoll sql just does not work with orm, no matter how I try it.
-         -- So SQL queries are used instead. Also, commit doesn't work properly if not called
-         -- after every operation explicitly, so do that too.
-         declare
-            -- Use whatever value we had for addition instead of letting the database do it,
-            -- because this form of addition just doesn't work with long integers for some reason.
-            Query : Sql_Query := Sql_Update
-              (Table => User_Torrent_Stats,
-               Set => (User_Torrent_Stats.Uploaded = S_List.Element.Uploaded + Uploaded_Diff)
-                 & (User_Torrent_Stats.Downloaded = S_List.Element.Downloaded + Downloaded_Diff),
-               Where => (User_Torrent_Stats.By_User = User.Id) and (User_Torrent_Stats.Of_Torrent = T_List.Element.Id));
-         begin
-            Execute(Session.Db, Query);
-            Session.Commit;
-         end;
+         -- So SQL queries are used instead.
+            Execute(Session.Db, Update_User_Torrent_Stats_Stmt,
+                 Params => (1 => +User.Id, 2 => +T_List.Element.Id,
+                            3 => As_Bigint(Uploaded_Diff), 4 => As_Bigint(Downloaded_Diff)));
       end if;
 
       -- Also add it to the total user credit
-      declare
-         Query : Sql_Query :=
-           Sql_Update
-             (Table => Users,
-              Set => (Users.Uploaded = User.Uploaded + Uploaded_diff)
-                & (Users.Downloaded = User.Downloaded + Downloaded_Diff),
-             Where => Users.Id = User.Id);
-      begin
-         Execute(Session.Db, Query);
-         Session.Commit;
-      end;
+      Execute(Session.Db, Update_User_Stats,
+              Params => ( 1 => +User.Id, 2 => As_Bigint(Uploaded_Diff), 3 => As_Bigint(Downloaded_Diff)));
+
+      Session.Commit;
    end Update_Torrent_Up_Down;
 
-   function Get_Torrent_By_Hash(Info_Hash : String) return Detached_Torrent'Class is
+   function Get_Torrent_By_Hash(Info_Hash : String; Session : Session_Type := Get_New_Session) return Detached_Torrent'Class is
       use Hellish_Database;
-
-      Session : Session_Type := Get_New_Session;
 
       Manager : Torrents_Managers := All_Torrents.Filter(Info_Hash => Info_Hash);
       List : Torrent_List := Manager.Get(Session);
@@ -308,6 +296,16 @@ package body Hellish_Web.Database is
    begin
       return Get_Torrent(Session, Id => Id);
    end Get_Torrent;
+
+   procedure Snatch_Torrent(Info_Hash : String) is
+      Session : Session_Type := Get_New_Session;
+
+      The_Torrent : Detached_Torrent'Class := Get_Torrent_By_Hash(Info_Hash, Session);
+   begin
+      The_Torrent.Set_Snatches(The_Torrent.Snatches + 1);
+      Session.Persist(The_Torrent);
+      Session.Commit;
+   end Snatch_Torrent;
 
    function Create_Invite(From_User : Detached_User'Class) return String is
       use Sodium.Functions;

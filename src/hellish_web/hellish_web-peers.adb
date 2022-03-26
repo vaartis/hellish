@@ -20,8 +20,6 @@ package body Hellish_Web.Peers is
             begin
                Peer_Map.Include(Peer_Id, Joined_Peer);
                Torrent_Map.Include(Info_Hash, Peer_Map);
-               -- Also add it to the stats map
-               Saved_Stats_Map.Include(Info_Hash, (Downloaded => 0));
 
                -- Initial upload/download data
                Uploaded_Diff := Joined_Peer.Uploaded;
@@ -123,21 +121,22 @@ package body Hellish_Web.Peers is
 
             declare
                Stats : Scrape_Stat_Data := Scrape_Stats(Info_Hash);
+               The_Torrent : Detached_Torrent'Class := Database.Get_Torrent_By_Hash(Info_Hash);
             begin
                Result_Map.Include(To_Unbounded_String("complete"), Encode(Stats.Complete));
                Result_Map.Include(To_Unbounded_String("incomplete"), Encode(Stats.Incomplete));
-               Result_Map.Include(To_Unbounded_String("downloaded"),
-                                  Encode((if Saved_Stats_Map.Contains(Info_Hash) then Saved_Stats_Map(Info_Hash).Downloaded else 0)));
+               Result_Map.Include(To_Unbounded_String("downloaded"), Encode(The_Torrent.Snatches));
             end;
          end if;
 
-         Result_Map.Include(To_Unbounded_String("interval"), Encode(Natural'(60 * 5)));
+         Result_Map.Include(To_Unbounded_String("interval"), Encode(Natural'(30)));
 
          return Encode(Result_Map);
       end Encode_Hash_Peers_Response;
 
       function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data is
          Result : Scrape_Stat_Data;
+         The_Torrent : Detached_Torrent'Class := Database.Get_Torrent_By_Hash(Info_Hash);
       begin
          if Torrent_Map.Contains(Info_Hash) then
             for Peer of Torrent_Map(Info_Hash) loop
@@ -148,9 +147,7 @@ package body Hellish_Web.Peers is
                end if;
             end loop;
          end if;
-         if Saved_Stats_Map.Contains(Info_Hash) then
-            Result.Downloaded := Saved_Stats_Map(Info_Hash).Downloaded;
-         end if;
+         Result.Downloaded := The_Torrent.Snatches;
 
          return Result;
       end Scrape_Stats;
@@ -186,22 +183,9 @@ package body Hellish_Web.Peers is
          return Result;
       end Ip_Port_Bytes;
 
-      procedure Downloaded(Info_Hash : String) is
-      begin
-         if Saved_Stats_Map.Contains(Info_Hash) then
-            Saved_Stats_Map(Info_Hash).Downloaded := Saved_Stats_Map(Info_Hash).Downloaded + 1;
-         else
-            Saved_Stats_Map.Include(Info_Hash, (Downloaded => 1));
-         end if;
-      end;
-
       function Total_Stat_Data return Total_Stats is
          Stats : Total_Stats;
       begin
-         Stats.Known := Natural(Saved_Stats_Map.Length);
-         for Stat of Saved_Stats_Map loop
-            Stats.Downloaded := Stats.Downloaded + Stat.Downloaded;
-         end loop;
          for Torrent in Torrent_Map.Iterate loop
             declare
                Torrent_Stats : Scrape_Stat_Data := Scrape_Stats(Key(Torrent));

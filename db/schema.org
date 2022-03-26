@@ -4,6 +4,7 @@
 | created_by   | FK users(created_torrents) | NOT NULL                |   |                              |
 | display_name | TEXT                       | NOT NULL                |   |                              |
 | description  | TEXT                       | NOT NULL                |   |                              |
+| snatches     | INTEGER                    | NOT NULL                |   | Total number of downloads    |
 
 | TABLE      | users         | user                    |   |   |
 | id         | AUTOINCREMENT | PK                      |   |   |

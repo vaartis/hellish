@@ -100,12 +100,12 @@ package body Hellish_Web.Database is
 
    procedure Init is
    begin
-      GNATCOLL.SQL.Sessions.Setup(Db_Desc, Max_Sessions => 5);
+      GNATCOLL.SQL.Sessions.Setup(Db_Desc, Max_Sessions => 128);
 
       declare
          Session : Session_Type := Get_New_Session;
       begin
-         GNATCOLL.Traces.Parse_Config("+"); -- & Ada.Characters.Latin_1.Lf & "SQL.*=yes");
+         -- GNATCOLL.Traces.Parse_Config("+"); -- & Ada.Characters.Latin_1.Lf & "SQL.*=yes");
 
          Migrate(Session);
          Session.Commit;

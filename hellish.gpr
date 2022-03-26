@@ -87,7 +87,8 @@ project Hellish is
    end Binder;
 
    package Linker is
-      for Switches ("Ada") use ("-lsodium");
+      for Switches ("Ada") use ("-lsodium",
+                                "-Lobj/md4c/src/", "-lmd4c-html", "-lmd4c");
    end Linker;
 
 end Hellish;

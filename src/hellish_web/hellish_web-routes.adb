@@ -13,6 +13,8 @@ with Gnat.SHA1;
 with GNAT.Command_Line;
 with GNAT.Traceback.Symbolic;
 
+with Markdown;
+
 with
   Aws.Cookie,
   Aws.Session,
@@ -30,7 +32,10 @@ with
   Aws.Log,
   Aws.Exceptions;
 
-with Templates_Parser; use Templates_Parser;
+with
+  Templates_Parser,
+  Templates_Parser.Utils;
+use Templates_Parser;
 
 with Gnatcoll.Json;
 
@@ -449,6 +454,7 @@ package body Hellish_Web.Routes is
       Match(View_Id_Matcher, Uri, Matches);
        declare
          use Bencoder;
+         use Markdown;
 
          Match : Match_Location := Matches(1);
          Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
@@ -463,13 +469,23 @@ package body Hellish_Web.Routes is
          File_Names : Vector_Tag;
          File_Sizes : Vector_Tag;
          Translations : Translate_Set;
+
+         -- Escape whatever the user inputs as the name
+         Html_Name : String := Templates_Parser.Utils.Web_Escape(The_Torrent.Display_Name);
+         -- This both translates markdown to html and escapes whatever html the text might've had,
+         -- so should be safe
+         Html_Desc : String := Markdown.To_Html(The_Torrent.Description,
+                                                Md_Flag_No_Html_Blocks
+                                                  or Md_Flag_No_Html_Spans
+                                                  or Md_Flag_Permissive_Url_Autolinks
+                                                  or Md_Flag_Strikethrough);
       begin
          Original_File_Name :=
            Bencode_String(Bencoded_Info.Value(To_Unbounded_String("name")).Element.Element).Value;
 
          Insert(Translations, Assoc("id", Id));
-         Insert(Translations, Assoc("display_name", The_Torrent.Display_Name));
-         Insert(Translations, Assoc("description", The_Torrent.Description));
+         Insert(Translations, Assoc("display_name", Html_Name));
+         Insert(Translations, Assoc("description", Html_Desc));
          Insert(Translations, Assoc("original_name", Original_File_Name));
          Insert(Translations, Assoc("uploader", Uploader.Username));
 
@@ -489,9 +505,10 @@ package body Hellish_Web.Routes is
                         File_Path := File_Path & "/" & Bencode_String(Path_Part.Element).Value;
                      end loop;
 
-                  File_Names := File_Names & File_Path;
-                  File_Sizes := File_Sizes &
-                    Trim(Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value'Image, Ada.Strings.Left);
+                     -- Just in case the file name has something funny, escape it. It's user generated data after all.
+                     File_Names := File_Names & Templates_Parser.Utils.Web_Escape(To_String(File_Path));
+                     File_Sizes := File_Sizes &
+                       Trim(Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value'Image, Ada.Strings.Left);
                   end;
                end loop;
             end;

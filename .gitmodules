@@ -1,3 +1,6 @@
 [submodule "deps/libsodium-ada"]
 	path = deps/libsodium-ada
 	url = https://github.com/jrmarino/libsodium-ada
+[submodule "deps/md4c"]
+	path = deps/md4c
+	url = https://github.com/mity/md4c

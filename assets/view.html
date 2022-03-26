@@ -41,37 +41,49 @@
      td:nth-child(even) {
          padding-left: 1em;
      }
+
+     .error {
+         margin-top: 1em;
+         margin-bottom: 1em;
+         color: var(--error-color);
+     }
     </style>
 </head>
 <body>
     <div class="page-container">
-    <div>
-        <h2>@_display_name_@</h2>
-        <div>Uploader: <i>@_uploader_@</i></div>
-        <p>
-            <h3>Description</h3>
-            <div class="description-box">@_description_@</div>
-        </p>
-    </div>
+        <div>
+            @@IF@@ @_EXIST:error_@
+            <div class="error">
+                Error: @_error_@
+            </div>
+            @@END_IF@@
 
-    <div>
-        [ <a class="link-button" href="/download/@_id_@">Download</a> ]
-    </div>
+            <h2>@_display_name_@</h2>
+            <div>Uploader: <i>@_uploader_@</i></div>
+            <p>
+                <h3>Description</h3>
+                <div class="description-box">@_description_@</div>
+            </p>
+        </div>
 
-    <div>
-        <h2>Files</h2>
-        <table class="downloads-box">
-            <tr>
-                <th>Path</th>
-                <th>Size</th>
-            </tr>
-            @@TABLE@@
-            <tr>
-                <td>@_file_name_@</td>
-                <td>@_file_size_@</td>
-            </tr>
-            @@END_TABLE@@
-        </table>
-    </div>
+        <div>
+            [ <a class="link-button" href="/download/@_id_@">Download</a> ]
+        </div>
+
+        <div>
+            <h2>Files</h2>
+            <table class="downloads-box">
+                <tr>
+                    <th>Path</th>
+                    <th>Size</th>
+                </tr>
+                @@TABLE@@
+                <tr>
+                    <td>@_file_name_@</td>
+                    <td>@_file_size_@</td>
+                </tr>
+                @@END_TABLE@@
+            </table>
+        </div>
     </div>
 </body>

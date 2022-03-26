@@ -26,7 +26,7 @@ with
   Aws.Messages,
   Aws.Headers,
   Aws.Resources,
-  Aws.Resources.Streams.Memory.ZLib,
+  Aws.Resources.Streams.Memory,
   Aws.Translator,
   Aws.Response.Set,
   Aws.Log,
@@ -122,6 +122,10 @@ package body Hellish_Web.Routes is
 
       return Trim(Formatted_Str, Ada.Strings.Both) & Trim(Unit, Ada.Strings.Right);
    end Bytes_To_Printable;
+
+   function User_Announce_Url(The_User : Detached_User'Class) return String is
+     -- TODO: HTTPS
+      ("http://" & Host & "/" & The_User.Passkey & "/announce");
 
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
 
@@ -389,11 +393,9 @@ package body Hellish_Web.Routes is
          File_Path : String := Compose(Containing_Directory => Uploads_Path,
                                        Name => Torrent.Info_Hash,
                                        Extension => "torrent");
-         User_Announce_Url : String := "http://" & Host & "/" & User.Passkey & "/announce";
-
          File : File_Type;
          Decoded : Bencode_Dict;
-         Bencoded_Info : Bencode_Value_Holders.Holder;
+         Bencoded_Info : Bencode_Dict;
 
          File_Name : Unbounded_String;
       begin
@@ -401,20 +403,19 @@ package body Hellish_Web.Routes is
          Decoded := Bencode_Dict(Decode(File).Element);
          Close(File);
 
-         Bencoded_Info := Decoded.Value(To_Unbounded_String("info"));
-         File_Name := Bencode_String(Bencode_Dict(Bencoded_Info.Element).Value(To_Unbounded_String("name")).Element.Element).Value;
+         Bencoded_Info := Bencode_Dict(Decoded.Value(To_Unbounded_String("info")).Element.Element);
+         File_Name := Bencode_String(Bencoded_Info.Value(To_Unbounded_String("name")).Element.Element).Value;
 
-         Decoded.Include("announce", Encode(User_Announce_Url));
+         Decoded.Include("announce", Encode(User_Announce_Url(User)));
 
          declare
-            use Aws.Resources.Streams.Memory.ZLib;
+            use Aws.Resources.Streams.Memory;
 
-            Data : not null access Resources.Streams.Memory.Zlib.Stream_Type
-              := new Resources.Streams.Memory.Zlib.Stream_Type;
+            Data : not null access Resources.Streams.Memory.Stream_Type
+              := new Resources.Streams.Memory.Stream_Type;
 
             Sent_Name : String := Compose(Name => Base_Name(To_String(File_Name)), Extension => "torrent");
          begin
-            Deflate_Initialize(Data.all);
             Append(Data.all,
                    Translator.To_Stream_Element_Array(To_String(Decoded.Encoded)),
                    Trim => False);
@@ -461,6 +462,9 @@ package body Hellish_Web.Routes is
 
       Matches : Match_Array (0..1);
       Uri : String := Status.Uri(Request);
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Error : String := Params.Get("error");
    begin
       if not Database.User_Exists(Username) then
          -- Redirect to the login page
@@ -536,6 +540,10 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("file_name", File_Names));
          Insert(Translations, Assoc("file_size", File_Sizes));
 
+         if Error /= "" then
+            Insert(Translations, Assoc("error", Error));
+         end if;
+
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/view.html", Translations)));
       end;
@@ -566,15 +574,25 @@ package body Hellish_Web.Routes is
          use Bencoder;
          File : File_Type;
 
-         Decoded : Bencode_Value_Holders.Holder;
+         Decoded : Bencode_Dict;
+         Decoded_Info : Bencode_Dict;
+
+         Error_String : Unbounded_String;
       begin
          Open(File, Mode => In_File, Name => File_Path);
-         Decoded := Decode(File);
+         Decoded := Bencode_Dict(Decode(File).Element);
          Close(File);
 
+         Decoded_Info := Bencode_Dict(Decoded.Value(To_Unbounded_String("info")).Element.Element);
+
+         if Bencode_Integer(Decoded_Info.Value(To_Unbounded_String("private")).Element.Element).Value /= 1 then
+            Decoded_Info.Include("private", Encode(Natural'(1)));
+            Decoded.Include("info", Bencode_Value_Holders.To_Holder(Decoded_Info));
+            Error_String := To_Unbounded_String("The torrent wasn't set as private, you have to redownload it from this page for it to work.");
+         end if;
+
          declare
-            Bencoded_Info : Unbounded_String :=
-              Bencode_Dict(Decoded.Element).Value(To_Unbounded_String("info")).Element.Element.Encoded;
+            Bencoded_Info : Unbounded_String := Decoded_Info.Encoded;
             Sha1_Hash : String := Gnat.Sha1.Digest(To_String(Bencoded_Info));
             New_Name : String := Compose(Name => Sha1_Hash, Extension => "torrent");
             Uploaded_Path : String := Compose(Containing_Directory => Uploads_Path,Name => New_Name);
@@ -582,6 +600,8 @@ package body Hellish_Web.Routes is
             Created_By : Detached_User'Class := Database.Get_User(Username);
             Maybe_Existing : Detached_Torrent'Class := Database.Get_Torrent_By_Hash(Sha1_Hash);
             The_Torrent : Detached_Torrent'Class := New_Torrent;
+
+            Created_File : File_Type;
          begin
             if Detached_Torrent(Maybe_Existing) /= No_Detached_Torrent then
                return Response.Url("/upload?error=Torrent with this hash already exists&existing_id="
@@ -589,7 +609,10 @@ package body Hellish_Web.Routes is
             end if;
 
             Create_Path(Uploads_Path);
-            Copy_File(File_Path, Uploaded_Path);
+
+            Create(Created_File, Mode => Out_File, Name => Uploaded_Path);
+            Put(Created_File, To_String(Decoded.Encoded));
+            Close(Created_File);
 
             The_Torrent.Set_Info_Hash(Sha1_Hash);
             The_Torrent.Set_Created_By(Created_By);
@@ -599,7 +622,11 @@ package body Hellish_Web.Routes is
             -- are encoded in the torrent file itself
             Database.Create_Torrent(The_Torrent);
 
-            return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left));
+            if Error_String = "" then
+               return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left));
+            else
+               return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left) & "?error=" & To_String(Error_String));
+            end if;
          end;
       end;
    end Dispatch;

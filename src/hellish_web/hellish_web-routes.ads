@@ -20,6 +20,7 @@ private
    type Download_Handler is new Dispatchers.Handler with null record;
    type Upload_Handler is new Dispatchers.Handler with null record;
    type View_Handler is new Dispatchers.Handler with null record;
+   type Invite_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -29,6 +30,7 @@ private
    overriding function Dispatch(Handler : in Download_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in View_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Invite_Handler; Request : in Status.Data) return Response.Data;
 
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
@@ -39,6 +41,7 @@ private
    overriding function Clone(Element : in Download_Handler) return Download_Handler is (Element);
    overriding function Clone(Element : in Upload_Handler) return Upload_Handler is (Element);
    overriding function Clone(Element : in View_Handler) return View_Handler is (Element);
+   overriding function Clone(Element : in Invite_Handler) return Invite_Handler is (Element);
 
    Index : Index_Handler;
    Announce : Announce_Handler;
@@ -48,6 +51,7 @@ private
    Download : Download_Handler;
    Upload : Upload_Handler;
    View : View_Handler;
+   Invite : Invite_Handler;
 
    -- API
 
@@ -55,25 +59,21 @@ private
    type Api_User_Register_Handler is new Dispatchers.Handler with null record;
    type Api_User_Login_Handler is new Dispatchers.Handler with null record;
    type Api_User_Logout_Handler is new Dispatchers.Handler with null record;
-   type Api_Invite_New_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Api_Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Register_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Login_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Logout_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Api_Invite_New_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Api_Upload_Handler) return Api_Upload_Handler is (Element);
    overriding function Clone(Element : in Api_User_Register_Handler) return Api_User_Register_Handler is (Element);
    overriding function Clone(Element : in Api_User_Login_Handler) return Api_User_Login_Handler is (Element);
    overriding function Clone(Element : in Api_User_Logout_Handler) return Api_User_Logout_Handler is (Element);
-   overriding function Clone(Element : in Api_Invite_New_Handler) return Api_Invite_New_Handler is (Element);
 
    Api_Upload : Api_Upload_Handler;
    Api_User_Register : Api_User_Register_Handler;
    Api_User_Login : Api_User_Login_Handler;
    Api_User_Logout : Api_User_Logout_Handler;
-   Api_Invite_New : Api_Invite_New_Handler;
 
    Http : Server.Http;
    Root : Services.Dispatchers.Uri.Handler;

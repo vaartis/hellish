@@ -10,11 +10,11 @@
      }
 
      .upload {
-         color: #54c977;
+         color: var(--upload-color);
      }
 
      .download {
-         color: #c96454;
+         color: var(--download-color);
      }
 
      td, th {
@@ -30,6 +30,12 @@
          padding: 10px;
 
          white-space: pre-line;
+     }
+
+     .user-button {
+         display: block;
+         margin-top: 1em;
+         margin-bottom: 1em;
      }
 
      /*
@@ -52,7 +58,8 @@
         </div>
         <hr>
         <div>
-            <a class="link-button" href="/upload">Upload</a>
+            <a class="link-button user-button" href="/upload">Upload</a>
+            <a class="link-button user-button" href="/invite">Invite</a>
         </div>
         <hr>
         <div>

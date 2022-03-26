@@ -208,6 +208,15 @@ package body Hellish_Web.Database is
       return List;
    end Get_User_Torrents;
 
+   function Get_Invited_Users(By_User : Detached_User'Class) return Invite_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+      Invites_M : Invites_Managers := All_Invites.Filter(By_User => By_User.Id, Activated => True);
+   begin
+      return Invites_M.Get(Session);
+   end;
+
    function Verify_User_Credentials(Name, Password : String) return Boolean is
       use Sodium.Functions;
       use Hellish_Database;

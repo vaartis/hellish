@@ -549,6 +549,52 @@ package body Hellish_Web.Routes is
       end;
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Invite_Handler;
+                                Request : in Status.Data) return Response.Data is
+      use Gnatcoll.Json;
+      Result : Json_Value := Create_Object;
+
+      -- Always associate a new session with the request on login,
+      -- doesn't seem to work well otherwise
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      declare
+         The_User : Detached_User'Class := Database.Get_User(Username);
+         The_Invite : String := Database.Create_Invite(The_User);
+
+         Invited_Users : Invite_List := Database.Get_Invited_Users(The_User);
+
+         Translations : Translate_Set;
+         Invited_User : Detached_User'Class := No_Detached_User;
+
+         Invited_User_Names, Invited_User_Ul, Invited_User_Dl : Vector_Tag;
+      begin
+         Insert(Translations, Assoc("invite", The_Invite));
+
+         while Invited_Users.Has_row loop
+            Invited_User := Invited_Users.Element.For_User.Detach;
+
+            Invited_User_Names := Invited_User_Names & Invited_User.Username;
+            Invited_User_Ul := Invited_User_Ul & Bytes_To_Printable(Invited_User.Uploaded);
+            Invited_User_Dl := Invited_User_Dl & Bytes_To_Printable(Invited_User.Downloaded);
+
+            Invited_Users.Next;
+         end loop;
+         Insert(Translations, Assoc("invited_name", Invited_User_Names));
+         Insert(Translations, Assoc("invited_uploaded", Invited_User_Ul));
+         Insert(Translations, Assoc("invited_downloaded", Invited_User_Dl));
+
+         return Response.Build(Mime.Text_Html,
+                               String'(Templates_Parser.Parse("assets/invite.html", Translations)));
+      end;
+   end Dispatch;
+
    -- API
 
    function Dispatch
@@ -734,31 +780,6 @@ package body Hellish_Web.Routes is
       return Result;
    end Dispatch;
 
-   overriding function Dispatch(Handler : in Api_Invite_New_Handler;
-                                Request : in Status.Data) return Response.Data is
-      use Gnatcoll.Json;
-      Result : Json_Value := Create_Object;
-
-      -- Always associate a new session with the request on login,
-      -- doesn't seem to work well otherwise
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-   begin
-      if not Database.User_Exists(Username) then
-         return Response.Acknowledge(Messages.S403, "Forbidden");
-      end if;
-
-      declare
-         The_User : Detached_User'Class := Database.Get_User(Username);
-         The_Invite : String := Database.Create_Invite(The_User);
-      begin
-         Result.Set_Field("ok", True);
-         Result.Set_Field("invite", The_Invite);
-
-         return Response.Build(Mime.Application_Json, String'(Result.Write));
-      end;
-   end Dispatch;
-
    -- Entrypoint
 
    procedure Exception_Handler(E : Exception_Occurrence;
@@ -800,6 +821,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/download/(\d+)", Download);
       Services.Dispatchers.Uri.Register(Root, "/upload", Upload);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/view/(\d+)", View);
+      Services.Dispatchers.Uri.Register(Root, "/invite", Invite);
 
       --Services.Dispatchers.Uri.Register(Root, "/register", Register);
 
@@ -807,8 +829,6 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
       Services.Dispatchers.Uri.Register(Root, "/api/user/logout", Api_User_Logout);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
-
-      Services.Dispatchers.Uri.Register(Root, "/api/invite/new", Api_Invite_New);
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");

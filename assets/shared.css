@@ -5,6 +5,9 @@
     --input-color: #421e47;
     --error-color: #f77178;
     --link-color: #9bd7f7;
+
+    --upload-color: #54c977;
+    --download-color: #c96454;
 }
 
 .hellish-input-field {

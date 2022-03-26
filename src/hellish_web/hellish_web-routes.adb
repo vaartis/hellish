@@ -100,6 +100,29 @@ package body Hellish_Web.Routes is
       return Decoded;
    end Decoded_Torrent;
 
+   function Bytes_To_Printable(Bytes : Long_Long_Integer) return String is
+      Float_Repr : Float;
+      Unit : String (1..3);
+      Formatted_Str : String (1 .. 16);
+   begin
+      if Bytes >= (1024 * 1024 * 1024) then
+         Float_Repr := Float(Bytes) / 1024.0 / 1024.0 / 1024.0;
+         Unit := "GiB";
+      elsif Bytes >= (1024 * 1024) then
+         Float_Repr := Float(Bytes) / 1024.0 / 1024.0;
+         Unit := "MiB";
+      elsif Bytes >= 1024 then
+         Float_Repr := Float(Bytes) / 1024.0;
+         Unit := "KiB";
+      else
+         Float_Repr := Float(Bytes);
+         Unit := "B  ";
+      end if;
+      Put(Formatted_Str, Float_Repr, Aft => 2, Exp => 0);
+
+      return Trim(Formatted_Str, Ada.Strings.Both) & Trim(Unit, Ada.Strings.Right);
+   end Bytes_To_Printable;
+
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
 
    function Dispatch
@@ -259,16 +282,9 @@ package body Hellish_Web.Routes is
 
       declare
          The_User : Detached_User'Class := Database.Get_User(Username);
-         Upload_Gb : Float := Float(The_User.Uploaded) / 1024.0 / 1024.0 / 1024.0;
-         Download_Gb : Float := Float(The_User.Downloaded) / 1024.0 / 1024.0 / 1024.0;
-
-         Formatted_Str : String (1 .. 32);
       begin
-         Put(Formatted_Str, Upload_Gb, Aft => 2, Exp => 0);
-         Insert(Translations, Assoc("uploaded", Trim(Formatted_Str, Ada.Strings.Both)));
-
-         Put(Formatted_Str, Download_Gb, Aft => 2, Exp => 0);
-         Insert(Translations, Assoc("downloaded", Trim(Formatted_Str, Ada.Strings.Both)));
+         Insert(Translations, Assoc("uploaded", Bytes_To_Printable(The_User.Uploaded)));
+         Insert(Translations, Assoc("downloaded", Bytes_To_printable(The_User.Downloaded)));
 
          Insert(Translations, Assoc("host", Host));
          Insert(Translations, Assoc("username", The_User.Username));
@@ -508,14 +524,14 @@ package body Hellish_Web.Routes is
                      -- Just in case the file name has something funny, escape it. It's user generated data after all.
                      File_Names := File_Names & Templates_Parser.Utils.Web_Escape(To_String(File_Path));
                      File_Sizes := File_Sizes &
-                       Trim(Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value'Image, Ada.Strings.Left);
+                       Bytes_To_Printable(Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value);
                   end;
                end loop;
             end;
          else
             File_Names := File_Names & ("/" & Original_File_Name);
             File_Sizes := File_Sizes &
-              Trim(Bencode_Integer(Bencoded_Info.Value(To_Unbounded_String("length")).Element.Element).Value'Image, Ada.Strings.Left);
+               Bytes_To_Printable(Bencode_Integer(Bencoded_Info.Value(To_Unbounded_String("length")).Element.Element).Value);
          end if;
          Insert(Translations, Assoc("file_name", File_Names));
          Insert(Translations, Assoc("file_size", File_Sizes));

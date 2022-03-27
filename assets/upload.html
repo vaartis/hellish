@@ -49,6 +49,8 @@
 </head>
 <body>
     <div class="centered">
+        @@-- If this is an update, don't show unneccessary information
+        @@IF@@ not @_EXIST:update_@
         <p class="text-centered">Announce URL</p>
         <p class="text-centered">
             <b>http://@_host_@/@_passkey_@/announce</b>
@@ -57,20 +59,35 @@
         <p>
             Make sure to set your torrent as <b>private</b> and set your announce URL, or you'll have to redownload the file.
         </p>
+        @@ELSE@@
+        <h2 class="text-centered">Update torrent information</h2>
+        @@END_IF@@
 
-        <form id="upload-form" enctype="multipart/form-data" ACTION="/api/upload" method="POST">
+        <form id="upload-form" enctype="multipart/form-data"
+              @@IF@@ not @_EXIST:update_@
+              action="/api/upload"
+              @@ELSE@@
+              action="/api/upload?update=@_update_@"
+              @@END_IF@@
+              method="POST">
             <table>
+                @@IF@@ not @_EXIST:update_@
                 <tr>
                     <td>File</td>
                     <td>
                         <input required class="upload-file" name="file" id="file" type="file">
                     </td>
                 </tr>
+                @@END_IF@@
 
                 <tr>
                     <td>Name</td>
                     <td>
-                        <input required class="hellish-input-field upload-input" name="name">
+                        <input required class="hellish-input-field upload-input" name="name"
+                               @@IF@@ @_EXIST:update_@
+                               value="@_update_name_@"
+                               @@END_IF@@
+                        >
                     </td>
                 </tr>
 
@@ -78,12 +95,18 @@
                     <td>Description</td>
                     <td>
                         <textarea form="upload-form" class="hellish-input-field upload-input" type="textbox"
-                                  name="description" rows="15"></textarea>
+                                  name="description" rows="15">@_update_desc_@</textarea>
                     </td>
                 </tr>
             </table>
 
-            <input class="upload-button" type="submit" name="go" value="Upload!">
+            <input class="upload-button" type="submit" name="go"
+                   @@IF@@ not @_EXIST:update_@
+                   value="Upload!"
+                   @@ELSE@@
+                   value="Update!"
+                   @@END_IF@@
+            >
         </form>
     </div>
 </body>

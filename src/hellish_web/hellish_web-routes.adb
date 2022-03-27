@@ -434,6 +434,9 @@ package body Hellish_Web.Routes is
       Username : String := Session.Get(Session_Id, "username");
 
       Translations : Translate_Set;
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Update : String := Params.Get("update");
    begin
       if not Database.User_Exists(Username) then
          -- Redirect to the login page
@@ -445,6 +448,19 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("host", Host));
          Insert(Translations, Assoc("passkey", User.Passkey));
       end;
+      if Update /= "" then
+         declare
+            The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Integer'Value(Update));
+         begin
+            Insert(Translations, Assoc("update", Update));
+            Insert(Translations, Assoc("update_name", The_Torrent.Display_Name));
+            Insert(Translations, Assoc("update_desc", The_Torrent.Description));
+         end;
+      else
+         -- This needs to always be set, as textarea uses all whitespace literally
+         -- and the template engine can't have anything else be on the same line as statements
+         Insert(Translations, Assoc("update_desc", ""));
+      end if;
 
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/upload.html", Translations)));
@@ -497,6 +513,8 @@ package body Hellish_Web.Routes is
                                                   or Md_Flag_No_Html_Spans
                                                   or Md_Flag_Permissive_Url_Autolinks
                                                   or Md_Flag_Strikethrough);
+
+         The_User : Detached_User'Class := Database.Get_User(Username);
       begin
          Original_File_Name :=
            Bencode_String(Bencoded_Info.Value(To_Unbounded_String("name")).Element.Element).Value;
@@ -506,6 +524,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("description", Html_Desc));
          Insert(Translations, Assoc("original_name", Original_File_Name));
          Insert(Translations, Assoc("uploader", Uploader.Username));
+         Insert(Translations, Assoc("is_uploader", Uploader = The_user));
 
          if Bencoded_Info.Value.Contains(To_Unbounded_String("files")) then
             declare
@@ -614,12 +633,37 @@ package body Hellish_Web.Routes is
       File_Path : String := Params.Get("file");
       Display_Name : String := Params.Get("name");
       Description : String := Params.Get("description");
+      Update : String := Params.Get("update");
 
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
+
+      procedure Set_Updatable_Fields_And_Create(The_Torrent : in out Detached_Torrent'class) is
+      begin
+         The_Torrent.Set_Display_Name(Display_Name);
+         The_Torrent.Set_Description(Description);
+         Database.Create_Torrent(The_Torrent);
+      end Set_Updatable_Fields_And_Create;
    begin
       if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+
+      if Update /= "" then
+         declare
+            Update_Id : Integer := Integer'Value(Update);
+            The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Update_Id);
+            The_User : Detached_User'Class := Database.Get_User(Username);
+         begin
+            -- Only the creator can update the torrent
+            if Integer'(The_Torrent.Created_By) /= The_User.Id then
+               return Response.Acknowledge(Messages.S403, "Forbidden");
+            end if;
+
+            Set_Updatable_Fields_And_Create(The_Torrent);
+
+            return Response.Url("/view/" & Update);
+         end;
       end if;
 
       declare
@@ -666,14 +710,14 @@ package body Hellish_Web.Routes is
             Put(Created_File, To_String(Decoded.Encoded));
             Close(Created_File);
 
+
+            -- Only really need to save the hash, since it's the filename. Things like actual file name and such
+            -- are encoded in the torrent file itself.
+            -- The fields mentioned here explicitly can't be updated
             The_Torrent.Set_Info_Hash(Sha1_Hash);
             The_Torrent.Set_Created_By(Created_By);
-            The_Torrent.Set_Display_Name(Display_Name);
-            The_Torrent.Set_Description(Description);
             The_Torrent.Set_Snatches(0);
-            -- Only really need to save the hash, since it's the filename. Things like actual file name and such
-            -- are encoded in the torrent file itself
-            Database.Create_Torrent(The_Torrent);
+            Set_Updatable_Fields_And_Create(The_Torrent);
 
             if Error_String = "" then
                return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left));

@@ -67,7 +67,12 @@
         </div>
 
         <div>
-            [ <a class="link-button" href="/download/@_id_@">Download</a> ]
+            [
+            <a class="link-button" href="/download/@_id_@">Download</a>
+            @@IF@@ @_is_uploader_@
+            | <a class="link-button" href="/upload?update=@_id_@">Update</a>
+            @@END_IF@@
+            ]
         </div>
 
         <h2>Stats</h2>

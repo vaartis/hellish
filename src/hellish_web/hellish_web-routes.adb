@@ -502,6 +502,7 @@ package body Hellish_Web.Routes is
 
          File_Names : Vector_Tag;
          File_Sizes : Vector_Tag;
+         Total_Size : Long_Long_Integer := 0;
          Translations : Translate_Set;
 
          -- Escape whatever the user inputs as the name
@@ -537,6 +538,7 @@ package body Hellish_Web.Routes is
                      File_Path_List : Bencode_List := Bencode_List(File.Value(To_Unbounded_String("path")).Element.Element);
 
                      File_Path : Unbounded_String;
+                     Size : Long_Long_Integer := Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value;
                   begin
                      for Path_Part of File_Path_List.Value loop
                         File_Path := File_Path & "/" & Bencode_String(Path_Part.Element).Value;
@@ -544,18 +546,23 @@ package body Hellish_Web.Routes is
 
                      -- Just in case the file name has something funny, escape it. It's user generated data after all.
                      File_Names := File_Names & Templates_Parser.Utils.Web_Escape(To_String(File_Path));
-                     File_Sizes := File_Sizes &
-                       Bytes_To_Printable(Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value);
+                     File_Sizes := File_Sizes & Bytes_To_Printable(size);
+                     Total_Size := Total_Size + Size;
                   end;
                end loop;
             end;
          else
-            File_Names := File_Names & ("/" & Original_File_Name);
-            File_Sizes := File_Sizes &
-               Bytes_To_Printable(Bencode_Integer(Bencoded_Info.Value(To_Unbounded_String("length")).Element.Element).Value);
+            declare
+               Size : Long_Long_Integer := Bencode_Integer(Bencoded_Info.Value(To_Unbounded_String("length")).Element.Element).Value;
+            begin
+               File_Names := File_Names & ("/" & Original_File_Name);
+               File_Sizes := File_Sizes & Bytes_To_Printable(Size);
+               Total_Size := Size;
+            end;
          end if;
          Insert(Translations, Assoc("file_name", File_Names));
          Insert(Translations, Assoc("file_size", File_Sizes));
+         Insert(Translations, Assoc("total_size", Bytes_To_Printable(Total_Size)));
 
          declare
             Peer_Data : Peers.Scrape_Stat_data := Peers.Protected_Map.Scrape_Stats(The_Torrent.Info_Hash);

@@ -6,9 +6,15 @@ with Ada.Characters.Latin_1;
 
 with Gnatcoll.Traces; use Gnatcoll.Traces;
 with Gnatcoll.Tribooleans; use Gnatcoll.Tribooleans;
-with Gnatcoll.Sql; use Gnatcoll.Sql;
-with Gnatcoll.Sql.Sessions; use Gnatcoll.Sql.Sessions;
-with Gnatcoll.Sql.Inspect; use Gnatcoll.Sql.Inspect;
+with
+  Gnatcoll.Sql,
+  Gnatcoll.Sql.Sessions,
+  Gnatcoll.Sql.Inspect;
+use
+  Gnatcoll.Sql,
+  Gnatcoll.Sql.Sessions,
+  Gnatcoll.Sql.Inspect;
+use type Gnatcoll.Sql.Text_Fields.Field;
 with Gnatcoll.Vfs; use Gnatcoll.Vfs;
 
 with Sodium.Functions;
@@ -307,34 +313,35 @@ package body Hellish_Web.Database is
       Session.Commit;
    end Snatch_Torrent;
 
-   Select_Part : String := "SELECT * FROM";
-   Count_Part : String := "SELECT COUNT(*) FROM";
+   -- Only search by display_name of query is not empty
+   Query_Criteria : Sql_Criteria :=
+     (Text_Param(1) = "")
+     or Ilike(Hellish_Database.Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"));
 
-   Limit_Part : String := " ORDER BY id DESC LIMIT $2 OFFSET $3 ";
-   Search_Part : String := " torrents " &
-     -- Only search by display_name of query is not empty
-     "WHERE ($1='' OR display_name ILIKE '%'||$1||'%')";
-   Search_Query : Prepared_Statement := Prepare(Select_Part & Search_Part & Limit_Part & ";", On_Server => True);
-   Count_Query : Prepared_Statement := Prepare(Count_Part & Search_Part & ";", On_Server => True);
    function Search_Torrents(Query : String; Offset : Natural; Limit : Natural) return Torrent_List is
-      Session : Session_Type := Get_New_Session;
-      Manager : Torrents_Managers := All_Torrents;
-      Cur : Torrent_List := Manager.Get(Session);
-   begin
-      Cur.Fetch(Session.Db, Search_Query, Params => (1 => +Query, 2 => +Limit, 3 => +Offset));
+      use Hellish_Database;
 
-      return Cur;
-   end;
+      Session : Session_Type := Get_New_Session;
+      The_Query_Managers : Torrents_Managers := All_Torrents
+        .Limit(Limit, From => Offset)
+        .Order_By(Desc(Torrents.Id))
+        .Filter(Query_Criteria);
+   begin
+      return The_Query_Managers.Get(Session, Params => (1 => +Query));
+   end Search_Torrents;
 
    function Search_Count(Query : String) return Natural is
+      use Hellish_Database;
+
       Session : Session_Type := Get_New_Session;
-      Manager : Torrents_Managers := All_Torrents;
       Cur : Direct_Cursor;
+      The_Query : Sql_Query :=
+        Sql_Select(From => Torrents, Fields => Apply(Func_Count, Torrents.Id), Where => Query_Criteria);
    begin
-      Cur.Fetch(Session.Db, Count_Query, Params => (1 => +Query));
+      Cur.Fetch(Session.Db, The_Query, Params => (1 => +Query));
 
       return Cur.Integer_Value(0);
-   end;
+   end Search_Count;
 
    function Create_Invite(From_User : Detached_User'Class) return String is
       use Sodium.Functions;

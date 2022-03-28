@@ -9,6 +9,16 @@
          margin-right: 1em;
      }
 
+     .centered-box {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%, 0);
+     }
+
+     .content {
+         padding-top: 30px;
+     }
+
      .upload {
          color: var(--upload-color);
      }
@@ -67,21 +77,27 @@
         </div>
     </div>
 
-    <p>
-        Current seeders: <b>@_current_seeders_@</b>
-    </p>
-    <p>
-        Current leechers: <b>@_current_leechers_@</b>
-    </p>
+    <div class="centered-box">
+        [ <a class="link-button" href="/search">Search</a> ]
+    </div>
 
-    <div>
-        <h3>Uploaded by you</h3>
-        <table class="torrents-box">
-            @@TABLE@@
-            <tr>
-                <td><a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a></td>
-            </tr>
-            @@END_TABLE@@
-        </table>
+    <div class="content">
+        <p>
+            Current seeders: <b>@_current_seeders_@</b>
+        </p>
+        <p>
+            Current leechers: <b>@_current_leechers_@</b>
+        </p>
+
+        <div>
+            <h3>Uploaded by you</h3>
+            <table class="torrents-box">
+                @@TABLE@@
+                <tr>
+                    <td><a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a></td>
+                </tr>
+                @@END_TABLE@@
+            </table>
+        </div>
     </div>
 </body>

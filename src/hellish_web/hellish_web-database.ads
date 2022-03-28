@@ -26,6 +26,8 @@ package Hellish_Web.Database is
    function Get_Torrent_By_Hash(Info_Hash : String; Session : Session_Type := Get_New_Session) return Detached_Torrent'Class;
    function Get_Torrent(Id : Natural) return Detached_Torrent'Class;
    procedure Snatch_Torrent(Info_Hash : String);
+   function Search_Torrents(Query : String; Offset : Natural; Limit : Natural) return Torrent_List;
+   function Search_Count(Query : String) return Natural;
 
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;

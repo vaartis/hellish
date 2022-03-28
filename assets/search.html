@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .page-container {
+         position: absolute;
+         left: 50%;
+         top: 10%;
+         transform: translate(-50%, 0);
+     }
+
+     .center {
+         position: absolute;
+         left: 50%;
+
+         transform: translate(-50%, 0);
+     }
+
+     .search-input {
+         width: 500px;
+         height: 30px;
+
+         font-size: 18px;
+     }
+
+     .search-button {
+         padding: 0.5em;
+         margin-top: 1em;
+
+         font-weight: bold;
+         font-size: 18px;
+
+         background: var(--input-color);
+         color: var(--text-color);
+
+         border: hidden;
+         border-radius: 10px;
+     }
+
+     .torrent-name {
+         width: 500px;
+         height: 30px;
+     }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <form action="/search" method="GET">
+            <input class="search-input hellish-input-field" name="query"
+                   @@IF@@ @_EXIST:query_@
+                   value="@_query_@"
+                   @@END_IF@@
+            >
+            <input class="search-button" type="submit" value="Search!">
+        </form>
+        <table>
+            <tr>
+                <th></th>
+                <th>Uploader</th>
+            </tr>
+            @@TABLE@@
+            <tr class="search-line">
+                <td class="torrent-name">
+                    <a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a>
+                </td>
+                <td>
+                    <i>@_torrent_uploader_@</i>
+                </td>
+            </tr>
+            @@END_TABLE@@
+        </table>
+
+
+
+        @@IF@@ @_EXIST:page_@
+        <div class="center">
+            @@TABLE@@
+            <a class="link-button" href="/search?query=@_query_@&page=@_page_@">@_page_@</a>
+            @@END_TABLE@@
+
+            @@IF@@ @_EXIST:last_page_@
+            ...
+            <a class="link-button" href="/search?query=@_query_@&page=@_last_page_@">@_last_page_@</a>
+            @@END_IF@@
+        </div>
+        @@END_IF@@
+    </div>
+</body>

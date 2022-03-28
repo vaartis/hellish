@@ -1,7 +1,7 @@
 | TABLE        | torrents                   | torrent                 |   |                              |
 | id           | AUTOINCREMENT              | PK                      |   |                              |
 | info_hash    | TEXT                       | NOT NULL, UNIQUE, INDEX |   | The SHA1 hash of the torrent |
-| created_by   | FK users(created_torrents) | NOT NULL                |   |                              |
+| created_by   | FK users(created_torrents) | NOT NULL, INDEX         |   |                              |
 | display_name | TEXT                       | NOT NULL                |   |                              |
 | description  | TEXT                       | NOT NULL                |   |                              |
 | snatches     | INTEGER                    | NOT NULL                |   | Total number of downloads    |

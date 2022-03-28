@@ -9,12 +9,6 @@
          margin-right: 1em;
      }
 
-     .centered-box {
-         position: absolute;
-         left: 50%;
-         transform: translate(-50%, 0);
-     }
-
      .content {
          padding-top: 30px;
      }
@@ -49,17 +43,19 @@
      }
 
      /*
-     td:nth-child(odd) {
-         border-right: solid var(--input-color) 2px;
-         padding-right: 2em;
-     }
-     td:nth-child(even) {
-         padding-left: 1em;
-     }
-     */
+        td:nth-child(odd) {
+        border-right: solid var(--input-color) 2px;
+        padding-right: 2em;
+        }
+        td:nth-child(even) {
+        padding-left: 1em;
+        }
+      */
     </style>
 </head>
 <body>
+    @@INCLUDE@@ navbar.html
+
     <div class="user-info">
         <b>@_username_@</b>
         <div>
@@ -75,10 +71,6 @@
         <div>
             <a class="link-button" href="/api/user/logout">Log out</a>
         </div>
-    </div>
-
-    <div class="centered-box">
-        [ <a class="link-button" href="/search">Search</a> ]
     </div>
 
     <div class="content">

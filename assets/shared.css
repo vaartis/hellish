@@ -30,3 +30,10 @@ body {
     text-decoration: none;
     font-weight: bold;
 }
+
+@@-- Specifically for navbar.html
+.navbar-box {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 0);
+}

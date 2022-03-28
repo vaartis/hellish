@@ -24,7 +24,7 @@ package body Hellish_Database is
       DbSchema : constant String := "|TABLE| torrents" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
          & "|info_hash|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
-         & "|created_by|FK users|NOT NULL||" & ASCII.LF
+         & "|created_by|FK users|NOT NULL,INDEX||" & ASCII.LF
          & "|display_name|Text|NOT NULL||" & ASCII.LF
          & "|description|Text|NOT NULL||" & ASCII.LF
          & "|snatches|Integer|NOT NULL||" & ASCII.LF

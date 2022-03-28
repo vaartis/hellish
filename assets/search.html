@@ -43,10 +43,23 @@
          width: 500px;
          height: 30px;
      }
+
+     .query-info {
+         margin-bottom: 10px;
+         text-align: center;
+     }
     </style>
 </head>
 <body>
+    @@INCLUDE@@ navbar.html
+
     <div class="page-container">
+        @@IF@@ @_EXIST:query_uploader_@
+        <div class="query-info">
+            Uploaded by <i>@_query_uploader_@</i>
+        </div>
+        @@END_IF@@
+
         <form action="/search" method="GET">
             <input class="search-input hellish-input-field" name="query"
                    @@IF@@ @_EXIST:query_@
@@ -66,7 +79,7 @@
                     <a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a>
                 </td>
                 <td>
-                    <i>@_torrent_uploader_@</i>
+                    <a class="link-button" href="/search?uploader=@_torrent_uploader_id_@">@_torrent_uploader_@</i>
                 </td>
             </tr>
             @@END_TABLE@@
@@ -75,13 +88,15 @@
         @@IF@@ @_EXIST:page_@
         <div class="center">
             @@TABLE@@
-            <a class="link-button" href="/search?query=@_query_@&page=@_page_@">@_page_@</a>
-            @@END_TABLE@@
 
-            @@IF@@ @_EXIST:last_page_@
-            ...
-            <a class="link-button" href="/search?query=@_query_@&page=@_last_page_@">@_last_page_@</a>
+            @@IF@@ @_page_@ = "..."
+            @@-- Some way to select an inbetween page?
+            @_page_@
+            @@ELSE@@
+            <a class="link-button" href="@_page_address_@">@_page_@</a>
             @@END_IF@@
+
+            @@END_TABLE@@
         </div>
         @@END_IF@@
     </div>

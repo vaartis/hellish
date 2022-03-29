@@ -57,19 +57,35 @@
     @@INCLUDE@@ navbar.html
 
     <div class="content">
-        <form id="post-form" class="new-post-form" action="/api/post/create" method="POST">
+        <form id="post-form" class="new-post-form"
+              @@IF@@ @_EXIST:update_@
+              action="/api/post/create?update=@_update_@"
+              @@ELSE@@
+              action="/api/post/create"
+              @@END_IF@@
+              method="POST">
+            @@IF@@ not @_reply_@
             <div class="title-block">
                 <label class="form-label" for="title-input">Title</label>
-                <input class="hellish-input-field title-input" name="title" id="title-input">
+                <input class="hellish-input-field title-input" name="title" id="title-input"
+                       @@IF@@ @_EXIST:update_@
+                       value="@_title_@"
+                       @@END_IF@@
+                >
             </div>
+            @@END_IF@@
 
             <label class="form-label" for="content-input">Content</label>
             <textarea form="post-form" class="hellish-input-field post-input" type="textbox"
-                      name="content" id="content-input" rows="15"></textarea>
+                      name="content" id="content-input" rows="15">@_content_@</textarea>
 
             @@IF@@ @_admin_@
             <div class="after-form">
-                <input type="checkbox" id="news-flag" name="flag" value="1">
+                <input type="checkbox" id="news-flag" name="flag" value="1"
+                       @@IF@@ @_EXIST:update_@ and @_flag_@ = 1
+                       checked
+                       @@END_IF@@
+                >
                 <label for="news-flag">News</label>
             </div>
             @@END_IF@@

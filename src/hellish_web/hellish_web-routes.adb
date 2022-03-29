@@ -764,12 +764,15 @@ package body Hellish_Web.Routes is
             -- This both translates markdown to html and escapes whatever html the text might've had,
             -- so should be safe
             Post_Content : String := Markdown.To_Html(Post.Content, Default_Md_Flags);
+
+            The_User : Detached_User'Class := Database.Get_User(Username);
          begin
             Insert(Translations, Assoc("id", Post.Id));
             Insert(Translations, Assoc("title", Html_Title));
             Insert(Translations, Assoc("content", Post_Content));
             Insert(Translations, Assoc("author", Author.Username));
             Insert(Translations, Assoc("author_id", Author.Id));
+            Insert(Translations, Assoc("is_author", Author.Id = The_User.Id));
 
             declare
                Params : Parameters.List := Status.Parameters(Request);
@@ -783,7 +786,8 @@ package body Hellish_Web.Routes is
 
                Reply : Orm.Post;
                Reply_Author : Detached_User'Class := No_Detached_User;
-               Reply_Ids, Replies_Authors, Replies_Author_Ids, Replies_Content : Vector_Tag;
+               Reply_Ids, Replies_Authors, Replies_Author_Ids, Replies_Content,
+                 Replies_Is_Author : Vector_Tag;
                Pages, Page_Addresses : Vector_Tag;
             begin
                while Replies.Has_row loop
@@ -794,6 +798,7 @@ package body Hellish_Web.Routes is
                   Replies_Authors := Replies_Authors & Reply_Author.Username;
                   Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
                   Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content, Default_Md_Flags);
+                  Replies_Is_Author := Replies_Is_Author & (Reply_Author.Id = The_User.Id);
 
                   Replies.Next;
                end loop;
@@ -801,6 +806,7 @@ package body Hellish_Web.Routes is
                Insert(Translations, Assoc("reply_author", Replies_Authors));
                Insert(Translations, Assoc("reply_author_id", Replies_Author_Ids));
                Insert(Translations, Assoc("reply_content", Replies_Content));
+               Insert(Translations, Assoc("reply_is_author", Replies_Is_Author));
 
                if Page_Count > 1 then
                   for P in 1..Page_Count loop
@@ -838,6 +844,9 @@ package body Hellish_Web.Routes is
 
       Translations : Translate_Set;
       The_User : Detached_User'Class := No_Detached_user;
+
+      Params : Parameters.List := Status.Parameters(Request);
+      Update : Natural := (if Params.Exist("update") then Natural'Value(Params.Get("update")) else 0);
    begin
       if not Database.User_Exists(Username) then
          -- Redirect to the login page
@@ -846,6 +855,23 @@ package body Hellish_Web.Routes is
 
       The_User := Database.Get_User(Username);
       Insert(Translations, Assoc("admin", The_User.Role = 1));
+
+      Insert(Translations, Assoc("reply", False));
+      Insert(Translations, Assoc("content", ""));
+      if Update /= 0 then
+         declare
+            Parent_Post : Detached_Post'Class := No_Detached_Post;
+            The_Post : Detached_Post'Class := Database.Get_Post(Update, Parent_Post);
+         begin
+            if Parent_Post /= Detached_Post'Class(No_Detached_Post) then
+               Insert(Translations, Assoc("reply", True));
+            end if;
+            Insert(Translations, Assoc("update", Update));
+            Insert(Translations, Assoc("title", The_Post.Title));
+            Insert(Translations, Assoc("content", The_Post.Content));
+            Insert(Translations, Assoc("flag", The_Post.Flag));
+         end;
+      end if;
 
       return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/post_create.html", Translations)));
@@ -1155,12 +1181,24 @@ package body Hellish_Web.Routes is
       Parent : Integer := (if Params.Exist("parent") then Natural'Value(Params.Get("parent")) else -1);
       Flag : Integer := (if Params.Exist("flag") then Natural'Value(Params.Get("flag")) else 0);
 
+      Update : Integer := (if Params.Exist("update") then Natural'Value(Params.Get("update")) else -1);
+      Updated_Post : Detached_Post'Class := No_Detached_Post;
+
+      Parent_Post : Detached_Post'Class := No_Detached_Post;
       Post : Detached_Post'Class := New_Post;
    begin
       if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
       end if;
       The_User := Database.Get_User(Username);
+
+      if Update /= -1 then
+         Updated_Post := Database.Get_Post(Update, Parent_Post);
+         if Integer'(Updated_Post.By_User) /= The_User.Id then
+            return Response.Acknowledge(Messages.S403, "Forbidden");
+         end if;
+         Post := Updated_Post;
+      end if;
 
       Post.Set_By_User(The_User.Id);
       Post.Set_Content(Content);

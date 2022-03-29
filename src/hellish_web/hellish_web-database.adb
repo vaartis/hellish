@@ -464,7 +464,9 @@ package body Hellish_Web.Database is
       Search_Criteria : Sql_Criteria :=
         -- Only search by display_name of query is not empty
         ((Text_Param(1) = "")
-           or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%")));
+           or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%")))
+        -- Only show posts without parents
+        and (Is_Null(Posts.Parent_Post));
 
       Session : Session_Type := Get_New_Session;
       The_Query_Managers : Posts_Managers := All_Posts

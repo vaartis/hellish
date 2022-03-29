@@ -72,6 +72,10 @@
 
          display: block;
      }
+
+     .post-actions {
+         float: right;
+     }
     </style>
 </head>
 <body>
@@ -83,6 +87,14 @@
                 <span class="title">@_title_@</span>
                 <div class="subtitle">
                     <a class="link-button" href="/search?uploader=@_author_id_@">@_author_@</a>
+
+                    @@IF@@ @_is_author_@
+                    <div class="post-actions">
+                        [
+                        <a class="link-button" href="/post/create?update=@_id_@">Edit</a>
+                        ]
+                    </div>
+                    @@END_IF@@
                 </div>
             </div>
             
@@ -97,6 +109,14 @@
                 <div>
                     <div class="subtitle">
                         <a class="link-button" href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
+
+                        @@IF@@ @_reply_is_author_@
+                        <span class="post-actions">
+                            [
+                            <a class="link-button" href="/post/create?update=@_reply_id_@">Edit</a>
+                            ]
+                        </span>
+                        @@END_IF@@
                     </div>
                 </div>
                 

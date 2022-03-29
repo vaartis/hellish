@@ -4,7 +4,7 @@
     --panel-color: #6b1048;
     --input-color: #421e47;
     --error-color: #f77178;
-    --link-color: #9bd7f7;
+    --link-color: #cae0f9;
 
     --upload-color: #54c977;
     --download-color: #c96454;
@@ -26,7 +26,7 @@ body {
 }
 
 a {
-    color: var(--text-color);
+    color: var(--link-color);
     text-decoration: none;
     font-weight: bold;
 }

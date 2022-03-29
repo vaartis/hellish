@@ -179,7 +179,13 @@ package body Hellish_Web.Routes is
          Ip : Unbounded_String := To_Unbounded_String(if Params.Exist("ip")
                                                       then Params.Get("ip")
                                                       else Aws.Status.Peername(Request));
+         Headers : Aws.Headers.List := Status.Header(Request);
       begin
+         if Headers.Get_Values("X-Forwarded-For") /= "" then
+            -- When behind a proxy, use X-Forwarded-For
+            Ip := To_Unbounded_String(Headers.Get_Values("X-Forwarded-For"));
+         end if;
+
          if Detached_Torrent(Database.Get_Torrent_By_Hash(Info_Hash_Hex)) = No_Detached_Torrent then
             Result := Bencoder.With_Failure_Reason("Unregistered torrent");
             goto Finish;

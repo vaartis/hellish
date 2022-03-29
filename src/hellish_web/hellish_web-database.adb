@@ -304,14 +304,6 @@ package body Hellish_Web.Database is
       Session.Commit;
    end Snatch_Torrent;
 
-   Search_Criteria : Sql_Criteria :=
-     -- Only search by display_name of query is not empty
-     ((Text_Param(1) = "")
-        or Ilike(Hellish_Database.Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"))) and
-     -- Only search by uploader if not 0
-     ((Integer_Param(2) = 0)
-        or Hellish_Database.Torrents.Created_By = Integer_Param(2));
-
    function Search_Torrents(Query : String;
                             Uploader : Natural;
 
@@ -319,6 +311,14 @@ package body Hellish_Web.Database is
                             Limit : Natural;
                             Total_Count : out Natural) return Torrent_List is
       use Hellish_Database;
+
+      Search_Criteria : Sql_Criteria :=
+        -- Only search by display_name of query is not empty
+        ((Text_Param(1) = "")
+           or Ilike(Hellish_Database.Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"))) and
+        -- Only search by uploader if not 0
+        ((Integer_Param(2) = 0)
+           or Hellish_Database.Torrents.Created_By = Integer_Param(2));
 
       Session : Session_Type := Get_New_Session;
       The_Query_Managers : Torrents_Managers := All_Torrents
@@ -453,4 +453,33 @@ package body Hellish_Web.Database is
 
       return Result;
    end Get_Latest_News;
+
+   function Search_Posts(Query : String;
+
+                         Offset : Natural;
+                         Limit : Natural;
+                         Total_Count : out Natural) return Post_List is
+      use Hellish_Database;
+
+      Search_Criteria : Sql_Criteria :=
+        -- Only search by display_name of query is not empty
+        ((Text_Param(1) = "")
+           or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%")));
+
+      Session : Session_Type := Get_New_Session;
+      The_Query_Managers : Posts_Managers := All_Posts
+        .Limit(Limit, From => Offset)
+        .Order_By(Desc(Posts.Id))
+        .Filter(Search_Criteria);
+
+      Count_Cur : Direct_Cursor;
+      Count_Query : Sql_Query :=
+        Sql_Select(From => Posts, Fields => Apply(Func_Count, Posts.Id), Where => Search_Criteria);
+      Params : Sql_Parameters := (1 => +Query);
+   begin
+      Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
+      Total_Count := Count_Cur.Integer_Value(0);
+
+      return The_Query_Managers.Get(Session, Params => Params);
+   end Search_Posts;
 end;

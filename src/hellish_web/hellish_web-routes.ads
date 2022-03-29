@@ -24,6 +24,7 @@ private
    type Search_Handler is new Dispatchers.Handler with null record;
    type Post_Handler is new Dispatchers.Handler with null record;
    type Post_Create_Handler is new Dispatchers.Handler with null record;
+   type Post_Search_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -37,6 +38,7 @@ private
    overriding function Dispatch(Handler : in Search_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Post_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Post_Create_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Post_Search_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -50,6 +52,7 @@ private
    overriding function Clone(Element : in Search_Handler) return Search_Handler is (Element);
    overriding function Clone(Element : in Post_Handler) return Post_Handler is (Element);
    overriding function Clone(Element : in Post_Create_Handler) return Post_Create_Handler is (Element);
+   overriding function Clone(Element : in Post_Search_Handler) return Post_Search_Handler is (Element);
 
    Index : Index_Handler;
    Announce : Announce_Handler;
@@ -63,6 +66,7 @@ private
    Search : Search_Handler;
    Post : Post_Handler;
    Post_Create : Post_Create_Handler;
+   Post_Search : Post_Search_Handler;
 
    -- API
 

@@ -47,6 +47,10 @@
          font-weight: bold;
          font-size: 23px;
      }
+
+     .after-form {
+         margin-top: 1em;
+     }
     </style>
 </head>
 <body>
@@ -62,6 +66,14 @@
             <label class="form-label" for="content-input">Content</label>
             <textarea form="post-form" class="hellish-input-field post-input" type="textbox"
                       name="content" id="content-input" rows="15"></textarea>
+
+            @@IF@@ @_admin_@
+            <div class="after-form">
+                <input type="checkbox" id="news-flag" name="flag" value="1">
+                <label for="news-flag">News</label>
+            </div>
+            @@END_IF@@
+
             <input class="post-button" type="submit" value="Post!">
         </form>
     </div>

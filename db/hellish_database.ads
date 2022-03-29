@@ -63,6 +63,9 @@ package Hellish_Database is
       Parent_Post : SQL_Field_Integer (Ta_Posts, Instance, N_Parent_Post, Index);
       --  The ID of the post that started the thread
 
+      Flag : SQL_Field_Integer (Ta_Posts, Instance, N_Flag, Index);
+      --  0 = nothing, 1 = news
+
    end record;
 
    type T_Posts (Instance : Cst_String_Access)
@@ -131,6 +134,9 @@ package Hellish_Database is
       Passkey : SQL_Field_Text (Ta_Users, Instance, N_Passkey, Index);
       Uploaded : SQL_Field_Bigint (Ta_Users, Instance, N_Uploaded, Index);
       Downloaded : SQL_Field_Bigint (Ta_Users, Instance, N_Downloaded, Index);
+      Role : SQL_Field_Integer (Ta_Users, Instance, N_Role, Index);
+      --  0 = user, 1 = admin
+
    end record;
 
    type T_Users (Instance : Cst_String_Access)

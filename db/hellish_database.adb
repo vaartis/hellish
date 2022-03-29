@@ -46,6 +46,7 @@ package body Hellish_Database is
          & "|passkey|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
          & "|uploaded|bigint||0|" & ASCII.LF
          & "|downloaded|bigint||0|" & ASCII.LF
+         & "|role|Integer|NOT NULL|0|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| config" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
@@ -71,6 +72,7 @@ package body Hellish_Database is
          & "|content|Text|NOT NULL||" & ASCII.LF
          & "|by_user|FK users|NOT NULL||" & ASCII.LF
          & "|parent_post|FK posts|||" & ASCII.LF
+         & "|flag|Integer|NOT NULL|0|" & ASCII.LF
          & "" & ASCII.LF
          & "";
       F : File_Schema_IO;

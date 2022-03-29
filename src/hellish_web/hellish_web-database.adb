@@ -434,4 +434,23 @@ package body Hellish_Web.Database is
 
       return The_Post_Managers.Get(Session);
    end Post_Replies;
+
+   function Get_Latest_News return Detached_Post'Class is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      Result : Detached_Post'Class := No_Detached_Post;
+      News_List : Post_List := All_Posts
+        .Filter(Flag => 1)
+        .Limit(1)
+        .Order_By(Desc(Posts.Id))
+        .Get(Session);
+   begin
+      if News_List.Has_Row then
+         Result := News_List.Element.Detach;
+      end if;
+
+      return Result;
+   end Get_Latest_News;
 end;

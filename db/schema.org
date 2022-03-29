@@ -6,13 +6,14 @@
 | description  | TEXT                       | NOT NULL                |   |                              |
 | snatches     | INTEGER                    | NOT NULL                |   | Total number of downloads    |
 
-| TABLE      | users         | user                    |   |   |
-| id         | AUTOINCREMENT | PK                      |   |   |
-| username   | TEXT          | NOT NULL, UNIQUE, INDEX |   |   |
-| password   | TEXT          | NOT NULL                |   |   |
-| passkey    | TEXT          | NOT NULL, UNIQUE, INDEX |   |   |
-| uploaded   | BIGINT        |                         | 0 |   |
-| downloaded | BIGINT        |                         | 0 |   |
+| TABLE      | users         | user                    |   |                     |
+| id         | AUTOINCREMENT | PK                      |   |                     |
+| username   | TEXT          | NOT NULL, UNIQUE, INDEX |   |                     |
+| password   | TEXT          | NOT NULL                |   |                     |
+| passkey    | TEXT          | NOT NULL, UNIQUE, INDEX |   |                     |
+| uploaded   | BIGINT        |                         | 0 |                     |
+| downloaded | BIGINT        |                         | 0 |                     |
+| role       | INTEGER       | NOT NULL                | 0 | 0 = user, 1 = admin |
 
 | TABLE   | config        | config   |   |   |
 | id      | AUTOINCREMENT | PK       |   |   |
@@ -39,3 +40,4 @@
 | content     | TEXT                     | NOT NULL |   |                                            |
 | by_user     | FK users(created_posts)  | NOT NULL |   |                                            |
 | parent_post | FK posts(children_posts) |          |   | The ID of the post that started the thread |
+| flag        | INTEGER                  | NOT NULL | 0 | 0 = nothing, 1 = news                      |

@@ -26,6 +26,39 @@
          margin-top: 1em;
          margin-bottom: 1em;
      }
+
+     .news-box {
+         margin-top: 2em;
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%);
+
+         width: 60%;
+     }
+
+     .content-box {
+         background: var(--panel-color);
+         border: hidden;
+         border-radius: 10px;
+
+         padding: 10px;
+     }
+
+     .content-box p {
+         margin: 0;
+
+         white-space: pre-line;
+     }
+
+     .title {
+         font-weight: bold;
+         font-size: 28px;
+     }
+
+     .subtitle {
+         padding-top: 5px;
+         padding-bottom: 10px;
+     }
     </style>
 </head>
 <body>
@@ -56,5 +89,20 @@
         <p>
             Current leechers: <b>@_current_leechers_@</b>
         </p>
+
+        @@IF@@ @_EXIST:news_title_@
+        <div class="news-box">
+            <div>
+                <a href="/post/@_news_id_@" class="title link-button">@_news_title_@</a>
+                <div class="subtitle">
+                    <a class="link-button" href="/search?uploader=@_news_author_id_@">@_news_author_@</a>
+                </div>
+            </div>
+
+            <div class="content-box">
+                @_news_content_@
+            </div>
+        </div>
+        @@END_IF@@
     </div>
 </body>

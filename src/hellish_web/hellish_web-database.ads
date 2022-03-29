@@ -42,4 +42,5 @@ package Hellish_Web.Database is
                          Offset : Natural;
                          Limit : Integer;
                          Total_Count : out Natural) return Post_List;
+   function Get_Latest_News return Detached_Post'Class;
 end;

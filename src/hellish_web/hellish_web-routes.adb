@@ -13,7 +13,7 @@ with Gnat.SHA1;
 with GNAT.Command_Line;
 with GNAT.Traceback.Symbolic;
 
-with Markdown;
+with Markdown; use Markdown;
 
 with
   Aws.Cookie,
@@ -46,6 +46,11 @@ with Hellish_Web.Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Routes is
+   Default_Md_Flags : Markdown.Parser_Flag := Md_Flag_No_Html_Blocks
+     or Md_Flag_No_Html_Spans
+     or Md_Flag_Permissive_Url_Autolinks
+     or Md_Flag_Strikethrough;
+
    function To_Hex_string(Input : String) return String is
       Result : Unbounded_String;
    begin
@@ -292,6 +297,20 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("user_id", The_User.Id));
       end;
 
+      declare
+         Latest_News : Detached_Post'Class := Database.Get_Latest_News;
+         News_Author : Detached_User'Class := No_Detached_User;
+      begin
+         if Latest_News /= Detached_Post'Class(No_Detached_Post) then
+            News_Author := Database.Get_User(Latest_News.By_User);
+            Insert(Translations, Assoc("news_id", Latest_News.Id));
+            Insert(Translations, Assoc("news_title", Templates_Parser.Utils.Web_Escape(Latest_news.Title)));
+            Insert(Translations, Assoc("news_content", Markdown.To_Html(Latest_News.Content, Default_Md_Flags)));
+            Insert(Translations, Assoc("news_author", News_Author.Username));
+            Insert(Translations, Assoc("news_author_id", News_author.Id));
+         end if;
+      end;
+
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/index.html", Translations)));
    end Dispatch;
@@ -470,7 +489,6 @@ package body Hellish_Web.Routes is
       Match(View_Id_Matcher, Uri, Matches);
        declare
          use Bencoder;
-         use Markdown;
 
          Match : Match_Location := Matches(1);
          Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
@@ -491,11 +509,7 @@ package body Hellish_Web.Routes is
          Html_Name : String := Templates_Parser.Utils.Web_Escape(The_Torrent.Display_Name);
          -- This both translates markdown to html and escapes whatever html the text might've had,
          -- so should be safe
-         Html_Desc : String := Markdown.To_Html(The_Torrent.Description,
-                                                Md_Flag_No_Html_Blocks
-                                                  or Md_Flag_No_Html_Spans
-                                                  or Md_Flag_Permissive_Url_Autolinks
-                                                  or Md_Flag_Strikethrough);
+         Html_Desc : String := Markdown.To_Html(The_Torrent.Description, Default_Md_Flags);
 
          The_User : Detached_User'Class := Database.Get_User(Username);
       begin
@@ -746,16 +760,10 @@ package body Hellish_Web.Routes is
             end;
          end if;
          declare
-            use Markdown;
-
             Html_Title : String := Templates_Parser.Utils.Web_Escape(Post.Title);
             -- This both translates markdown to html and escapes whatever html the text might've had,
             -- so should be safe
-            Post_Content : String := Markdown.To_Html(Post.Content,
-                                                Md_Flag_No_Html_Blocks
-                                                  or Md_Flag_No_Html_Spans
-                                                  or Md_Flag_Permissive_Url_Autolinks
-                                                  or Md_Flag_Strikethrough);
+            Post_Content : String := Markdown.To_Html(Post.Content, Default_Md_Flags);
          begin
             Insert(Translations, Assoc("id", Post.Id));
             Insert(Translations, Assoc("title", Html_Title));
@@ -785,11 +793,7 @@ package body Hellish_Web.Routes is
                   Reply_Ids := Reply_Ids & Reply.Id;
                   Replies_Authors := Replies_Authors & Reply_Author.Username;
                   Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
-                  Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content,
-                                                                        Md_Flag_No_Html_Blocks
-                                                                          or Md_Flag_No_Html_Spans
-                                                                          or Md_Flag_Permissive_Url_Autolinks
-                                                                          or Md_Flag_Strikethrough);
+                  Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content, Default_Md_Flags);
 
                   Replies.Next;
                end loop;
@@ -831,14 +835,20 @@ package body Hellish_Web.Routes is
                                 Request : in Status.Data) return Response.Data is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+      The_User : Detached_User'Class := No_Detached_user;
    begin
       if not Database.User_Exists(Username) then
          -- Redirect to the login page
          return Response.Url(Location => "/login");
       end if;
 
+      The_User := Database.Get_User(Username);
+      Insert(Translations, Assoc("admin", The_User.Role = 1));
+
       return Response.Build(Mime.Text_Html,
-                            String'(Templates_Parser.Parse("assets/post_create.html")));
+                               String'(Templates_Parser.Parse("assets/post_create.html", Translations)));
    end Dispatch;
 
    -- API
@@ -1062,6 +1072,7 @@ package body Hellish_Web.Routes is
       Title : String := Params.Get("title");
       Content : String := Params.Get("content");
       Parent : Integer := (if Params.Exist("parent") then Natural'Value(Params.Get("parent")) else -1);
+      Flag : Integer := (if Params.Exist("flag") then Natural'Value(Params.Get("flag")) else 0);
 
       Post : Detached_Post'Class := New_Post;
    begin
@@ -1078,6 +1089,9 @@ package body Hellish_Web.Routes is
       end if;
       if Parent /= -1 then
          Post.Set_Parent_Post(Parent);
+      end if;
+      if Flag = 1 and The_User.Role = 1 then
+         Post.Set_Flag(Flag);
       end if;
 
       Database.Create_Post(Post);

@@ -53,7 +53,7 @@ package Orm is
    No_Invite : constant Invite;
 
    type Post is new Orm_Element with null record;
-   type Post_DDR is new Detached_Data (7) with private;
+   type Post_DDR is new Detached_Data (8) with private;
    type Detached_Post is  --  Get() returns a Post_DDR
    new Sessions.Detached_Element with private;
    type Detached_Post_Access is access all Detached_Post'Class;
@@ -77,7 +77,7 @@ package Orm is
    No_User_Torrent_Stat : constant User_Torrent_Stat;
 
    type User is new Orm_Element with null record;
-   type User_DDR is new Detached_Data (6) with private;
+   type User_DDR is new Detached_Data (7) with private;
    type Detached_User is  --  Get() returns a User_DDR
    new Sessions.Detached_Element with private;
    type Detached_User_Access is access all Detached_User'Class;
@@ -158,6 +158,11 @@ package Orm is
    function Password (Self : User) return String;
    function Password (Self : Detached_User) return String;
    procedure Set_Password (Self : Detached_User; Value : String);
+
+   function Role (Self : User) return Integer;
+   function Role (Self : Detached_User) return Integer;
+   procedure Set_Role (Self : Detached_User; Value : Integer);
+   --  0 = user, 1 = admin
 
    function Uploaded (Self : User) return Long_Long_Integer;
    function Uploaded (Self : Detached_User) return Long_Long_Integer;
@@ -317,6 +322,11 @@ package Orm is
    function Content (Self : Post) return String;
    function Content (Self : Detached_Post) return String;
    procedure Set_Content (Self : Detached_Post; Value : String);
+
+   function Flag (Self : Post) return Integer;
+   function Flag (Self : Detached_Post) return Integer;
+   procedure Set_Flag (Self : Detached_Post; Value : Integer);
+   --  0 = nothing, 1 = news
 
    function Id (Self : Post) return Integer;
    function Id (Self : Detached_Post) return Integer;
@@ -534,7 +544,8 @@ package Orm is
       Password   : String := No_Update;
       Passkey    : String := No_Update;
       Uploaded   : Long_Long_Integer := -1;
-      Downloaded : Long_Long_Integer := -1)
+      Downloaded : Long_Long_Integer := -1;
+      Role       : Integer := -1)
      return Users_Managers;
 
    function Get_User
@@ -623,7 +634,8 @@ package Orm is
       Title       : String := No_Update;
       Content     : String := No_Update;
       By_User     : Integer := -1;
-      Parent_Post : Integer := -1)
+      Parent_Post : Integer := -1;
+      Flag        : Integer := -1)
      return Posts_Managers;
 
    function Get_Post
@@ -730,11 +742,12 @@ private
     end record;
     type Invite_Data is access all Invite_DDR;
     
-    type Post_DDR is new Detached_Data (7) with record
+    type Post_DDR is new Detached_Data (8) with record
        ORM_By_User        : Integer := -1;
        ORM_Content        : Unbounded_String := Null_Unbounded_String;
        ORM_FK_By_User     : Detached_User_Access := null;
        ORM_FK_Parent_Post : Detached_Post_Access := null;
+       ORM_Flag           : Integer := 0;
        ORM_Id             : Integer := -1;
        ORM_Parent_Post    : Integer := -1;
        ORM_Title          : Unbounded_String := Null_Unbounded_String;
@@ -762,11 +775,12 @@ private
     end record;
     type User_Torrent_Stat_Data is access all User_Torrent_Stat_DDR;
     
-    type User_DDR is new Detached_Data (6) with record
+    type User_DDR is new Detached_Data (7) with record
        ORM_Downloaded    : Long_Long_Integer := 0;
        ORM_Id            : Integer := -1;
        ORM_Passkey       : Unbounded_String := Null_Unbounded_String;
        ORM_Password      : Unbounded_String := Null_Unbounded_String;
+       ORM_Role          : Integer := 0;
        ORM_Uploaded      : Long_Long_Integer := 0;
        ORM_Username      : Unbounded_String := Null_Unbounded_String;
     end record;

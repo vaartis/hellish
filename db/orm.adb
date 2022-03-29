@@ -37,16 +37,17 @@ package body Orm is
    F_Invites_By_User   : constant := 3;
    F_Invites_For_User  : constant := 4;
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
-   Upto_Invites_1 : constant Counts := ((5,5),(11,11),(11,11),(11,11));
+   Upto_Invites_1 : constant Counts := ((5,5),(12,12),(12,12),(12,12));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
    F_Posts_Id          : constant := 0;
    F_Posts_Title       : constant := 1;
    F_Posts_Content     : constant := 2;
    F_Posts_By_User     : constant := 3;
    F_Posts_Parent_Post : constant := 4;
-   Counts_Posts : constant Counts := ((5,5),(11,16),(11,27),(11,38));
-   Upto_Posts_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
-   Upto_Posts_1 : constant Counts := ((5,5),(11,11),(11,11),(11,11));
+   F_Posts_Flag        : constant := 5;
+   Counts_Posts : constant Counts := ((6,6),(13,19),(13,32),(13,45));
+   Upto_Posts_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
+   Upto_Posts_1 : constant Counts := ((6,6),(13,13),(13,13),(13,13));
    Alias_Posts : constant Alias_Array := (-1,3,4,-1,0,7,8,1,2,11,12,3,4);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
@@ -54,7 +55,7 @@ package body Orm is
    F_Torrents_Display_Name : constant := 3;
    F_Torrents_Description  : constant := 4;
    F_Torrents_Snatches     : constant := 5;
-   Counts_Torrents : constant Counts := ((6,6),(12,12),(12,12),(12,12));
+   Counts_Torrents : constant Counts := ((6,6),(13,13),(13,13),(13,13));
    Upto_Torrents_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
    F_User_Torrent_Stats_By_User    : constant := 0;
@@ -62,7 +63,7 @@ package body Orm is
    F_User_Torrent_Stats_Uploaded   : constant := 2;
    F_User_Torrent_Stats_Downloaded : constant := 3;
    Upto_User_Torrent_Stats_0 : constant Counts := ((4,4),(4,4),(4,4),(4,4));
-   Upto_User_Torrent_Stats_1 : constant Counts := ((4,4),(10,10),(10,10),(10,10));
+   Upto_User_Torrent_Stats_1 : constant Counts := ((4,4),(11,11),(11,11),(11,11));
    Alias_User_Torrent_Stats : constant Alias_Array := (-1,3,4,-1,-1,6,0);
    F_Users_Id         : constant := 0;
    F_Users_Username   : constant := 1;
@@ -70,7 +71,8 @@ package body Orm is
    F_Users_Passkey    : constant := 3;
    F_Users_Uploaded   : constant := 4;
    F_Users_Downloaded : constant := 5;
-   Counts_Users : constant Counts := ((6,6),(6,6),(6,6),(6,6));
+   F_Users_Role       : constant := 6;
+   Counts_Users : constant Counts := ((7,7),(7,7),(7,7),(7,7));
    Alias_Users : constant Alias_Array := (0 => -1);
 
    pragma Warnings (On);
@@ -670,6 +672,24 @@ package body Orm is
       return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Downloaded;
    end Downloaded;
 
+   ----------
+   -- Flag --
+   ----------
+
+   function Flag (Self : Post) return Integer is
+   begin
+      return Integer_Value (Self, F_Posts_Flag);
+   end Flag;
+
+   ----------
+   -- Flag --
+   ----------
+
+   function Flag (Self : Detached_Post) return Integer is
+   begin
+      return Post_Data (Self.Unchecked_Get).ORM_Flag;
+   end Flag;
+
    --------------
    -- For_User --
    --------------
@@ -1026,6 +1046,24 @@ package body Orm is
    begin
       return To_String (User_Data (Self.Unchecked_Get).ORM_Password);
    end Password;
+
+   ----------
+   -- Role --
+   ----------
+
+   function Role (Self : User) return Integer is
+   begin
+      return Integer_Value (Self, F_Users_Role);
+   end Role;
+
+   ----------
+   -- Role --
+   ----------
+
+   function Role (Self : Detached_User) return Integer is
+   begin
+      return User_Data (Self.Unchecked_Get).ORM_Role;
+   end Role;
 
    --------------
    -- Snatches --
@@ -1462,7 +1500,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Post_DDR'
-              (Detached_Data with Field_Count => 7, others => <>));
+              (Detached_Data with Field_Count => 8, others => <>));
       end if;
 
       Tmp := Post_Data (Result.Unchecked_Get);
@@ -1482,6 +1520,7 @@ package body Orm is
       Tmp.ORM_Content        := To_Unbounded_String (String_Value (Self, F_Posts_Content));
       Tmp.ORM_FK_By_User     := FK_By_User;
       Tmp.ORM_FK_Parent_Post := FK_Parent_Post;
+      Tmp.ORM_Flag           := Integer_Value (Self, F_Posts_Flag);
       Tmp.ORM_Id             := Integer_Value (Self, F_Posts_Id);
       Tmp.ORM_Parent_Post    := Integer_Value (Self, F_Posts_Parent_Post);
       Tmp.ORM_Title          := To_Unbounded_String (String_Value (Self, F_Posts_Title));
@@ -1583,7 +1622,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (User_DDR'
-              (Detached_Data with Field_Count => 6, others => <>));
+              (Detached_Data with Field_Count => 7, others => <>));
       end if;
 
       Tmp := User_Data (Result.Unchecked_Get);
@@ -1592,6 +1631,7 @@ package body Orm is
       Tmp.ORM_Id            := Integer_Value (Self, F_Users_Id);
       Tmp.ORM_Passkey       := To_Unbounded_String (String_Value (Self, F_Users_Passkey));
       Tmp.ORM_Password      := To_Unbounded_String (String_Value (Self, F_Users_Password));
+      Tmp.ORM_Role          := Integer_Value (Self, F_Users_Role);
       Tmp.ORM_Uploaded      := Bigint_Value (Self, F_Users_Uploaded);
       Tmp.ORM_Username      := To_Unbounded_String (String_Value (Self, F_Users_Username));
       Session.Persist (Result);
@@ -1709,7 +1749,8 @@ package body Orm is
          & Table.Title
          & Table.Content
          & Table.By_User
-         & Table.Parent_Post;
+         & Table.Parent_Post
+         & Table.Flag;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -1865,7 +1906,8 @@ package body Orm is
          & Table.Password
          & Table.Passkey
          & Table.Uploaded
-         & Table.Downloaded;
+         & Table.Downloaded
+         & Table.Role;
       end if;
       From := Empty_Table_List;
    end Do_Query_Users;
@@ -1920,7 +1962,8 @@ package body Orm is
       Password   : String := No_Update;
       Passkey    : String := No_Update;
       Uploaded   : Long_Long_Integer := -1;
-      Downloaded : Long_Long_Integer := -1)
+      Downloaded : Long_Long_Integer := -1;
+      Role       : Integer := -1)
      return Users_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -1943,6 +1986,9 @@ package body Orm is
       end if;
       if Downloaded /= -1 then
          C := C and DBA.Users.Downloaded = Downloaded;
+      end if;
+      if Role /= -1 then
+         C := C and DBA.Users.Role = Role;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -2047,7 +2093,8 @@ package body Orm is
       Title       : String := No_Update;
       Content     : String := No_Update;
       By_User     : Integer := -1;
-      Parent_Post : Integer := -1)
+      Parent_Post : Integer := -1;
+      Flag        : Integer := -1)
      return Posts_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2067,6 +2114,9 @@ package body Orm is
       end if;
       if Parent_Post /= -1 then
          C := C and DBA.Posts.Parent_Post = Parent_Post;
+      end if;
+      if Flag /= -1 then
+         C := C and DBA.Posts.Flag = Flag;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -2582,6 +2632,9 @@ package body Orm is
             end;
          end if;
       end if;
+      if Mask (6) then
+         A := A & (DBA.Posts.Flag = D.ORM_Flag);
+      end if;
       if Missing_PK then
          Q := SQL_Insert (A);
       else
@@ -2743,6 +2796,9 @@ package body Orm is
       end if;
       if Mask (6) then
          A := A & (DBA.Users.Downloaded = D.ORM_Downloaded);
+      end if;
+      if Mask (7) then
+         A := A & (DBA.Users.Role = D.ORM_Role);
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -3407,6 +3463,18 @@ package body Orm is
       Self.Set_Modified (4);
    end Set_Downloaded;
 
+   --------------
+   -- Set_Flag --
+   --------------
+
+   procedure Set_Flag (Self : Detached_Post; Value : Integer)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Flag := Value;
+      Self.Set_Modified (6);
+   end Set_Flag;
+
    ------------------
    -- Set_For_User --
    ------------------
@@ -3537,6 +3605,18 @@ package body Orm is
       D.ORM_Password := To_Unbounded_String (Value);
       Self.Set_Modified (3);
    end Set_Password;
+
+   --------------
+   -- Set_Role --
+   --------------
+
+   procedure Set_Role (Self : Detached_User; Value : Integer)
+   is
+      D : constant User_Data := User_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Role := Value;
+      Self.Set_Modified (7);
+   end Set_Role;
 
    ------------------
    -- Set_Snatches --

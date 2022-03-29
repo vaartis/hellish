@@ -1078,20 +1078,24 @@ package body Hellish_Web.Routes is
       Invite : String := Params.Get("invite");
 
       Min_Name_Length : constant Positive := 1;
+      Max_Name_Length : constant Positive := 32;
       Min_Pwd_Length : constant Positive := 8;
+      Max_Pwd_Length : constant Positive := 128;
 
       package Indefinite_String_Holders is new Ada.Containers.Indefinite_Holders(String);
       use Indefinite_String_Holders;
 
       Error_String : Indefinite_String_Holders.Holder;
    begin
-      if Username'Length < Min_Name_Length then
-         Error_String := To_Holder("Username must be at least" & Min_Name_Length'Image & " characters long");
+      if Username'Length < Min_Name_Length and Username'Length > Max_Name_Length then
+         Error_String := To_Holder("Username must be at least" & Min_Name_Length'Image & " characters long and at most"
+                                     & Max_Name_Length'Image & " characters long");
 
          goto Finish;
       end if;
-      if Password'Length < Min_Pwd_Length then
-         Error_String := To_Holder("Password must be at least" & Min_Pwd_Length'Image & " characters long");
+      if Password'Length < Min_Pwd_Length or Password'Length > Max_Pwd_Length then
+         Error_String := To_Holder("Password must be at least" & Min_Pwd_Length'Image & " characters long and at most"
+                                  & Max_Pwd_Length'Image & " characters long");
 
          goto Finish;
       end if;

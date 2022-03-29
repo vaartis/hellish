@@ -1,9 +1,6 @@
 -- Submodules
 with "deps/libsodium-ada/default.gpr";
 
--- From the system
-with "gnatcoll_postgres.gpr";
-
 with "config/hellish_config.gpr";
 project Hellish is
 
@@ -83,12 +80,11 @@ project Hellish is
    end Compiler;
 
    package Binder is
-      for Switches ("Ada") use ("-Es"); --  Symbolic traceback
+      for Switches ("Ada") use ("-Es", "-static"); --  Symbolic traceback
    end Binder;
 
    package Linker is
       for Switches ("Ada") use ("-lsodium",
                                 "-Lobj/md4c/src/", "-lmd4c-html", "-lmd4c");
    end Linker;
-
 end Hellish;

@@ -8,8 +8,12 @@ maintainers-logins = ["vaartis"]
 
 executables = ["hellish"]
 
+project-files = ["hellish_aggregate.gpr"]
+
 [[depends-on]]  # Added by alr
 aws = "^21.0.0"  # Added by alr
+[[depends-on]]  # Added by alr
+gnatcoll_postgres = "^22.0.0"  # Added by alr
 
 [[actions]]
 type = "pre-build"

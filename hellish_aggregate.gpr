@@ -1,0 +1,5 @@
+aggregate project Hellish_Aggregate is
+   for Project_Files use ("hellish.gpr");
+
+   for external("LIBRARY_TYPE") use "static";
+end Hellish_Aggregate;

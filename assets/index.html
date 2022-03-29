@@ -65,20 +65,20 @@
     @@INCLUDE@@ navbar.html
 
     <div class="user-info">
-        <a class="link-button" href="/search?uploader=@_user_id_@">@_username_@</a>
+        <a href="/search?uploader=@_user_id_@">@_username_@</a>
         <div>
             <span class="upload">▲ @_uploaded_@</span>
             <span class="download">▼ @_downloaded_@</span>
         </div>
         <hr>
         <div>
-            <a class="link-button user-button" href="/upload">Upload</a>
-            <a class="link-button user-button" href="/invite">Invite</a>
-            <a class="link-button user-button" href="/post/create">New post</a>
+            <a class="user-button" href="/upload">Upload</a>
+            <a class="user-button" href="/invite">Invite</a>
+            <a class="user-button" href="/post/create">New post</a>
         </div>
         <hr>
         <div>
-            <a class="link-button" href="/api/user/logout">Log out</a>
+            <a href="/api/user/logout">Log out</a>
         </div>
     </div>
 
@@ -93,9 +93,9 @@
         @@IF@@ @_EXIST:news_title_@
         <div class="news-box">
             <div>
-                <a href="/post/@_news_id_@" class="title link-button">@_news_title_@</a>
+                <a href="/post/@_news_id_@" class="title">@_news_title_@</a>
                 <div class="subtitle">
-                    <a class="link-button" href="/search?uploader=@_news_author_id_@">@_news_author_@</a>
+                    <a href="/search?uploader=@_news_author_id_@">@_news_author_@</a>
                 </div>
             </div>
 

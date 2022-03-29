@@ -76,10 +76,10 @@
             @@TABLE@@
             <tr class="search-line">
                 <td class="torrent-name">
-                    <a class="link-button" href="/view/@_torrent_id_@">@_torrent_name_@</a>
+                    <a href="/view/@_torrent_id_@">@_torrent_name_@</a>
                 </td>
                 <td>
-                    <a class="link-button" href="/search?uploader=@_torrent_uploader_id_@">@_torrent_uploader_@</i>
+                    <a href="/search?uploader=@_torrent_uploader_id_@">@_torrent_uploader_@</i>
                 </td>
             </tr>
             @@END_TABLE@@
@@ -93,7 +93,7 @@
             @@-- Some way to select an inbetween page?
             @_page_@
             @@ELSE@@
-            <a class="link-button" href="@_page_address_@">@_page_@</a>
+            <a href="@_page_address_@">@_page_@</a>
             @@END_IF@@
 
             @@END_TABLE@@

@@ -86,12 +86,12 @@
             <div>
                 <span class="title">@_title_@</span>
                 <div class="subtitle">
-                    <a class="link-button" href="/search?uploader=@_author_id_@">@_author_@</a>
+                    <a href="/search?uploader=@_author_id_@">@_author_@</a>
 
                     @@IF@@ @_is_author_@
                     <div class="post-actions">
                         [
-                        <a class="link-button" href="/post/create?update=@_id_@">Edit</a>
+                        <a href="/post/create?update=@_id_@">Edit</a>
                         ]
                     </div>
                     @@END_IF@@
@@ -108,12 +108,12 @@
             <div id="child-@_reply_id_@">
                 <div>
                     <div class="subtitle">
-                        <a class="link-button" href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
+                        <a href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
 
                         @@IF@@ @_reply_is_author_@
                         <span class="post-actions">
                             [
-                            <a class="link-button" href="/post/create?update=@_reply_id_@">Edit</a>
+                            <a href="/post/create?update=@_reply_id_@">Edit</a>
                             ]
                         </span>
                         @@END_IF@@
@@ -135,7 +135,7 @@
             @@-- Some way to select an inbetween page?
             @_page_@
             @@ELSE@@
-            <a class="link-button" href="@_page_address_@">@_page_@</a>
+            <a href="@_page_address_@">@_page_@</a>
             @@END_IF@@
 
             @@END_TABLE@@

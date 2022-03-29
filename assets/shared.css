@@ -25,7 +25,7 @@ body {
     color: var(--text-color);
 }
 
-.link-button {
+a {
     color: var(--text-color);
     text-decoration: none;
     font-weight: bold;

@@ -74,7 +74,7 @@
             @@TABLE@@
             <tr class="search-line">
                 <td class="post-title">
-                    <a class="link-button" href="/post/@_post_id_@">@_post_title_@</a>
+                    <a href="/post/@_post_id_@">@_post_title_@</a>
                     @@IF@@ not @_IS_EMPTY:post_flag_@
                     <span class="post-flag">
                         <i>[ @_post_flag_@ ]</i>
@@ -82,7 +82,7 @@
                     @@END_IF@@
                 </td>
                 <td>
-                    <a class="link-button" href="/search?uploader=@_post_author_id_@">@_post_author_@</i>
+                    <a href="/search?uploader=@_post_author_id_@">@_post_author_@</i>
                 </td>
             </tr>
             @@END_TABLE@@
@@ -96,7 +96,7 @@
             @@-- Some way to select an inbetween page?
             @_page_@
             @@ELSE@@
-            <a class="link-button" href="@_page_address_@">@_page_@</a>
+            <a href="@_page_address_@">@_page_@</a>
             @@END_IF@@
 
             @@END_TABLE@@

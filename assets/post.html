@@ -141,7 +141,7 @@
         @@END_IF@@        
 
         <form id="post-form" class="new-post-form" action="/api/post/create?parent=@_id_@" method="POST">
-            <textarea form="post-form" class="hellish-input-field post-input" type="textbox"
+            <textarea required form="post-form" class="hellish-input-field post-input" type="textbox"
                       name="content" rows="15"></textarea>
             <input class="post-button" type="submit" value="Post!">
         </form>

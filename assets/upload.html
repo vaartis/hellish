@@ -89,7 +89,7 @@
                     <td>
                         <input required class="hellish-input-field upload-input" name="name"
                                @@IF@@ @_EXIST:update_@
-                               value="@_update_name_@"
+                               value="@_WEB_ESCAPE:update_name_@"
                                @@END_IF@@
                         >
                     </td>

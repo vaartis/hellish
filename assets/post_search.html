@@ -61,7 +61,7 @@
         <form action="/post/search" method="GET">
             <input class="search-input hellish-input-field" name="query"
                    @@IF@@ @_EXIST:query_@
-                   value="@_query_@"
+                   value="@_WEB_ESCAPE:query_@"
                    @@END_IF@@
             >
             <input class="search-button" type="submit" value="Search!">

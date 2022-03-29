@@ -67,16 +67,16 @@
             @@IF@@ not @_reply_@
             <div class="title-block">
                 <label class="form-label" for="title-input">Title</label>
-                <input class="hellish-input-field title-input" name="title" id="title-input"
+                <input required class="hellish-input-field title-input" name="title" id="title-input"
                        @@IF@@ @_EXIST:update_@
-                       value="@_title_@"
+                       value="@_WEB_ESCAPE:title_@"
                        @@END_IF@@
                 >
             </div>
             @@END_IF@@
 
             <label class="form-label" for="content-input">Content</label>
-            <textarea form="post-form" class="hellish-input-field post-input" type="textbox"
+            <textarea required form="post-form" class="hellish-input-field post-input" type="textbox"
                       name="content" id="content-input" rows="15">@_content_@</textarea>
 
             @@IF@@ @_admin_@

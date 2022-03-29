@@ -1,3 +1,4 @@
+with Ada.Calendar; use Ada.Calendar;
 with Ada.Strings.Hash;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Indefinite_Hashed_Maps;
@@ -14,6 +15,7 @@ package Hellish_Web.Peers is
       Uploaded: Long_Long_Integer;
       Downloaded: Long_Long_Integer;
       Left: Long_Long_Integer;
+      Last_Seen : Time;
    end record;
 
    package Peer_Maps is new

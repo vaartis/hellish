@@ -5,7 +5,7 @@ with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Directories;
 with Ada.Containers.Indefinite_Holders;
-with Ada.Calendar;
+with Ada.Calendar; use Ada.Calendar;
 
 with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.SHA1;
@@ -202,7 +202,8 @@ package body Hellish_Web.Routes is
                                   Port => Positive'Value(Params.Get("port")),
                                   Uploaded => Long_Long_Integer'Value(Params.Get("uploaded")),
                                   Downloaded => Long_Long_Integer'Value(Params.Get("downloaded")),
-                                  Left => Long_Long_Integer'Value(Params.Get("left"))),
+                                  Left => Long_Long_Integer'Value(Params.Get("left")),
+                                  Last_Seen => Clock),
                                  User);
          if Params.Get("event") = "stopped" then
                Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));

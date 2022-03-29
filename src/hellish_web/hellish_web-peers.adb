@@ -46,6 +46,13 @@ package body Hellish_Web.Peers is
          Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """ from " &
                     To_String(Joined_Peer.Ip) & ":" & Trim(Joined_Peer.Port'Image, Ada.Strings.Left));
          Put_Line("There are now " & Trim(Torrent_Map(Info_Hash).Length'Image, Ada.Strings.Left) & " peers");
+
+         for Peer of Torrent_Map(Info_Hash)  loop
+            if Peer.Last_Seen + Duration(5 * 60) < Clock then
+               Put_Line("Peer " & To_String(Peer.Peer_Id) & " hasn't been seen for five minutes, assuming they left");
+               Torrent_Map(Info_Hash).Delete(To_String(Peer.Peer_Id));
+            end if;
+         end loop;
       end Add;
 
       procedure Remove(Info_Hash : String; Peer_Id : Unbounded_String) is

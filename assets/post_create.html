@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .content {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%);
+
+         margin-top: 100px;
+         width: 60%;
+     }
+
+     .post-input {
+         width: 50%;
+     }
+
+     .post-button {
+         padding: 0.8em;
+         margin-top: 1em;
+
+         font-weight: bold;
+         font-size: 18px;
+
+         background: var(--input-color);
+         color: var(--text-color);
+
+         border: hidden;
+         border-radius: 10px;
+
+         display: block;
+     }
+
+     .title-block {
+         margin-bottom: 10px;
+     }
+
+     .title-input {
+         width: 40%;
+         font-size: 18px;
+     }
+
+     .form-label {
+         display: block;
+         font-weight: bold;
+         font-size: 23px;
+     }
+    </style>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="content">
+        <form id="post-form" class="new-post-form" action="/api/post/create" method="POST">
+            <div class="title-block">
+                <label class="form-label" for="title-input">Title</label>
+                <input class="hellish-input-field title-input" name="title" id="title-input">
+            </div>
+
+            <label class="form-label" for="content-input">Content</label>
+            <textarea form="post-form" class="hellish-input-field post-input" type="textbox"
+                      name="content" id="content-input" rows="15"></textarea>
+            <input class="post-button" type="submit" value="Post!">
+        </form>
+    </div>
+</body>

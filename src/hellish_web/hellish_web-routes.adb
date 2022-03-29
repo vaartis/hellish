@@ -569,8 +569,6 @@ package body Hellish_Web.Routes is
       use Gnatcoll.Json;
       Result : Json_Value := Create_Object;
 
-      -- Always associate a new session with the request on login,
-      -- doesn't seem to work well otherwise
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
    begin
@@ -827,6 +825,20 @@ package body Hellish_Web.Routes is
                                   String'(Templates_Parser.Parse("assets/post.html", Translations)));
          end;
       end;
+   end Dispatch;
+
+   overriding function Dispatch(Handler : in Post_Create_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/post_create.html")));
    end Dispatch;
 
    -- API
@@ -1117,6 +1129,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/invite", Invite);
       Services.Dispatchers.Uri.Register(Root, "/search", Search);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Post);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/post/create", Post_Create);
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);

@@ -6,3 +6,4 @@ config/
 
 session.data
 uploads/
+_deploy/

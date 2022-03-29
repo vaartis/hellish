@@ -1,7 +1,6 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Float_Text_Io; use Ada.Float_Text_Io;
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Directories;
@@ -129,8 +128,8 @@ package body Hellish_Web.Routes is
    end Bytes_To_Printable;
 
    function User_Announce_Url(The_User : Detached_User'Class) return String is
-     -- TODO: HTTPS
-      ((if Https then "https://" else "http://") & Host & "/" & The_User.Passkey & "/announce");
+     ((if Https then "https://" else "http://") &
+        (if Server_Host /= "" then To_String(Server_Host) else Host) & "/" & The_User.Passkey & "/announce");
 
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
 
@@ -446,8 +445,7 @@ package body Hellish_Web.Routes is
       declare
          User : Detached_User'Class := Database.Get_User(Username);
       begin
-         Insert(Translations, Assoc("host", Host));
-         Insert(Translations, Assoc("passkey", User.Passkey));
+         Insert(Translations, Assoc("announce", User_Announce_Url(User)));
       end;
       if Update /= "" then
          declare
@@ -1237,15 +1235,20 @@ package body Hellish_Web.Routes is
    begin
       Server.Set_Unexpected_Exception_Handler(Http, Exception_Handler'Access);
 
-      case Getopt("-invite-not-required") is
-         when '-' =>
-            if Full_Switch = "-invite-not-required" then
-               Invite_Required := False;
-            elsif Full_Switch = "-https" then
-               Https := True;
-            end if;
-         when others => null;
-      end case;
+      loop
+      case Getopt("-invite-not-required -https -server-host=") is
+            when '-' =>
+               if Full_Switch = "-invite-not-required" then
+                  Invite_Required := False;
+               elsif Full_Switch = "-https" then
+                  Https := True;
+               elsif Full_Switch = "-server-host" then
+                  Server_Host := To_Unbounded_String(Parameter);
+               end if;
+            when others =>
+               exit;
+         end case;
+      end loop;
 
       Database.Init;
 

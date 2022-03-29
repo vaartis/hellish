@@ -6,6 +6,7 @@ with Aws.Server;
 with Aws.Services.Dispatchers.URI;
 
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 
 package Hellish_Web.Routes is
    use Aws;
@@ -106,6 +107,7 @@ private
    -- Additional options
    Invite_Required : Boolean := True;
    Https : Boolean := False;
+   Server_Host : Unbounded_String;
 
    Uploads_Path : constant String := "uploads/torrents/";
 end Hellish_Web.Routes;

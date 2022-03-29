@@ -288,26 +288,8 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("uploaded", Bytes_To_Printable(The_User.Uploaded)));
          Insert(Translations, Assoc("downloaded", Bytes_To_printable(The_User.Downloaded)));
 
-         Insert(Translations, Assoc("host", Host));
          Insert(Translations, Assoc("username", The_User.Username));
-         Insert(Translations, Assoc("passkey", The_User.Passkey));
-
-         declare
-            Torrent_Ids : Vector_Tag;
-            Torrent_Names : Vector_Tag;
-
-            List : Torrent_List := Database.Get_User_Torrents(Username);
-         begin
-            while List.Has_Row loop
-               Torrent_Names := Torrent_Names & List.Element.Display_Name;
-               Torrent_Ids := Torrent_Ids & List.Element.Id;
-
-               List.Next;
-            end loop;
-
-            Insert(Translations, Assoc("torrent_id", Torrent_Ids));
-            Insert(Translations, Assoc("torrent_name", Torrent_Names));
-         end;
+         Insert(Translations, Assoc("user_id", The_User.Id));
       end;
 
       return Response.Build(Mime.Text_Html,
@@ -525,6 +507,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("description", Html_Desc));
          Insert(Translations, Assoc("original_name", Original_File_Name));
          Insert(Translations, Assoc("uploader", Uploader.Username));
+         Insert(Translations, Assoc("uploader_id", Uploader.Id));
          Insert(Translations, Assoc("is_uploader", Uploader = The_user));
 
          if Bencoded_Info.Value.Contains(To_Unbounded_String("files")) then

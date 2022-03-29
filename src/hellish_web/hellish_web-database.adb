@@ -205,18 +205,6 @@ package body Hellish_Web.Database is
       end if;
    end Get_User_By_Passkey;
 
-   function Get_User_Torrents(Name : String) return Torrent_List is
-      use Hellish_Database;
-
-      The_User : Detached_User'Class := Get_User(Name);
-
-      Session : Session_Type := Get_New_Session;
-      Created_Manager : Torrents_Managers := The_User.Created_Torrents;
-      List : Torrent_List := Created_Manager.Get(Session);
-   begin
-      return List;
-   end Get_User_Torrents;
-
    function Get_Invited_Users(By_User : Detached_User'Class) return Invite_List is
       use Hellish_Database;
 

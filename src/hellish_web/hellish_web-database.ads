@@ -35,4 +35,11 @@ package Hellish_Web.Database is
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;
    procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class);
+
+   procedure Create_Post(The_Post : in out Detached_Post'Class);
+   function Get_Post(Id : Natural; Parent_Post : out Detached_Post'Class) return Detached_Post'Class;
+   function Post_Replies(Parent_Post : Integer;
+                         Offset : Natural;
+                         Limit : Integer;
+                         Total_Count : out Natural) return Post_List;
 end;

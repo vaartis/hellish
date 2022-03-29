@@ -14,11 +14,15 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Invite_DDR, Invite_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( Post_DDR, Post_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Torrent_DDR, Torrent_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( User_DDR, User_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( User_Torrent_Stat_DDR, User_Torrent_Stat_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+     (Detached_Post'Class, Detached_Post_Access);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
      (Detached_Torrent'Class, Detached_Torrent_Access);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
@@ -35,6 +39,15 @@ package body Orm is
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Upto_Invites_1 : constant Counts := ((5,5),(11,11),(11,11),(11,11));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
+   F_Posts_Id          : constant := 0;
+   F_Posts_Title       : constant := 1;
+   F_Posts_Content     : constant := 2;
+   F_Posts_By_User     : constant := 3;
+   F_Posts_Parent_Post : constant := 4;
+   Counts_Posts : constant Counts := ((5,5),(11,16),(11,27),(11,38));
+   Upto_Posts_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
+   Upto_Posts_1 : constant Counts := ((5,5),(11,11),(11,11),(11,11));
+   Alias_Posts : constant Alias_Array := (-1,3,4,-1,0,7,8,1,2,11,12,3,4);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
    F_Torrents_Created_By   : constant := 2;
@@ -70,6 +83,10 @@ package body Orm is
       Session : Session_Type)
      return Detached_Invite'Class;
    function Detach_No_Lookup
+     (Self    : Post'Class;
+      Session : Session_Type)
+     return Detached_Post'Class;
+   function Detach_No_Lookup
      (Self    : Torrent'Class;
       Session : Session_Type)
      return Detached_Torrent'Class;
@@ -84,7 +101,8 @@ package body Orm is
    --  Same as Detach, but does not check the session cache Same as Detach,
    --  but does not check the session cache Same as Detach, but does not check
    --  the session cache Same as Detach, but does not check the session cache
-   --  Same as Detach, but does not check the session cache
+   --  Same as Detach, but does not check the session cache Same as Detach, but
+   --  does not check the session cache
 
    procedure Do_Query_Config
      (Fields    : in out SQL_Field_List;
@@ -97,6 +115,16 @@ package body Orm is
       Pk_Only   : Boolean := False);
 
    procedure Do_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Do_Query_Posts
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -224,6 +252,30 @@ package body Orm is
 
    function "=" (Op1 : Detached_Invite; Op2 : Detached_Invite) return Boolean
    is
+   begin
+      if Op1.Is_Null then
+         return Op2.Is_Null;
+      elsif Op2.Is_Null then
+         return False;
+      else
+         return Integer'(Op1.Id) = Op2.Id;
+      end if;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Post; Op2 : Post) return Boolean is
+   begin
+      return Integer'(Op1.Id) = Op2.Id;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Detached_Post; Op2 : Detached_Post) return Boolean is
    begin
       if Op1.Is_Null then
          return Op2.Is_Null;
@@ -389,6 +441,92 @@ package body Orm is
       end if;
       return D.ORM_FK_By_User.all;
    end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Post) return Integer is
+   begin
+      return Integer_Value (Self, F_Posts_By_User);
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_Post) return Integer is
+   begin
+      return Post_Data (Self.Unchecked_Get).ORM_By_User;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Post) return User'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 then
+         return I_Users.Internal_Element
+           (Self,
+            Upto_Posts_0 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+
+         return Filter (All_Users, Id => Self.By_User)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_Post) return Detached_User'Class
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_By_User = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_By_User := new Detached_User'Class'
+           (Get_User (S, Id => D.ORM_By_User));
+      end if;
+      return D.ORM_FK_By_User.all;
+   end By_User;
+
+   -------------
+   -- Content --
+   -------------
+
+   function Content (Self : Post) return String is
+   begin
+      return String_Value (Self, F_Posts_Content);
+   end Content;
+
+   -------------
+   -- Content --
+   -------------
+
+   function Content (Self : Detached_Post) return String is
+   begin
+      return To_String (Post_Data (Self.Unchecked_Get).ORM_Content);
+   end Content;
 
    ----------------
    -- Created_By --
@@ -672,6 +810,24 @@ package body Orm is
       return Invite_Data (Self.Unchecked_Get).ORM_Id;
    end Id;
 
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Post) return Integer is
+   begin
+      return Integer_Value (Self, F_Posts_Id);
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Detached_Post) return Integer is
+   begin
+      return Post_Data (Self.Unchecked_Get).ORM_Id;
+   end Id;
+
    ---------------
    -- Info_Hash --
    ---------------
@@ -760,6 +916,81 @@ package body Orm is
       return D.ORM_FK_Of_Torrent.all;
    end Of_Torrent;
 
+   -----------------
+   -- Parent_Post --
+   -----------------
+
+   function Parent_Post (Self : Post) return Integer is
+   begin
+      return Integer_Value (Self, F_Posts_Parent_Post);
+   end Parent_Post;
+
+   -----------------
+   -- Parent_Post --
+   -----------------
+
+   function Parent_Post (Self : Detached_Post) return Integer is
+   begin
+      return Post_Data (Self.Unchecked_Get).ORM_Parent_Post;
+   end Parent_Post;
+
+   -----------------
+   -- Parent_Post --
+   -----------------
+
+   function Parent_Post (Self : Post) return Post'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 and then Self.Data.Follow_LJ then
+         return I_Posts.Internal_Element
+           (Self,
+            Upto_Posts_1 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Parent_Post";
+         end if;
+
+         return Filter (All_Posts, Id => Self.Parent_Post)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end Parent_Post;
+
+   -----------------
+   -- Parent_Post --
+   -----------------
+
+   function Parent_Post (Self : Detached_Post) return Detached_Post'Class
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_Parent_Post = null then
+         if D.ORM_Id = D.ORM_Parent_Post then
+            --  ??? Avoid reference cycle. Perhaps we could simply
+            --  avoid the cache for all foreign keys, and only
+            --  rely on the session cache for the elements instead
+            --  ??? Or use a weak reference
+            return Detached_Post'Class (Self);
+         end if;
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Parent_Post";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_Parent_Post := new Detached_Post'Class'
+           (Get_Post (S, Id => D.ORM_Parent_Post));
+      end if;
+      return D.ORM_FK_Parent_Post.all;
+   end Parent_Post;
+
    -------------
    -- Passkey --
    -------------
@@ -813,6 +1044,24 @@ package body Orm is
    begin
       return Torrent_Data (Self.Unchecked_Get).ORM_Snatches;
    end Snatches;
+
+   -----------
+   -- Title --
+   -----------
+
+   function Title (Self : Post) return String is
+   begin
+      return String_Value (Self, F_Posts_Title);
+   end Title;
+
+   -----------
+   -- Title --
+   -----------
+
+   function Title (Self : Detached_Post) return String is
+   begin
+      return To_String (Post_Data (Self.Unchecked_Get).ORM_Title);
+   end Title;
 
    --------------
    -- Uploaded --
@@ -942,6 +1191,68 @@ package body Orm is
       return Config_Data (Self.Unchecked_Get).ORM_Version;
    end Version;
 
+   --------------------
+   -- Children_Posts --
+   --------------------
+
+   function Children_Posts (Self : Post'Class) return Posts_Managers is
+   begin
+      return Filter (All_Posts, Parent_Post => Self.Id);
+   end Children_Posts;
+
+   --------------------
+   -- Children_Posts --
+   --------------------
+
+   function Children_Posts (Self : Detached_Post'Class) return Posts_Managers
+   is
+   begin
+      return Filter (All_Posts, Parent_Post => Self.Id);
+   end Children_Posts;
+
+   --------------------
+   -- Children_Posts --
+   --------------------
+
+   function Children_Posts (Self : I_Posts_Managers'Class) return Posts_Managers
+   is
+      Q : constant SQL_Query := I_Posts.Build_Query(Self, +DBA.Posts.Id);
+   begin
+      return All_Posts.Filter
+        (SQL_In(DBA.Posts.Parent_Post, Q));
+   end Children_Posts;
+
+   -------------------
+   -- Created_Posts --
+   -------------------
+
+   function Created_Posts (Self : User'Class) return Posts_Managers is
+   begin
+      return Filter (All_Posts, By_User => Self.Id);
+   end Created_Posts;
+
+   -------------------
+   -- Created_Posts --
+   -------------------
+
+   function Created_Posts (Self : Detached_User'Class) return Posts_Managers
+   is
+   begin
+      return Filter (All_Posts, By_User => Self.Id);
+   end Created_Posts;
+
+   -------------------
+   -- Created_Posts --
+   -------------------
+
+   function Created_Posts (Self : I_Users_Managers'Class) return Posts_Managers
+   is
+      Q : constant SQL_Query := I_Users.Build_Query(Self, +DBA.Users.Id);
+   begin
+      return All_Posts.Filter
+        (SQL_In(DBA.Posts.By_User, Q));
+   end Created_Posts;
+
    ----------------------
    -- Created_Torrents --
    ----------------------
@@ -1047,6 +1358,21 @@ package body Orm is
       end if;
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach (Self : Post'Class) return Detached_Post'Class
+   is
+      R : constant Detached_Post'Class := From_Cache (Self.Data.Session, Self.Id);
+   begin
+      if R.Is_Null then
+         return Detach_No_Lookup (Self, Self.Data.Session);
+      else
+         return R;
+      end if;
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -1114,6 +1440,51 @@ package body Orm is
       Tmp.ORM_For_User     := Integer_Value (Self, F_Invites_For_User);
       Tmp.ORM_Id           := Integer_Value (Self, F_Invites_Id);
       Tmp.ORM_Value        := To_Unbounded_String (String_Value (Self, F_Invites_Value));
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
+     (Self    : Post'Class;
+      Session : Session_Type)
+     return Detached_Post'Class
+   is
+      Default        : Detached_Post;
+      Result         : Detached_Post'Class := Detached_Post'Class (Session.Factory (Self, Default));
+      Fk_By_User     : Detached_User_Access;
+      Fk_Parent_Post : Detached_Post_Access;
+      Lj             : constant Boolean := Self.Data.Follow_LJ;
+      Tmp            : Post_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (Post_DDR'
+              (Detached_Data with Field_Count => 7, others => <>));
+      end if;
+
+      Tmp := Post_Data (Result.Unchecked_Get);
+      if Self.Depth > 0 then
+         FK_By_User := new Detached_User'Class'(
+            I_Users.Internal_Element
+              (Self, Upto_Posts_0 (Self.Depth, LJ)).Detach);
+         if LJ then
+            FK_Parent_Post := new Detached_Post'Class'(
+               I_Posts.Internal_Element
+                 (Self, Upto_Posts_1 (Self.Depth, LJ)).Detach);
+         end if;
+
+      end if;
+
+      Tmp.ORM_By_User        := Integer_Value (Self, F_Posts_By_User);
+      Tmp.ORM_Content        := To_Unbounded_String (String_Value (Self, F_Posts_Content));
+      Tmp.ORM_FK_By_User     := FK_By_User;
+      Tmp.ORM_FK_Parent_Post := FK_Parent_Post;
+      Tmp.ORM_Id             := Integer_Value (Self, F_Posts_Id);
+      Tmp.ORM_Parent_Post    := Integer_Value (Self, F_Posts_Parent_Post);
+      Tmp.ORM_Title          := To_Unbounded_String (String_Value (Self, F_Posts_Title));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1312,6 +1683,66 @@ package body Orm is
       end;
    end if;
    end Do_Query_Invites;
+
+   --------------------
+   -- Do_Query_Posts --
+   --------------------
+
+   procedure Do_Query_Posts
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False)
+   is
+      Table : T_Numbered_Posts(Aliases(Base));
+      C2    : Sql_Criteria;
+      T     : SQL_Table_List;
+   begin
+      if PK_Only then
+         Fields := Fields & Table.Id;
+      else
+         Fields := Fields & Table.Id
+         & Table.Title
+         & Table.Content
+         & Table.By_User
+         & Table.Parent_Post;
+      end if;
+      From := Empty_Table_List;
+      if Depth > 0 then
+
+         declare
+            FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
+            FK2 : T_Numbered_Posts(Aliases(Aliases(Base + 2)));
+         begin Criteria := Criteria
+         and Table.By_User = FK1.Id;
+         if Follow_LJ then
+            From := +Left_Join(Table, FK2, Table.Parent_Post=FK2.Id);
+         else
+            From := +Table;
+         end if;
+         C2 := No_Criteria;
+         Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
+         end if;
+         From := From & T;
+
+         if Follow_LJ then
+            C2 := No_Criteria;
+            Do_Query_Posts(Fields, T, C2,Aliases(Base + 2),
+               Aliases, Depth - 1, Follow_LJ);
+            if Depth > 1 then
+               Criteria := Criteria and C2;
+            end if;
+         end if;
+      end;
+   end if;
+   end Do_Query_Posts;
 
    -----------------------
    -- Do_Query_Torrents --
@@ -1606,6 +2037,41 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self        : Posts_Managers'Class;
+      Id          : Integer := -1;
+      Title       : String := No_Update;
+      Content     : String := No_Update;
+      By_User     : Integer := -1;
+      Parent_Post : Integer := -1)
+     return Posts_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : Posts_Managers;
+   begin
+      if Id /= -1 then
+         C := C and DBA.Posts.Id = Id;
+      end if;
+      if Title /= No_Update then
+         C := C and DBA.Posts.Title = Title;
+      end if;
+      if Content /= No_Update then
+         C := C and DBA.Posts.Content = Content;
+      end if;
+      if By_User /= -1 then
+         C := C and DBA.Posts.By_User = By_User;
+      end if;
+      if Parent_Post /= -1 then
+         C := C and DBA.Posts.Parent_Post = Parent_Post;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
@@ -1623,6 +2089,18 @@ package body Orm is
    begin
       Unchecked_Free (Self.ORM_FK_By_User);
       Unchecked_Free (Self.ORM_FK_For_User);
+
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
+   overriding procedure Free (Self : in out Post_Ddr) is
+   begin
+      Unchecked_Free (Self.ORM_FK_By_User);
+      Unchecked_Free (Self.ORM_FK_Parent_Post);
 
       Free (Detached_Data (Self));
    end Free;
@@ -1705,6 +2183,18 @@ package body Orm is
      return Detached_Invite'Class is
    begin
       return Detached_Invite'Class (Session.From_Cache ((4000000, Id), No_Detached_Invite));
+   end From_Cache;
+
+   ----------------
+   -- From_Cache --
+   ----------------
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Post'Class is
+   begin
+      return Detached_Post'Class (Session.From_Cache ((5000000, Id), No_Detached_Post));
    end From_Cache;
 
    ----------------
@@ -1794,6 +2284,50 @@ package body Orm is
          end;
       end if;
    end Get_Invite;
+
+   --------------
+   -- Get_Post --
+   --------------
+
+   function Get_Post
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Post'Class
+   is
+      R : constant Detached_Post'Class := From_Cache (Session, Id);
+   begin
+      if not R.Is_Null then
+         return R;
+      else
+
+         declare
+            M : Posts_Managers := Filter
+              (All_Posts,
+               Id => Id);
+            L : I_Posts.List;
+         begin
+            M.Select_Related
+              (Depth, Follow_Left_Join => Follow_Left_Join);
+            M.Limit (1);
+            L := M.Get(Session);
+            if not L.Has_Row then
+               return No_Detached_Post;
+            else
+
+               declare
+                  E : constant Post := L.Element;
+               begin
+                  --  Workaround bug in gnat which is missing a call
+                  --  to Finalize if we do not reset the list (K321-012)
+                  L := I_Posts.Empty_List;
+                  return E.Detach_No_Lookup (Session);
+               end;
+            end if;
+         end;
+      end if;
+   end Get_Post;
 
    -----------------
    -- Get_Torrent --
@@ -1989,6 +2523,83 @@ package body Orm is
    ----------------------
 
    overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Post;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      D          : constant Post_Data := Post_Data (Self.Unchecked_Get);
+      Q          : SQL_Query;
+      A          : Sql_Assignment := No_Assignment;
+      Missing_Pk : constant Boolean := D.ORM_Id = -1;
+      R          : Forward_Cursor;
+   begin
+      if Mask (2) then
+         A := A & (DBA.Posts.Title = To_String (D.ORM_Title));
+      end if;
+      if Mask (3) then
+         A := A & (DBA.Posts.Content = To_String (D.ORM_Content));
+      end if;
+      if Mask (4) then
+         if D.ORM_By_User /= -1 then
+            A := A & (DBA.Posts.By_User = D.ORM_By_User);
+         else
+
+            declare
+               D2 : constant User_Data :=
+               User_data (D.ORM_FK_By_User.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_By_User.all);
+               end if;
+
+               A := A & (DBA.Posts.By_User = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Mask (5) then
+         if D.ORM_Parent_Post /= -1 then
+            A := A & (DBA.Posts.Parent_Post = D.ORM_Parent_Post);
+         else
+
+            if Detached_Post'Class (Self) =
+            D.ORM_FK_Parent_Post.all
+            then
+               raise Self_Referencing with
+               "Post is self referencing";
+            end if;
+
+            declare
+               D2 : constant Post_Data :=
+               Post_data (D.ORM_FK_Parent_Post.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_Parent_Post.all);
+               end if;
+
+               A := A & (DBA.Posts.Parent_Post = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Missing_PK then
+         Q := SQL_Insert (A);
+      else
+         Q := SQL_Update (DBA.Posts, A, DBA.Posts.Id = D.ORM_Id);
+      end if;
+      R.Fetch (Self.Session.DB, Q);
+
+      if Missing_PK and then Success (Self.Session.DB) then
+         PK_Modified := True;
+         D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Posts.Id);
+      end if;
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
      (Self        : in out Detached_Torrent;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask)
@@ -2172,6 +2783,17 @@ package body Orm is
    -- Internal_Delete --
    ---------------------
 
+   overriding procedure Internal_Delete (Self : Detached_Post)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Execute (Self.Session.DB, SQL_Delete (DBA.Posts, DBA.Posts.Id = D.ORM_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
    overriding procedure Internal_Delete (Self : Detached_Torrent)
    is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
@@ -2231,6 +2853,22 @@ package body Orm is
       Do_Query_Invites(Fields, From, Criteria,
          0, Alias_Invites, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Invites;
+
+   --------------------------
+   -- Internal_Query_Posts --
+   --------------------------
+
+   procedure Internal_Query_Posts
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      Do_Query_Posts(Fields, From, Criteria,
+         0, Alias_Posts, Depth, Follow_LJ, PK_Only);
+   end Internal_Query_Posts;
 
    -----------------------------
    -- Internal_Query_Torrents --
@@ -2373,6 +3011,19 @@ package body Orm is
    -- Key --
    ---------
 
+   overriding function Key (Self : Post_Ddr) return Element_Key is
+   begin
+      if Self.ORM_Id = -1 then
+         return (5000000, No_Primary_Key);
+      else
+         return (5000000, Self.ORM_Id);
+      end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
    overriding function Key (Self : Torrent_Ddr) return Element_Key is
    begin
       if Self.ORM_Id = -1 then
@@ -2433,6 +3084,19 @@ package body Orm is
       return Result;
    end New_Invite;
 
+   --------------
+   -- New_Post --
+   --------------
+
+   function New_Post return Detached_Post'Class
+   is
+      Result : Detached_Post;
+      Data   : Post_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_Post;
+
    -----------------
    -- New_Torrent --
    -----------------
@@ -2486,6 +3150,24 @@ package body Orm is
          end if;
          if D.ORM_FK_For_User /= null then
             Self.Session.Persist (D.ORM_FK_For_User.all);
+         end if;
+      end if;
+   end On_Persist;
+
+   ----------------
+   -- On_Persist --
+   ----------------
+
+   overriding procedure On_Persist (Self : Detached_Post)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      if Persist_Cascade (Self.Session) then
+         if D.ORM_FK_By_User /= null then
+            Self.Session.Persist (D.ORM_FK_By_User.all);
+         end if;
+         if D.ORM_FK_Parent_Post /= null then
+            Self.Session.Persist (D.ORM_FK_Parent_Post.all);
          end if;
       end if;
    end On_Persist;
@@ -2598,6 +3280,49 @@ package body Orm is
          Self.Session.Persist (D.ORM_FK_By_User.all);
       end if;
    end Set_By_User;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User (Self : Detached_Post; Value : Integer)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value;
+      Self.Set_Modified (4);
+   end Set_By_User;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User (Self : Detached_Post; Value : Detached_User'Class)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value.Id;
+      D.ORM_FK_By_User := new Detached_User'Class'(Value);
+
+      Self.Set_Modified (4);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_By_User.all);
+      end if;
+   end Set_By_User;
+
+   -----------------
+   -- Set_Content --
+   -----------------
+
+   procedure Set_Content (Self : Detached_Post; Value : String)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Content := To_Unbounded_String (Value);
+      Self.Set_Modified (3);
+   end Set_Content;
 
    --------------------
    -- Set_Created_By --
@@ -2758,6 +3483,37 @@ package body Orm is
       end if;
    end Set_Of_Torrent;
 
+   ---------------------
+   -- Set_Parent_Post --
+   ---------------------
+
+   procedure Set_Parent_Post (Self : Detached_Post; Value : Integer)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Parent_Post);
+      D.ORM_Parent_Post := Value;
+      Self.Set_Modified (5);
+   end Set_Parent_Post;
+
+   ---------------------
+   -- Set_Parent_Post --
+   ---------------------
+
+   procedure Set_Parent_Post (Self : Detached_Post; Value : Detached_Post'Class)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Parent_Post);
+      D.ORM_Parent_Post := Value.Id;
+      D.ORM_FK_Parent_Post := new Detached_Post'Class'(Value);
+
+      Self.Set_Modified (5);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_Parent_Post.all);
+      end if;
+   end Set_Parent_Post;
+
    -----------------
    -- Set_Passkey --
    -----------------
@@ -2793,6 +3549,18 @@ package body Orm is
       D.ORM_Snatches := Value;
       Self.Set_Modified (6);
    end Set_Snatches;
+
+   ---------------
+   -- Set_Title --
+   ---------------
+
+   procedure Set_Title (Self : Detached_Post; Value : String)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Title := To_Unbounded_String (Value);
+      Self.Set_Modified (2);
+   end Set_Title;
 
    ------------------
    -- Set_Uploaded --

@@ -49,6 +49,31 @@ package Hellish_Database is
       is new T_Abstract_Invites (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   type T_Abstract_Posts
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Posts, Instance, Index) with
+   record
+      Id : SQL_Field_Integer (Ta_Posts, Instance, N_Id, Index);
+      Title : SQL_Field_Text (Ta_Posts, Instance, N_Title, Index);
+      --  NULL for thread replies
+
+      Content : SQL_Field_Text (Ta_Posts, Instance, N_Content, Index);
+      By_User : SQL_Field_Integer (Ta_Posts, Instance, N_By_User, Index);
+      Parent_Post : SQL_Field_Integer (Ta_Posts, Instance, N_Parent_Post, Index);
+      --  The ID of the post that started the thread
+
+   end record;
+
+   type T_Posts (Instance : Cst_String_Access)
+      is new T_Abstract_Posts (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Posts (Index : Integer)
+      is new T_Abstract_Posts (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
    type T_Abstract_Torrents
       (Instance : Cst_String_Access;
        Index    : Integer)
@@ -117,11 +142,14 @@ package Hellish_Database is
       is new T_Abstract_Users (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   function FK (Self : T_Posts'Class; Foreign : T_Users'Class) return SQL_Criteria;
+   function FK (Self : T_Posts'Class; Foreign : T_Posts'Class) return SQL_Criteria;
    function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    Config : T_Config (null);
    Invites : T_Invites (null);
+   Posts : T_Posts (null);
    Torrents : T_Torrents (null);
    User_Torrent_Stats : T_User_Torrent_Stats (null);
    Users : T_Users (null);

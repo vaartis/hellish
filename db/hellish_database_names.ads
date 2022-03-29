@@ -5,6 +5,8 @@ package Hellish_Database_Names is
    Ta_Config : constant Cst_String_Access := TC_Config'Access;
    TC_Invites : aliased constant String := "invites";
    Ta_Invites : constant Cst_String_Access := TC_Invites'Access;
+   TC_Posts : aliased constant String := "posts";
+   Ta_Posts : constant Cst_String_Access := TC_Posts'Access;
    TC_Torrents : aliased constant String := "torrents";
    Ta_Torrents : constant Cst_String_Access := TC_Torrents'Access;
    TC_User_Torrent_Stats : aliased constant String := "user_torrent_stats";
@@ -16,6 +18,8 @@ package Hellish_Database_Names is
    N_Activated : constant Cst_String_Access := NC_activated'Access;
    NC_By_User : aliased constant String := "by_user";
    N_By_User : constant Cst_String_Access := NC_by_user'Access;
+   NC_Content : aliased constant String := "content";
+   N_Content : constant Cst_String_Access := NC_content'Access;
    NC_Created_By : aliased constant String := "created_by";
    N_Created_By : constant Cst_String_Access := NC_created_by'Access;
    NC_Description : aliased constant String := "description";
@@ -32,12 +36,16 @@ package Hellish_Database_Names is
    N_Info_Hash : constant Cst_String_Access := NC_info_hash'Access;
    NC_Of_Torrent : aliased constant String := "of_torrent";
    N_Of_Torrent : constant Cst_String_Access := NC_of_torrent'Access;
+   NC_Parent_Post : aliased constant String := "parent_post";
+   N_Parent_Post : constant Cst_String_Access := NC_parent_post'Access;
    NC_Passkey : aliased constant String := "passkey";
    N_Passkey : constant Cst_String_Access := NC_passkey'Access;
    NC_Password : aliased constant String := """password""";
    N_Password : constant Cst_String_Access := NC_password'Access;
    NC_Snatches : aliased constant String := "snatches";
    N_Snatches : constant Cst_String_Access := NC_snatches'Access;
+   NC_Title : aliased constant String := "title";
+   N_Title : constant Cst_String_Access := NC_title'Access;
    NC_Uploaded : aliased constant String := "uploaded";
    N_Uploaded : constant Cst_String_Access := NC_uploaded'Access;
    NC_Username : aliased constant String := "username";

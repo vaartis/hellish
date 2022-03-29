@@ -393,4 +393,45 @@ package body Hellish_Web.Database is
          end;
       end if;
    end Invite_Use;
+
+   procedure Create_Post(The_Post : in out Detached_Post'Class) is
+      Session : Session_Type := Get_New_Session;
+   begin
+      Session.Persist(The_Post);
+      Session.Commit;
+   end Create_Post;
+
+   function Get_Post(Id : Natural; Parent_Post : out Detached_Post'Class) return Detached_Post'Class is
+      Session : Session_Type := Get_New_Session;
+
+      Result : Detached_Post'Class := Orm.Get_Post(Session, Id);
+   begin
+      Parent_Post := Result.Parent_Post;
+      return Result;
+   end Get_Post;
+
+   function Post_Replies(Parent_Post : Integer;
+
+                         Offset : Natural;
+                         Limit : Integer;
+                         Total_Count : out Natural) return Post_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+      The_Post_Managers : Posts_Managers := All_Posts
+        .Order_By(Asc(Posts.Id))
+        .Filter(Parent_Post => Parent_Post);
+
+      Count_Cur : Direct_Cursor;
+      Count_Query : Sql_Query :=
+        Sql_Select(From => Posts, Fields => Apply(Func_Count, Posts.Id), Where => (Posts.Parent_Post = Parent_Post));
+   begin
+      Count_Cur.Fetch(Session.Db, Count_Query);
+      Total_Count := Count_Cur.Integer_Value(0);
+      if Limit /= -1 then
+         The_Post_Managers := The_Post_Managers.Limit(Limit, From => Offset);
+      end if;
+
+      return The_Post_Managers.Get(Session);
+   end Post_Replies;
 end;

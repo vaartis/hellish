@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .content {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%);
+
+         margin-top: 100px;
+         width: 60%;
+     }
+
+     .content-box {
+         background: var(--panel-color);
+         border: hidden;
+         border-radius: 10px;
+
+         padding: 10px;
+     }
+
+     .content-box p {
+         margin: 0;
+
+         white-space: pre-line;
+     }
+
+     .title {
+         font-weight: bold;
+         font-size: 28px;         
+     }
+
+     .subtitle {
+         padding-top: 5px;
+         padding-bottom: 10px;
+     }
+
+     .replies {
+         padding-top: 35px;
+     }
+
+     .center {
+         position: absolute;
+         left: 50%;
+
+         transform: translate(-50%, 0);
+     }
+
+     .new-post-form {
+         margin-top: 30px;
+         margin-bottom: 30px;
+     }
+
+     .post-input {
+         width: 50%;
+     }
+
+     .post-button {
+         padding: 0.8em;
+         margin-top: 1em;
+
+         font-weight: bold;
+         font-size: 18px;
+
+         background: var(--input-color);
+         color: var(--text-color);
+
+         border: hidden;
+         border-radius: 10px;
+
+         display: block;
+     }
+    </style>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="content">
+        <div>
+            <div>
+                <span class="title">@_title_@</span>
+                <div class="subtitle">
+                    <a class="link-button" href="/search?author=@_author_id_@">@_author_@</a>
+                </div>
+            </div>
+            
+            <div class="content-box">
+                @_content_@
+            </div>
+        </div>
+
+        <div class="replies">
+            @@TABLE@@
+            <div id="child-@_reply_id_@">
+                <div>
+                    <div class="subtitle">
+                        <a class="link-button" href="/search?author=@_reply_author_id_@">@_reply_author_@</a>
+                    </div>
+                </div>
+                
+                <div class="content-box">
+                    @_reply_content_@
+                </div>
+            </div>
+            @@END_TABLE@@
+        </div>
+
+        @@IF@@ @_EXIST:page_@
+        <div class="center">
+            @@TABLE@@
+
+            @@IF@@ @_page_@ = "..."
+            @@-- Some way to select an inbetween page?
+            @_page_@
+            @@ELSE@@
+            <a class="link-button" href="@_page_address_@">@_page_@</a>
+            @@END_IF@@
+
+            @@END_TABLE@@
+        </div>
+        @@END_IF@@        
+
+        <form id="post-form" class="new-post-form" action="/api/post/create?parent=@_id_@" method="POST">
+            <textarea form="post-form" class="hellish-input-field post-input" type="textbox"
+                      name="content" rows="15"></textarea>
+            <input class="post-button" type="submit" value="Post!">
+        </form>
+    </div>
+</body>

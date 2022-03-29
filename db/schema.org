@@ -32,3 +32,10 @@
 | activated | BOOLEAN              | NOT NULL                |   |   |
 | by_user   | FK users(invites)    | NOT NULL                |   |   |
 | for_user  | FK users(invited_by) | UNIQUE                  |   |   |
+
+| TABLE       | posts                    | post     |   |                                            |
+| id          | AUTOINCREMENT            | PK       |   |                                            |
+| title       | TEXT                     |          |   | NULL for thread replies                    |
+| content     | TEXT                     | NOT NULL |   |                                            |
+| by_user     | FK users(created_posts)  | NOT NULL |   |                                            |
+| parent_post | FK posts(children_posts) |          |   | The ID of the post that started the thread |

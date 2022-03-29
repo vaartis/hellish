@@ -52,6 +52,14 @@ package Orm is
    No_Detached_Invite : constant Detached_Invite;
    No_Invite : constant Invite;
 
+   type Post is new Orm_Element with null record;
+   type Post_DDR is new Detached_Data (7) with private;
+   type Detached_Post is  --  Get() returns a Post_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_Post_Access is access all Detached_Post'Class;
+   No_Detached_Post : constant Detached_Post;
+   No_Post : constant Post;
+
    type Torrent is new Orm_Element with null record;
    type Torrent_DDR is new Detached_Data (7) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
@@ -290,6 +298,53 @@ package Orm is
 
    function New_Invite return Detached_Invite'Class;
 
+   ---------------------
+   -- Elements: Posts --
+   ---------------------
+
+   function "=" (Op1 : Post; Op2 : Post) return Boolean;
+   function "=" (Op1 : Detached_Post; Op2 : Detached_Post) return Boolean;
+   --  Compares two elements using only the primary keys. All other fields are
+   --  ignored
+
+   function By_User (Self : Post) return Integer;
+   function By_User (Self : Detached_Post) return Integer;
+   procedure Set_By_User (Self : Detached_Post; Value : Integer);
+   function By_User (Self : Post) return User'Class;
+   function By_User (Self : Detached_Post) return Detached_User'Class;
+   procedure Set_By_User (Self : Detached_Post; Value : Detached_User'Class);
+
+   function Content (Self : Post) return String;
+   function Content (Self : Detached_Post) return String;
+   procedure Set_Content (Self : Detached_Post; Value : String);
+
+   function Id (Self : Post) return Integer;
+   function Id (Self : Detached_Post) return Integer;
+
+   function Parent_Post (Self : Post) return Integer;
+   function Parent_Post (Self : Detached_Post) return Integer;
+   procedure Set_Parent_Post (Self : Detached_Post; Value : Integer);
+   function Parent_Post (Self : Post) return Post'Class;
+   function Parent_Post (Self : Detached_Post) return Detached_Post'Class;
+   procedure Set_Parent_Post (Self : Detached_Post; Value : Detached_Post'Class);
+   --  The ID of the post that started the thread
+
+   function Title (Self : Post) return String;
+   function Title (Self : Detached_Post) return String;
+   procedure Set_Title (Self : Detached_Post; Value : String);
+   --  NULL for thread replies
+
+   function Detach (Self : Post'Class) return Detached_Post'Class;
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Post'Class;
+   --  Check whether there is already an element with this primary key. If
+   --  not, the returned value will be a null element (test with Is_Null)
+
+   function New_Post return Detached_Post'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
@@ -303,6 +358,14 @@ package Orm is
       Pk_Only   : Boolean := False);
 
    procedure Internal_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_Posts
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -363,6 +426,19 @@ package Orm is
    Empty_Invite_List : constant Invite_List := I_Invites.Empty_List;
    Empty_Direct_Invite_List : constant Direct_Invite_List :=
    I_Invites.Empty_Direct_List;
+
+   type I_Posts_Managers is abstract new Manager with null record;
+   package I_Posts is new Generic_Managers
+     (I_Posts_Managers, Post, Related_Depth, DBA.Posts,
+      Internal_Query_Posts);
+   type Posts_Managers is new I_Posts.Manager with null record;
+   subtype Posts_Stmt is I_Posts.ORM_Prepared_Statement;
+
+   subtype Post_List is I_Posts.List;
+   subtype Direct_Post_List is I_Posts.Direct_List;
+   Empty_Post_List : constant Post_List := I_Posts.Empty_List;
+   Empty_Direct_Post_List : constant Direct_Post_List :=
+   I_Posts.Empty_Direct_List;
 
    type I_Torrents_Managers is abstract new Manager with null record;
    package I_Torrents is new Generic_Managers
@@ -438,6 +514,10 @@ package Orm is
    --------------------
    -- Manager: Users --
    --------------------
+
+   function Created_Posts (Self : User'Class) return Posts_Managers;
+   function Created_Posts (Self : Detached_User'Class) return Posts_Managers;
+   function Created_Posts (Self : I_Users_Managers'Class) return Posts_Managers;
 
    function Created_Torrents (Self : User'Class) return Torrents_Managers;
    function Created_Torrents
@@ -529,6 +609,30 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_Invite'Class;
 
+   --------------------
+   -- Manager: Posts --
+   --------------------
+
+   function Children_Posts (Self : Post'Class) return Posts_Managers;
+   function Children_Posts (Self : Detached_Post'Class) return Posts_Managers;
+   function Children_Posts (Self : I_Posts_Managers'Class) return Posts_Managers;
+
+   function Filter
+     (Self        : Posts_Managers'Class;
+      Id          : Integer := -1;
+      Title       : String := No_Update;
+      Content     : String := No_Update;
+      By_User     : Integer := -1;
+      Parent_Post : Integer := -1)
+     return Posts_Managers;
+
+   function Get_Post
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Post'Class;
+
    --------------
    -- Managers --
    --------------
@@ -538,6 +642,9 @@ package Orm is
 
    All_Invites : constant Invites_Managers :=
      (I_Invites.All_Managers with null record);
+
+   All_Posts : constant Posts_Managers :=
+     (I_Posts.All_Managers with null record);
 
    All_Torrents : constant Torrents_Managers :=
      (I_Torrents.All_Managers with null record);
@@ -555,6 +662,7 @@ package Orm is
 
    overriding procedure Free (Self : in out Config_Ddr);
    overriding procedure Free (Self : in out Invite_Ddr);
+   overriding procedure Free (Self : in out Post_Ddr);
    overriding procedure Free (Self : in out Torrent_Ddr);
    overriding procedure Free (Self : in out User_Torrent_Stat_Ddr);
    overriding procedure Free (Self : in out User_Ddr);
@@ -565,6 +673,10 @@ package Orm is
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
      (Self        : in out Detached_Invite;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Post;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
@@ -582,17 +694,20 @@ package Orm is
 
    overriding procedure Internal_Delete (Self : Detached_Config);
    overriding procedure Internal_Delete (Self : Detached_Invite);
+   overriding procedure Internal_Delete (Self : Detached_Post);
    overriding procedure Internal_Delete (Self : Detached_Torrent);
    overriding procedure Internal_Delete (Self : Detached_User_Torrent_Stat);
    overriding procedure Internal_Delete (Self : Detached_User);
 
    overriding function Key (Self : Config_Ddr) return Element_Key;
    overriding function Key (Self : Invite_Ddr) return Element_Key;
+   overriding function Key (Self : Post_Ddr) return Element_Key;
    overriding function Key (Self : Torrent_Ddr) return Element_Key;
    overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key;
    overriding function Key (Self : User_Ddr) return Element_Key;
 
    overriding procedure On_Persist (Self : Detached_Invite);
+   overriding procedure On_Persist (Self : Detached_Post);
    overriding procedure On_Persist (Self : Detached_Torrent);
    overriding procedure On_Persist (Self : Detached_User_Torrent_Stat);
 
@@ -614,6 +729,17 @@ private
        ORM_Value        : Unbounded_String := Null_Unbounded_String;
     end record;
     type Invite_Data is access all Invite_DDR;
+    
+    type Post_DDR is new Detached_Data (7) with record
+       ORM_By_User        : Integer := -1;
+       ORM_Content        : Unbounded_String := Null_Unbounded_String;
+       ORM_FK_By_User     : Detached_User_Access := null;
+       ORM_FK_Parent_Post : Detached_Post_Access := null;
+       ORM_Id             : Integer := -1;
+       ORM_Parent_Post    : Integer := -1;
+       ORM_Title          : Unbounded_String := Null_Unbounded_String;
+    end record;
+    type Post_Data is access all Post_DDR;
     
     type Torrent_DDR is new Detached_Data (7) with record
        ORM_Created_By      : Integer := -1;
@@ -657,6 +783,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Invite : constant Invite :=(No_Orm_Element with null record);
     No_Detached_Invite : constant Detached_Invite :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_Post
+       is new Sessions.Detached_Element with null record;
+    No_Post : constant Post :=(No_Orm_Element with null record);
+    No_Detached_Post : constant Detached_Post :=
       (Sessions.Detached_Element with null record);
  
     type Detached_Torrent

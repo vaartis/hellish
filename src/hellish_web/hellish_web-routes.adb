@@ -665,7 +665,6 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("torrent_name", Torrent_Names));
          Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
          Insert(Translations, Assoc("torrent_uploader_id", Torrent_Uploader_Ids));
-         Insert(Translations, Assoc("current_url", Status.Url(Request)));
 
          if Page_Count > 1 then
             for P in 1..Page_Count loop
@@ -691,6 +690,142 @@ package body Hellish_Web.Routes is
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/search.html", Translations)));
+      end;
+   end Dispatch;
+
+   Post_Id_Matcher : constant Pattern_Matcher := Compile("/post/(\d+)");
+   function Dispatch
+     (Handler : in Post_Handler;
+      Request : in Status.Data) return Response.Data is
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Matches : Match_Array (0..1);
+      Uri : String := Status.Uri(Request);
+
+      Page_Size : constant Natural := 25;
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      Match(Post_Id_Matcher, Uri, Matches);
+      declare
+         Match : Match_Location := Matches(1);
+         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+
+         Parent_Post : Detached_Post'Class := No_Detached_Post;
+         Post : Detached_Post'Class := Database.Get_Post(Id, Parent_Post);
+         Author : Detached_User'Class := Database.Get_User(Post.By_User);
+
+         Translations : Translate_Set;
+      begin
+         if Parent_Post /= Detached_Post'Class(No_Detached_Post) then
+            declare
+               Total_Searched : Integer;
+               -- -1 means all
+               Searched_Replies : Post_List := Database.Post_Replies(Parent_Post.Id, 0, -1, Total_Searched);
+               Searched_N : Natural := 0;
+
+               Found_Page : Natural := 1;
+            begin
+               while Searched_Replies.Has_Row loop
+                  Searched_N := Searched_N + 1;
+
+                  if Searched_Replies.Element.Id = Post.Id then
+                     Found_Page := Natural(Float'Ceiling(Float(Searched_N) / Float(Page_Size)));
+                  end if;
+
+                  Searched_Replies.Next;
+               end loop;
+
+               return Response.Url("/post/"
+                                     & Trim(Parent_Post.Id'Image, Ada.Strings.Left)
+                                     & "?page=" & Trim(Found_Page'Image, Ada.Strings.Left)
+                                     & "#child-" & Trim(Post.Id'Image, Ada.Strings.Left));
+            end;
+         end if;
+         declare
+            use Markdown;
+
+            Html_Title : String := Templates_Parser.Utils.Web_Escape(Post.Title);
+            -- This both translates markdown to html and escapes whatever html the text might've had,
+            -- so should be safe
+            Post_Content : String := Markdown.To_Html(Post.Content,
+                                                Md_Flag_No_Html_Blocks
+                                                  or Md_Flag_No_Html_Spans
+                                                  or Md_Flag_Permissive_Url_Autolinks
+                                                  or Md_Flag_Strikethrough);
+         begin
+            Insert(Translations, Assoc("id", Post.Id));
+            Insert(Translations, Assoc("title", Html_Title));
+            Insert(Translations, Assoc("content", Post_Content));
+            Insert(Translations, Assoc("author", Author.Username));
+            Insert(Translations, Assoc("author_id", Author.Id));
+
+            declare
+               Params : Parameters.List := Status.Parameters(Request);
+               Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
+
+               Page_Offset : constant Natural := (Page - 1) * Page_Size;
+               Total_Count : Natural;
+               Replies : Post_List := Database.Post_Replies(Post.Id, Page_Offset, Page_Size, Total_Count);
+               -- Round up
+               Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
+
+               Reply : Orm.Post;
+               Reply_Author : Detached_User'Class := No_Detached_User;
+               Reply_Ids, Replies_Authors, Replies_Author_Ids, Replies_Content : Vector_Tag;
+               Pages, Page_Addresses : Vector_Tag;
+            begin
+               while Replies.Has_row loop
+                  Reply := Replies.Element;
+                  Reply_Author := Database.Get_User(Reply.By_User);
+
+                  Reply_Ids := Reply_Ids & Reply.Id;
+                  Replies_Authors := Replies_Authors & Reply_Author.Username;
+                  Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
+                  Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content,
+                                                                        Md_Flag_No_Html_Blocks
+                                                                          or Md_Flag_No_Html_Spans
+                                                                          or Md_Flag_Permissive_Url_Autolinks
+                                                                          or Md_Flag_Strikethrough);
+
+                  Replies.Next;
+               end loop;
+               Insert(Translations, Assoc("reply_id", Reply_Ids));
+               Insert(Translations, Assoc("reply_author", Replies_Authors));
+               Insert(Translations, Assoc("reply_author_id", Replies_Author_Ids));
+               Insert(Translations, Assoc("reply_content", Replies_Content));
+
+               if Page_Count > 1 then
+                  for P in 1..Page_Count loop
+                     if P <= 10 or P = Page_Count then
+                        if P = Page_Count and Page_Count > 11 then
+                           -- Insert a ... before the last page
+                           Pages := Pages & "...";
+                           Page_Addresses := Page_Addresses & "";
+                        end if;
+
+                        Pages := Pages & P;
+
+                        Params.Update(To_Unbounded_String("page"),
+                                      To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
+                                      Decode => False);
+                        Page_Addresses := Page_Addresses & String'(Status.Uri(Request) & Params.Uri_Format);
+               end if;
+            end loop;
+
+            Insert(Translations, Assoc("page", Pages));
+            Insert(Translations, Assoc("page_address", Page_Addresses));
+         end if;
+            end;
+
+            return Response.Build(Mime.Text_Html,
+                                  String'(Templates_Parser.Parse("assets/post.html", Translations)));
+         end;
       end;
    end Dispatch;
 
@@ -905,6 +1040,39 @@ package body Hellish_Web.Routes is
       return Result;
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Api_Post_Create_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+      The_User : Detached_User'Class := No_Detached_User;
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Title : String := Params.Get("title");
+      Content : String := Params.Get("content");
+      Parent : Integer := (if Params.Exist("parent") then Natural'Value(Params.Get("parent")) else -1);
+
+      Post : Detached_Post'Class := New_Post;
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+      The_User := Database.Get_User(Username);
+
+      Post.Set_By_User(The_User.Id);
+      Post.Set_Content(Content);
+
+      if Title /= "" then
+         Post.Set_Title(Title);
+      end if;
+      if Parent /= -1 then
+         Post.Set_Parent_Post(Parent);
+      end if;
+
+      Database.Create_Post(Post);
+
+      return Response.Url("/post/" & Trim(Post.Id'Image, Ada.Strings.Left));
+   end Dispatch;
+
    -- Entrypoint
 
    procedure Exception_Handler(E : Exception_Occurrence;
@@ -948,11 +1116,13 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/view/(\d+)", View);
       Services.Dispatchers.Uri.Register(Root, "/invite", Invite);
       Services.Dispatchers.Uri.Register(Root, "/search", Search);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Post);
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
       Services.Dispatchers.Uri.Register(Root, "/api/user/logout", Api_User_Logout);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
+      Services.Dispatchers.Uri.Register(Root, "/api/post/create", Api_Post_Create);
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");

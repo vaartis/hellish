@@ -22,6 +22,7 @@ private
    type View_Handler is new Dispatchers.Handler with null record;
    type Invite_Handler is new Dispatchers.Handler with null record;
    type Search_Handler is new Dispatchers.Handler with null record;
+   type Post_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -33,6 +34,7 @@ private
    overriding function Dispatch(Handler : in View_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Invite_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Search_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Post_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -44,6 +46,7 @@ private
    overriding function Clone(Element : in View_Handler) return View_Handler is (Element);
    overriding function Clone(Element : in Invite_Handler) return Invite_Handler is (Element);
    overriding function Clone(Element : in Search_Handler) return Search_Handler is (Element);
+   overriding function Clone(Element : in Post_Handler) return Post_Handler is (Element);
 
    Index : Index_Handler;
    Announce : Announce_Handler;
@@ -55,6 +58,7 @@ private
    View : View_Handler;
    Invite : Invite_Handler;
    Search : Search_Handler;
+   Post : Post_Handler;
 
    -- API
 
@@ -62,21 +66,25 @@ private
    type Api_User_Register_Handler is new Dispatchers.Handler with null record;
    type Api_User_Login_Handler is new Dispatchers.Handler with null record;
    type Api_User_Logout_Handler is new Dispatchers.Handler with null record;
+   type Api_Post_Create_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Api_Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Register_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Login_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Logout_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Api_Post_Create_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Api_Upload_Handler) return Api_Upload_Handler is (Element);
    overriding function Clone(Element : in Api_User_Register_Handler) return Api_User_Register_Handler is (Element);
    overriding function Clone(Element : in Api_User_Login_Handler) return Api_User_Login_Handler is (Element);
    overriding function Clone(Element : in Api_User_Logout_Handler) return Api_User_Logout_Handler is (Element);
+   overriding function Clone(Element : in Api_Post_Create_Handler) return Api_Post_Create_Handler is (Element);
 
    Api_Upload : Api_Upload_Handler;
    Api_User_Register : Api_User_Register_Handler;
    Api_User_Login : Api_User_Login_Handler;
    Api_User_Logout : Api_User_Logout_Handler;
+   Api_Post_Create : Api_Post_Create_Handler;
 
    Http : Server.Http;
    Root : Services.Dispatchers.Uri.Handler;

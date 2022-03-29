@@ -130,7 +130,7 @@ package body Hellish_Web.Routes is
 
    function User_Announce_Url(The_User : Detached_User'Class) return String is
      -- TODO: HTTPS
-      ("http://" & Host & "/" & The_User.Passkey & "/announce");
+      ((if Https then "https://" else "http://") & Host & "/" & The_User.Passkey & "/announce");
 
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
 
@@ -1241,6 +1241,8 @@ package body Hellish_Web.Routes is
          when '-' =>
             if Full_Switch = "-invite-not-required" then
                Invite_Required := False;
+            elsif Full_Switch = "-https" then
+               Https := True;
             end if;
          when others => null;
       end case;

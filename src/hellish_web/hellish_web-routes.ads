@@ -105,6 +105,7 @@ private
 
    -- Additional options
    Invite_Required : Boolean := True;
+   Https : Boolean := False;
 
    Uploads_Path : constant String := "uploads/torrents/";
 end Hellish_Web.Routes;

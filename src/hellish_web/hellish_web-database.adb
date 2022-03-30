@@ -337,6 +337,23 @@ package body Hellish_Web.Database is
       return The_Query_Managers.Get(Session, Params => Params);
    end Search_Torrents;
 
+   procedure Delete_Torrent(Id : Natural) is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      Stats_Delete : Sql_Query :=
+        Sql_Delete(From => User_Torrent_Stats,
+                   Where => User_Torrent_Stats.Of_Torrent = Id);
+      Torrent_Delete : Sql_Query :=
+           Sql_Delete(From => Torrents, Where => Torrents.Id = Id);
+   begin
+      Session.Db.Execute(Stats_Delete);
+      Session.Db.Execute(Torrent_Delete);
+
+      Session.Commit;
+   end Delete_Torrent;
+
    function Create_Invite(From_User : Detached_User'Class) return String is
       use Sodium.Functions;
 

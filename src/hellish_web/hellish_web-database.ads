@@ -31,6 +31,7 @@ package Hellish_Web.Database is
                             Offset : Natural;
                             Limit : Natural;
                             Total_Count : out Natural) return Torrent_List;
+   procedure Delete_Torrent(Id : Natural);
 
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;

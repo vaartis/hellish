@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .page-container {
+         padding-top: 3em;
+     }
+
+     .center {
+         text-align: center;
+     }
+
+     .confirm-link {
+         margin: 2em;
+
+         font-size: 30px;
+     }
+
+     .links-container {
+         padding-top: 10em;
+     }
+    </style>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="page-container">
+        <div class="center">
+            <h1>You are about to @_action_@</h1>
+            <h2>Are you sure?</h2>
+
+            <div class="links-container">
+                <a class="confirm-link" href="@_back_@">No, go back</a>
+                <a class="confirm-link" href="@_ok_@">Yes, do it</a>
+            </div>
+        </div>
+</body>

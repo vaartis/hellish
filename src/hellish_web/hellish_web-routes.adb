@@ -963,6 +963,30 @@ package body Hellish_Web.Routes is
       end;
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Confirm_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+
+      Params : Parameters.List := Status.Parameters(Request);
+      Action : String := Params.Get("action");
+      Ok : String := Params.Get("ok");
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      Insert(Translations, Assoc("action", Action));
+      Insert(Translations, Assoc("back", Status.Header(Request).Get_Values("Referer")));
+      Insert(Translations, Assoc("ok", Ok));
+
+      return Response.Build(Mime.Text_Html,
+                               String'(Templates_Parser.Parse("assets/confirm.html", Translations)));
+   end Dispatch;
+
    -- API
 
    function Dispatch
@@ -1068,6 +1092,38 @@ package body Hellish_Web.Routes is
                return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left) & "?error=" & To_String(Error_String));
             end if;
          end;
+      end;
+   end Dispatch;
+
+   Api_Delete_Matcher : constant Pattern_Matcher := Compile("/api/delete/(\d+)");
+   overriding function Dispatch(Handler : in Api_Delete_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+      The_User : Detached_User'Class := No_Detached_User;
+
+      Matches : Match_Array (0..1);
+      Uri : String := Status.Uri(Request);
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+      The_User := Database.Get_User(Username);
+
+      Match(Api_Delete_Matcher, Uri, Matches);
+      declare
+         Match : Match_Location := Matches(1);
+         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+
+         The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
+      begin
+         if Natural'(The_Torrent.Created_By) /= The_User.Id then
+            return Response.Acknowledge(Messages.S403, "Forbidden");
+         end if;
+
+         Database.Delete_Torrent(Id);
+
+         return Response.Url("/");
       end;
    end Dispatch;
 
@@ -1280,11 +1336,13 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/post/create", Post_Create);
       Services.Dispatchers.Uri.Register(Root, "/post/search", Post_Search);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Post);
+      Services.Dispatchers.Uri.Register(Root, "/confirm", Confirm);
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
       Services.Dispatchers.Uri.Register(Root, "/api/user/logout", Api_User_Logout);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/(\d+)", Api_Delete);
       Services.Dispatchers.Uri.Register(Root, "/api/post/create", Api_Post_Create);
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);

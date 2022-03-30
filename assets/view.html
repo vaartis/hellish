@@ -73,6 +73,7 @@
             <a href="/download/@_id_@">Download</a>
             @@IF@@ @_is_uploader_@
             | <a href="/upload?update=@_id_@">Edit</a>
+            | <a href='/confirm?action=delete "@_display_name_@"&ok=/api/delete/@_id_@'>Delete</a>
             @@END_IF@@
             ]
         </div>

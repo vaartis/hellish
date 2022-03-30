@@ -374,13 +374,15 @@ package body Hellish_Web.Routes is
      (Handler : in Download_Handler;
       Request : in Status.Data) return Response.Data is
 
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Passkey : String := Params.Get("passkey");
 
       Matches : Match_Array (0..1);
       Uri : String := Status.Uri(Request);
+
+      User : Detached_User'class := Database.Get_User_By_Passkey(Passkey);
    begin
-      if not Database.User_Exists(Username) then
+      If User = Detached_User'Class(No_Detached_User) then
          -- Redirect to the login page
          return Response.Url(Location => "/login");
       end if;
@@ -393,9 +395,7 @@ package body Hellish_Web.Routes is
          Match : Match_Location := Matches(1);
          Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
 
-         User : Detached_User'Class := Database.Get_User(Username);
          Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
-
          File_Path : String := Compose(Containing_Directory => Uploads_Path,
                                        Name => Torrent.Info_Hash,
                                        Extension => "torrent");
@@ -529,6 +529,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("uploader", Uploader.Username));
          Insert(Translations, Assoc("uploader_id", Uploader.Id));
          Insert(Translations, Assoc("is_uploader", Uploader = The_User or The_User.Role = 1));
+         Insert(Translations, Assoc("passkey", The_User.Passkey));
 
          if Bencoded_Info.Value.Contains(To_Unbounded_String("files")) then
             declare

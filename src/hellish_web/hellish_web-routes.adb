@@ -574,6 +574,15 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("snatches", The_Torrent.Snatches));
          end;
 
+         declare
+            Stats : Detached_User_Torrent_Stat'Class := Database.Get_User_Stats_For_Torrent(The_User, The_Torrent);
+         begin
+            if Stats /= Detached_User_Torrent_Stat'Class(No_Detached_User_Torrent_Stat) then
+               Insert(Translations, Assoc("user_uploaded", Bytes_To_Printable(Stats.Uploaded)));
+               Insert(Translations, Assoc("user_downloaded", Bytes_To_Printable(Stats.Downloaded)));
+            end if;
+         end;
+
          if Error /= "" then
             Insert(Translations, Assoc("error", Error));
          end if;

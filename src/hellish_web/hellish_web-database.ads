@@ -33,6 +33,9 @@ package Hellish_Web.Database is
                             Total_Count : out Natural) return Torrent_List;
    procedure Delete_Torrent(Id : Natural);
 
+   function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Detached_Torrent'Class)
+                                      return Detached_User_Torrent_Stat'Class;
+
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;
    procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class);

@@ -47,6 +47,18 @@
          margin-bottom: 1em;
          color: var(--error-color);
      }
+
+     .upload {
+         color: var(--upload-color);
+     }
+
+     .download {
+         color: var(--download-color);
+     }
+
+     .your-stats {
+         margin-bottom: 1em;
+     }
     </style>
 </head>
 <body>
@@ -79,7 +91,17 @@
         </div>
 
         <h2>Stats</h2>
-        <b>Seeding</b> @_seeding_@ | <b>Leeching</b> @_leeching_@ | <b>Snatches</b> @_snatches_@
+        <div>
+            @@IF@@ @_EXIST:user_uploaded_@
+            <div class="your-stats">
+            Your stats:
+                <span class="upload">▲ @_user_uploaded_@</span>
+                <span class="download">▼ @_user_downloaded_@</span>
+            </div>
+            @@END_IF@@
+
+            <b>Seeding</b> @_seeding_@ | <b>Leeching</b> @_leeching_@ | <b>Snatches</b> @_snatches_@
+        </div>
         <div>
             <h2>Files</h2>
             <p>

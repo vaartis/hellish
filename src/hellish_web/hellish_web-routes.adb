@@ -527,7 +527,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("original_name", Original_File_Name));
          Insert(Translations, Assoc("uploader", Uploader.Username));
          Insert(Translations, Assoc("uploader_id", Uploader.Id));
-         Insert(Translations, Assoc("is_uploader", Uploader = The_user));
+         Insert(Translations, Assoc("is_uploader", Uploader = The_User or The_User.Role = 1));
 
          if Bencoded_Info.Value.Contains(To_Unbounded_String("files")) then
             declare
@@ -786,7 +786,7 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("content", Post_Content));
             Insert(Translations, Assoc("author", Author.Username));
             Insert(Translations, Assoc("author_id", Author.Id));
-            Insert(Translations, Assoc("is_author", Author.Id = The_User.Id));
+            Insert(Translations, Assoc("is_author", Author.Id = The_User.Id or The_User.Role = 1));
 
             declare
                Params : Parameters.List := Status.Parameters(Request);
@@ -812,7 +812,7 @@ package body Hellish_Web.Routes is
                   Replies_Authors := Replies_Authors & Reply_Author.Username;
                   Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
                   Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content, Default_Md_Flags);
-                  Replies_Is_Author := Replies_Is_Author & (Reply_Author.Id = The_User.Id);
+                  Replies_Is_Author := Replies_Is_Author & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
 
                   Replies.Next;
                end loop;
@@ -1031,8 +1031,8 @@ package body Hellish_Web.Routes is
             The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Update_Id);
             The_User : Detached_User'Class := Database.Get_User(Username);
          begin
-            -- Only the creator can update the torrent
-            if Integer'(The_Torrent.Created_By) /= The_User.Id then
+            -- Only the creator and the admins can update the torrent
+            if Integer'(The_Torrent.Created_By) /= The_User.Id and The_User.Role /= 1 then
                return Response.Acknowledge(Messages.S403, "Forbidden");
             end if;
 
@@ -1126,7 +1126,7 @@ package body Hellish_Web.Routes is
 
          The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
       begin
-         if Natural'(The_Torrent.Created_By) /= The_User.Id then
+         if Natural'(The_Torrent.Created_By) /= The_User.Id and The_User.Role /= 1 then
             return Response.Acknowledge(Messages.S403, "Forbidden");
          end if;
 
@@ -1268,7 +1268,7 @@ package body Hellish_Web.Routes is
 
       if Update /= -1 then
          Updated_Post := Database.Get_Post(Update, Parent_Post);
-         if Integer'(Updated_Post.By_User) /= The_User.Id then
+         if Integer'(Updated_Post.By_User) /= The_User.Id and The_User.Role /= 1 then
             return Response.Acknowledge(Messages.S403, "Forbidden");
          end if;
          Post := Updated_Post;

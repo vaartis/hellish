@@ -50,7 +50,7 @@ package body Hellish_Web.Peers is
          for Peer of Torrent_Map(Info_Hash)  loop
             if Peer.Last_Seen + Duration(5 * 60) < Clock then
                Put_Line("Peer " & To_String(Peer.Peer_Id) & " hasn't been seen for five minutes, assuming they left");
-               Torrent_Map(Info_Hash).Delete(To_String(Peer.Peer_Id));
+               Remove(Info_Hash, Peer.Peer_Id);
             end if;
          end loop;
       end Add;

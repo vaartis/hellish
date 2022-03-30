@@ -206,7 +206,7 @@ package body Hellish_Web.Routes is
                                   Last_Seen => Clock),
                                  User);
          if Params.Get("event") = "stopped" then
-               Peers.Protected_Map.Remove(To_Hex_String(info_hash), To_Unbounded_String(Params.Get("peer_id")));
+            Put_Line("Peer " & Params.Get("peer_id") & " reported stopping");
          end if;
 
          declare

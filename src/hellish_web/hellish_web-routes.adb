@@ -29,7 +29,8 @@ with
   Aws.Translator,
   Aws.Response.Set,
   Aws.Log,
-  Aws.Exceptions;
+  Aws.Exceptions,
+  Aws.Url;
 
 with
   Templates_Parser,
@@ -586,6 +587,8 @@ package body Hellish_Web.Routes is
          if Error /= "" then
             Insert(Translations, Assoc("error", Error));
          end if;
+
+         Insert(Translations, Assoc("urlencoded_name", Url.Encode(The_Torrent.Display_Name)));
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/view.html", Translations)));

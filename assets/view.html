@@ -59,6 +59,8 @@
      .your-stats {
          margin-bottom: 1em;
      }
+
+     @@INCLUDE@@ replies.css 650px
     </style>
     <title>@_display_name_@ :: Hellish</title>
 </head>
@@ -121,5 +123,8 @@
                 @@END_TABLE@@
             </table>
         </div>
+
+        @@-- parent_torrent is the parameter for new post creation
+        @@INCLUDE@@ replies.html parent_torrent
     </div>
 </body>

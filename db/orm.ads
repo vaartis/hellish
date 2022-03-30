@@ -53,7 +53,7 @@ package Orm is
    No_Invite : constant Invite;
 
    type Post is new Orm_Element with null record;
-   type Post_DDR is new Detached_Data (8) with private;
+   type Post_DDR is new Detached_Data (10) with private;
    type Detached_Post is  --  Get() returns a Post_DDR
    new Sessions.Detached_Element with private;
    type Detached_Post_Access is access all Detached_Post'Class;
@@ -339,6 +339,16 @@ package Orm is
    procedure Set_Parent_Post (Self : Detached_Post; Value : Detached_Post'Class);
    --  The ID of the post that started the thread
 
+   function Parent_Torrent (Self : Post) return Integer;
+   function Parent_Torrent (Self : Detached_Post) return Integer;
+   procedure Set_Parent_Torrent (Self : Detached_Post; Value : Integer);
+   function Parent_Torrent (Self : Post) return Torrent'Class;
+   function Parent_Torrent (Self : Detached_Post) return Detached_Torrent'Class;
+   procedure Set_Parent_Torrent
+     (Self  : Detached_Post;
+      Value : Detached_Torrent'Class);
+   --  The ID of the torrent that started the thread
+
    function Title (Self : Post) return String;
    function Title (Self : Detached_Post) return String;
    procedure Set_Title (Self : Detached_Post; Value : String);
@@ -504,6 +514,10 @@ package Orm is
      (Self : I_Torrents_Managers'Class)
      return User_Torrent_Stats_Managers;
 
+   function Comments (Self : Torrent'Class) return Posts_Managers;
+   function Comments (Self : Detached_Torrent'Class) return Posts_Managers;
+   function Comments (Self : I_Torrents_Managers'Class) return Posts_Managers;
+
    function Filter
      (Self         : Torrents_Managers'Class;
       Id           : Integer := -1;
@@ -629,13 +643,14 @@ package Orm is
    function Children_Posts (Self : I_Posts_Managers'Class) return Posts_Managers;
 
    function Filter
-     (Self        : Posts_Managers'Class;
-      Id          : Integer := -1;
-      Title       : String := No_Update;
-      Content     : String := No_Update;
-      By_User     : Integer := -1;
-      Parent_Post : Integer := -1;
-      Flag        : Integer := -1)
+     (Self           : Posts_Managers'Class;
+      Id             : Integer := -1;
+      Title          : String := No_Update;
+      Content        : String := No_Update;
+      By_User        : Integer := -1;
+      Parent_Post    : Integer := -1;
+      Flag           : Integer := -1;
+      Parent_Torrent : Integer := -1)
      return Posts_Managers;
 
    function Get_Post
@@ -742,15 +757,17 @@ private
     end record;
     type Invite_Data is access all Invite_DDR;
     
-    type Post_DDR is new Detached_Data (8) with record
-       ORM_By_User        : Integer := -1;
-       ORM_Content        : Unbounded_String := Null_Unbounded_String;
-       ORM_FK_By_User     : Detached_User_Access := null;
-       ORM_FK_Parent_Post : Detached_Post_Access := null;
-       ORM_Flag           : Integer := 0;
-       ORM_Id             : Integer := -1;
-       ORM_Parent_Post    : Integer := -1;
-       ORM_Title          : Unbounded_String := Null_Unbounded_String;
+    type Post_DDR is new Detached_Data (10) with record
+       ORM_By_User           : Integer := -1;
+       ORM_Content           : Unbounded_String := Null_Unbounded_String;
+       ORM_FK_By_User        : Detached_User_Access := null;
+       ORM_FK_Parent_Post    : Detached_Post_Access := null;
+       ORM_FK_Parent_Torrent : Detached_Torrent_Access := null;
+       ORM_Flag              : Integer := 0;
+       ORM_Id                : Integer := -1;
+       ORM_Parent_Post       : Integer := -1;
+       ORM_Parent_Torrent    : Integer := -1;
+       ORM_Title             : Unbounded_String := Null_Unbounded_String;
     end record;
     type Post_Data is access all Post_DDR;
     

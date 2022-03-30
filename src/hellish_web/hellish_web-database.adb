@@ -26,7 +26,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 0;
+   Latest_Version : Natural := 1;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -354,6 +354,31 @@ package body Hellish_Web.Database is
       Session.Commit;
    end Delete_Torrent;
 
+   function Torrent_Comments(Parent_Torrent : Integer;
+
+                             Offset : Natural;
+                             Limit : Integer;
+                             Total_Count : out Natural) return Post_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+      The_Post_Managers : Posts_Managers := All_Posts
+        .Order_By(Asc(Posts.Id))
+        .Filter(Parent_Torrent => Parent_Torrent);
+
+      Count_Cur : Direct_Cursor;
+      Count_Query : Sql_Query :=
+        Sql_Select(From => Posts, Fields => Apply(Func_Count, Posts.Id), Where => (Posts.Parent_Torrent = Parent_Torrent));
+   begin
+      Count_Cur.Fetch(Session.Db, Count_Query);
+      Total_Count := Count_Cur.Integer_Value(0);
+      if Limit /= -1 then
+         The_Post_Managers := The_Post_Managers.Limit(Limit, From => Offset);
+      end if;
+
+      return The_Post_Managers.Get(Session);
+   end Torrent_Comments;
+
    function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Detached_Torrent'Class)
                                       return Detached_User_Torrent_Stat'Class is
       Session : Session_Type := Get_New_Session;
@@ -493,7 +518,7 @@ package body Hellish_Web.Database is
         ((Text_Param(1) = "")
            or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%")))
         -- Only show posts without parents
-        and (Is_Null(Posts.Parent_Post));
+        and (Is_Null(Posts.Parent_Post) and Is_Null(Posts.Parent_Torrent));
 
       Session : Session_Type := Get_New_Session;
       The_Query_Managers : Posts_Managers := All_Posts

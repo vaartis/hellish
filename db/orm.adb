@@ -39,16 +39,18 @@ package body Orm is
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Upto_Invites_1 : constant Counts := ((5,5),(12,12),(12,12),(12,12));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
-   F_Posts_Id          : constant := 0;
-   F_Posts_Title       : constant := 1;
-   F_Posts_Content     : constant := 2;
-   F_Posts_By_User     : constant := 3;
-   F_Posts_Parent_Post : constant := 4;
-   F_Posts_Flag        : constant := 5;
-   Counts_Posts : constant Counts := ((6,6),(13,19),(13,32),(13,45));
-   Upto_Posts_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
-   Upto_Posts_1 : constant Counts := ((6,6),(13,13),(13,13),(13,13));
-   Alias_Posts : constant Alias_Array := (-1,3,4,-1,0,7,8,1,2,11,12,3,4);
+   F_Posts_Id             : constant := 0;
+   F_Posts_Title          : constant := 1;
+   F_Posts_Content        : constant := 2;
+   F_Posts_By_User        : constant := 3;
+   F_Posts_Parent_Post    : constant := 4;
+   F_Posts_Flag           : constant := 5;
+   F_Posts_Parent_Torrent : constant := 6;
+   Counts_Posts : constant Counts := ((7,7),(14,27),(14,54),(14,81));
+   Upto_Posts_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
+   Upto_Posts_1 : constant Counts := ((7,7),(14,14),(14,14),(14,14));
+   Upto_Posts_2 : constant Counts := ((7,7),(14,21),(14,41),(14,68));
+   Alias_Posts : constant Alias_Array := (-1,4,5,20,-1,0,9,10,17,1,2,14,15,16,4,5,6,3,19,7,-1,22,8);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
    F_Torrents_Created_By   : constant := 2;
@@ -1011,6 +1013,74 @@ package body Orm is
       return D.ORM_FK_Parent_Post.all;
    end Parent_Post;
 
+   --------------------
+   -- Parent_Torrent --
+   --------------------
+
+   function Parent_Torrent (Self : Post) return Integer is
+   begin
+      return Integer_Value (Self, F_Posts_Parent_Torrent);
+   end Parent_Torrent;
+
+   --------------------
+   -- Parent_Torrent --
+   --------------------
+
+   function Parent_Torrent (Self : Detached_Post) return Integer is
+   begin
+      return Post_Data (Self.Unchecked_Get).ORM_Parent_Torrent;
+   end Parent_Torrent;
+
+   --------------------
+   -- Parent_Torrent --
+   --------------------
+
+   function Parent_Torrent (Self : Post) return Torrent'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 and then Self.Data.Follow_LJ then
+         return I_Torrents.Internal_Element
+           (Self,
+            Upto_Posts_2 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Parent_Torrent";
+         end if;
+
+         return Filter (All_Torrents, Id => Self.Parent_Torrent)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end Parent_Torrent;
+
+   --------------------
+   -- Parent_Torrent --
+   --------------------
+
+   function Parent_Torrent (Self : Detached_Post) return Detached_Torrent'Class
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_Parent_Torrent = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Parent_Torrent";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_Parent_Torrent := new Detached_Torrent'Class'
+           (Get_Torrent (S, Id => D.ORM_Parent_Torrent));
+      end if;
+      return D.ORM_FK_Parent_Torrent.all;
+   end Parent_Torrent;
+
    -------------
    -- Passkey --
    -------------
@@ -1260,6 +1330,36 @@ package body Orm is
         (SQL_In(DBA.Posts.Parent_Post, Q));
    end Children_Posts;
 
+   --------------
+   -- Comments --
+   --------------
+
+   function Comments (Self : Torrent'Class) return Posts_Managers is
+   begin
+      return Filter (All_Posts, Parent_Torrent => Self.Id);
+   end Comments;
+
+   --------------
+   -- Comments --
+   --------------
+
+   function Comments (Self : Detached_Torrent'Class) return Posts_Managers is
+   begin
+      return Filter (All_Posts, Parent_Torrent => Self.Id);
+   end Comments;
+
+   --------------
+   -- Comments --
+   --------------
+
+   function Comments (Self : I_Torrents_Managers'Class) return Posts_Managers
+   is
+      Q : constant SQL_Query := I_Torrents.Build_Query(Self, +DBA.Torrents.Id);
+   begin
+      return All_Posts.Filter
+        (SQL_In(DBA.Posts.Parent_Torrent, Q));
+   end Comments;
+
    -------------------
    -- Created_Posts --
    -------------------
@@ -1491,16 +1591,17 @@ package body Orm is
       Session : Session_Type)
      return Detached_Post'Class
    is
-      Default        : Detached_Post;
-      Result         : Detached_Post'Class := Detached_Post'Class (Session.Factory (Self, Default));
-      Fk_By_User     : Detached_User_Access;
-      Fk_Parent_Post : Detached_Post_Access;
-      Lj             : constant Boolean := Self.Data.Follow_LJ;
-      Tmp            : Post_Data;
+      Default           : Detached_Post;
+      Result            : Detached_Post'Class := Detached_Post'Class (Session.Factory (Self, Default));
+      Fk_By_User        : Detached_User_Access;
+      Fk_Parent_Post    : Detached_Post_Access;
+      Fk_Parent_Torrent : Detached_Torrent_Access;
+      Lj                : constant Boolean := Self.Data.Follow_LJ;
+      Tmp               : Post_Data;
    begin
       if Result.Is_Null then
          Result.Set (Post_DDR'
-              (Detached_Data with Field_Count => 8, others => <>));
+              (Detached_Data with Field_Count => 10, others => <>));
       end if;
 
       Tmp := Post_Data (Result.Unchecked_Get);
@@ -1514,16 +1615,24 @@ package body Orm is
                  (Self, Upto_Posts_1 (Self.Depth, LJ)).Detach);
          end if;
 
+         if LJ then
+            FK_Parent_Torrent := new Detached_Torrent'Class'(
+               I_Torrents.Internal_Element
+                 (Self, Upto_Posts_2 (Self.Depth, LJ)).Detach);
+         end if;
+
       end if;
 
-      Tmp.ORM_By_User        := Integer_Value (Self, F_Posts_By_User);
-      Tmp.ORM_Content        := To_Unbounded_String (String_Value (Self, F_Posts_Content));
-      Tmp.ORM_FK_By_User     := FK_By_User;
-      Tmp.ORM_FK_Parent_Post := FK_Parent_Post;
-      Tmp.ORM_Flag           := Integer_Value (Self, F_Posts_Flag);
-      Tmp.ORM_Id             := Integer_Value (Self, F_Posts_Id);
-      Tmp.ORM_Parent_Post    := Integer_Value (Self, F_Posts_Parent_Post);
-      Tmp.ORM_Title          := To_Unbounded_String (String_Value (Self, F_Posts_Title));
+      Tmp.ORM_By_User           := Integer_Value (Self, F_Posts_By_User);
+      Tmp.ORM_Content           := To_Unbounded_String (String_Value (Self, F_Posts_Content));
+      Tmp.ORM_FK_By_User        := FK_By_User;
+      Tmp.ORM_FK_Parent_Post    := FK_Parent_Post;
+      Tmp.ORM_FK_Parent_Torrent := FK_Parent_Torrent;
+      Tmp.ORM_Flag              := Integer_Value (Self, F_Posts_Flag);
+      Tmp.ORM_Id                := Integer_Value (Self, F_Posts_Id);
+      Tmp.ORM_Parent_Post       := Integer_Value (Self, F_Posts_Parent_Post);
+      Tmp.ORM_Parent_Torrent    := Integer_Value (Self, F_Posts_Parent_Torrent);
+      Tmp.ORM_Title             := To_Unbounded_String (String_Value (Self, F_Posts_Title));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1750,7 +1859,8 @@ package body Orm is
          & Table.Content
          & Table.By_User
          & Table.Parent_Post
-         & Table.Flag;
+         & Table.Flag
+         & Table.Parent_Torrent;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -1758,10 +1868,11 @@ package body Orm is
          declare
             FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
             FK2 : T_Numbered_Posts(Aliases(Aliases(Base + 2)));
+            FK3 : T_Numbered_Torrents(Aliases(Aliases(Base + 3)));
          begin Criteria := Criteria
          and Table.By_User = FK1.Id;
          if Follow_LJ then
-            From := +Left_Join(Table, FK2, Table.Parent_Post=FK2.Id);
+            From := +Left_Join(Left_Join(Table, FK2, Table.Parent_Post=FK2.Id), FK3, Table.Parent_Torrent=FK3.Id);
          else
             From := +Table;
          end if;
@@ -1776,6 +1887,15 @@ package body Orm is
          if Follow_LJ then
             C2 := No_Criteria;
             Do_Query_Posts(Fields, T, C2,Aliases(Base + 2),
+               Aliases, Depth - 1, Follow_LJ);
+            if Depth > 1 then
+               Criteria := Criteria and C2;
+            end if;
+         end if;
+
+         if Follow_LJ then
+            C2 := No_Criteria;
+            Do_Query_Torrents(Fields, T, C2,Aliases(Base + 3),
                Aliases, Depth - 1, Follow_LJ);
             if Depth > 1 then
                Criteria := Criteria and C2;
@@ -2088,13 +2208,14 @@ package body Orm is
    ------------
 
    function Filter
-     (Self        : Posts_Managers'Class;
-      Id          : Integer := -1;
-      Title       : String := No_Update;
-      Content     : String := No_Update;
-      By_User     : Integer := -1;
-      Parent_Post : Integer := -1;
-      Flag        : Integer := -1)
+     (Self           : Posts_Managers'Class;
+      Id             : Integer := -1;
+      Title          : String := No_Update;
+      Content        : String := No_Update;
+      By_User        : Integer := -1;
+      Parent_Post    : Integer := -1;
+      Flag           : Integer := -1;
+      Parent_Torrent : Integer := -1)
      return Posts_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2117,6 +2238,9 @@ package body Orm is
       end if;
       if Flag /= -1 then
          C := C and DBA.Posts.Flag = Flag;
+      end if;
+      if Parent_Torrent /= -1 then
+         C := C and DBA.Posts.Parent_Torrent = Parent_Torrent;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -2151,6 +2275,7 @@ package body Orm is
    begin
       Unchecked_Free (Self.ORM_FK_By_User);
       Unchecked_Free (Self.ORM_FK_Parent_Post);
+      Unchecked_Free (Self.ORM_FK_Parent_Torrent);
 
       Free (Detached_Data (Self));
    end Free;
@@ -2634,6 +2759,24 @@ package body Orm is
       end if;
       if Mask (6) then
          A := A & (DBA.Posts.Flag = D.ORM_Flag);
+      end if;
+      if Mask (7) then
+         if D.ORM_Parent_Torrent /= -1 then
+            A := A & (DBA.Posts.Parent_Torrent = D.ORM_Parent_Torrent);
+         else
+
+            declare
+               D2 : constant Torrent_Data :=
+               Torrent_data (D.ORM_FK_Parent_Torrent.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_Parent_Torrent.all);
+               end if;
+
+               A := A & (DBA.Posts.Parent_Torrent = D2.ORM_Id);
+            end;
+         end if;
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -3225,6 +3368,9 @@ package body Orm is
          if D.ORM_FK_Parent_Post /= null then
             Self.Session.Persist (D.ORM_FK_Parent_Post.all);
          end if;
+         if D.ORM_FK_Parent_Torrent /= null then
+            Self.Session.Persist (D.ORM_FK_Parent_Torrent.all);
+         end if;
       end if;
    end On_Persist;
 
@@ -3581,6 +3727,39 @@ package body Orm is
          Self.Session.Persist (D.ORM_FK_Parent_Post.all);
       end if;
    end Set_Parent_Post;
+
+   ------------------------
+   -- Set_Parent_Torrent --
+   ------------------------
+
+   procedure Set_Parent_Torrent (Self : Detached_Post; Value : Integer)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Parent_Torrent);
+      D.ORM_Parent_Torrent := Value;
+      Self.Set_Modified (7);
+   end Set_Parent_Torrent;
+
+   ------------------------
+   -- Set_Parent_Torrent --
+   ------------------------
+
+   procedure Set_Parent_Torrent
+     (Self  : Detached_Post;
+      Value : Detached_Torrent'Class)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Parent_Torrent);
+      D.ORM_Parent_Torrent := Value.Id;
+      D.ORM_FK_Parent_Torrent := new Detached_Torrent'Class'(Value);
+
+      Self.Set_Modified (7);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_Parent_Torrent.all);
+      end if;
+   end Set_Parent_Torrent;
 
    -----------------
    -- Set_Passkey --

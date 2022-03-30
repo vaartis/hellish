@@ -13,6 +13,11 @@ package body Hellish_Database is
       return Self.Parent_Post = Foreign.Id;
    end FK;
 
+   function FK (Self : T_Posts'Class; Foreign : T_Torrents'Class) return SQL_Criteria is
+   begin
+      return Self.Parent_Torrent = Foreign.Id;
+   end FK;
+
    function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria is
    begin
       return Self.Created_By = Foreign.Id;
@@ -73,6 +78,7 @@ package body Hellish_Database is
          & "|by_user|FK users|NOT NULL||" & ASCII.LF
          & "|parent_post|FK posts|||" & ASCII.LF
          & "|flag|Integer|NOT NULL|0|" & ASCII.LF
+         & "|parent_torrent|FK torrents|||" & ASCII.LF
          & "" & ASCII.LF
          & "";
       F : File_Schema_IO;

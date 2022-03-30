@@ -66,6 +66,9 @@ package Hellish_Database is
       Flag : SQL_Field_Integer (Ta_Posts, Instance, N_Flag, Index);
       --  0 = nothing, 1 = news
 
+      Parent_Torrent : SQL_Field_Integer (Ta_Posts, Instance, N_Parent_Torrent, Index);
+      --  The ID of the torrent that started the thread
+
    end record;
 
    type T_Posts (Instance : Cst_String_Access)
@@ -150,6 +153,7 @@ package Hellish_Database is
 
    function FK (Self : T_Posts'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Posts'Class) return SQL_Criteria;
+   function FK (Self : T_Posts'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;

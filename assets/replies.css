@@ -1,0 +1,57 @@
+@@-- $1 is width
+
+.new-reply-form {
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+.reply-input {
+    width: @_$1_@;
+}
+
+.reply-button {
+    padding: 0.8em;
+    margin-top: 1em;
+
+    font-weight: bold;
+    font-size: 18px;
+
+    background: var(--input-color);
+    color: var(--text-color);
+
+    border: hidden;
+    border-radius: 10px;
+
+    display: block;
+}
+
+.reply-content-box {
+    background: var(--panel-color);
+    border: hidden;
+    border-radius: 10px;
+
+    padding: 10px;
+}
+
+.reply-content-box p {
+    white-space: pre-line;
+}
+
+.replies-pages {
+    margin-top: 1em;
+
+    text-align: center;
+}
+
+.reply-actions {
+    float: right;
+}
+
+.reply-subtitle {
+    padding-top: 5px;
+    padding-bottom: 10px;
+}
+
+.replies {
+    padding-top: 35px;
+}

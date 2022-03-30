@@ -32,6 +32,10 @@ package Hellish_Web.Database is
                             Limit : Natural;
                             Total_Count : out Natural) return Torrent_List;
    procedure Delete_Torrent(Id : Natural);
+   function Torrent_Comments(Parent_Torrent : Integer;
+                             Offset : Natural;
+                             Limit : Integer;
+                             Total_Count : out Natural) return Post_List;
 
    function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Detached_Torrent'Class)
                                       return Detached_User_Torrent_Stat'Class;

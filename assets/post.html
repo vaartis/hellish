@@ -35,45 +35,11 @@
          padding-bottom: 10px;
      }
 
-     .replies {
-         padding-top: 35px;
-     }
-
-     .center {
-         position: absolute;
-         left: 50%;
-
-         transform: translate(-50%, 0);
-     }
-
-     .new-post-form {
-         margin-top: 30px;
-         margin-bottom: 30px;
-     }
-
-     .post-input {
-         width: 50%;
-     }
-
-     .post-button {
-         padding: 0.8em;
-         margin-top: 1em;
-
-         font-weight: bold;
-         font-size: 18px;
-
-         background: var(--input-color);
-         color: var(--text-color);
-
-         border: hidden;
-         border-radius: 10px;
-
-         display: block;
-     }
-
      .post-actions {
          float: right;
      }
+
+     @@INCLUDE@@ replies.css 50%
     </style>
     <title>@_title_@ :: Hellish</title>
 </head>
@@ -102,49 +68,7 @@
             </div>
         </div>
 
-        <div class="replies">
-            @@TABLE@@
-            <div id="child-@_reply_id_@">
-                <div>
-                    <div class="subtitle">
-                        <a href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
-
-                        @@IF@@ @_reply_is_author_@
-                        <span class="post-actions">
-                            [
-                            <a href="/post/create?update=@_reply_id_@">Edit</a>
-                            ]
-                        </span>
-                        @@END_IF@@
-                    </div>
-                </div>
-                
-                <div class="content-box">
-                    @_reply_content_@
-                </div>
-            </div>
-            @@END_TABLE@@
-        </div>
-
-        @@IF@@ @_EXIST:page_@
-        <div class="center">
-            @@TABLE@@
-
-            @@IF@@ @_page_@ = "..."
-            @@-- Some way to select an inbetween page?
-            @_page_@
-            @@ELSE@@
-            <a href="@_page_address_@">@_page_@</a>
-            @@END_IF@@
-
-            @@END_TABLE@@
-        </div>
-        @@END_IF@@        
-
-        <form id="post-form" class="new-post-form" action="/api/post/create?parent=@_id_@" method="POST">
-            <textarea required form="post-form" class="hellish-input-field post-input" type="textbox"
-                      name="content" rows="15"></textarea>
-            <input class="post-button" type="submit" value="Post!">
-        </form>
+        @@-- parent is the parameter for new post creation
+        @@INCLUDE@@ replies.html parent
     </div>
 </body>

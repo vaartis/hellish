@@ -1,0 +1,46 @@
+@@-- $1 is the parameter for create
+
+<div class="replies">
+    @@TABLE@@
+    <div id="child-@_reply_id_@">
+        <div>
+            <div class="reply-subtitle">
+                <a href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
+
+                @@IF@@ @_reply_is_author_@
+                <span class="reply-actions">
+                    [
+                    <a href="/post/create?update=@_reply_id_@">Edit</a>
+                    ]
+                </span>
+                @@END_IF@@
+            </div>
+        </div>
+
+        <div class="reply-content-box">
+            @_reply_content_@
+        </div>
+    </div>
+    @@END_TABLE@@
+</div>
+
+@@IF@@ @_EXIST:page_@
+<div class="replies-pages">
+    @@TABLE@@
+
+    @@IF@@ @_page_@ = "..."
+    @@-- Some way to select an inbetween page?
+    @_page_@
+    @@ELSE@@
+    <a href="@_page_address_@">@_page_@</a>
+    @@END_IF@@
+
+    @@END_TABLE@@
+</div>
+@@END_IF@@
+
+<form id="reply-form" class="new-reply-form" action="/api/post/create?@_$1_@=@_id_@" method="POST">
+    <textarea required form="reply-form" class="hellish-input-field reply-input" type="textbox"
+              name="content" rows="15"></textarea>
+    <input class="reply-button" type="submit" value="Post!">
+</form>

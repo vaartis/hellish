@@ -145,7 +145,7 @@ package body Hellish_Web.Bencoder is
 
    function Decode_Integer(File : File_Type) return Bencode_Value_Holders.Holder is
       Char : Character;
-      Result : Integer;
+      Result : Long_Long_Integer;
    begin
       Get_Immediate(File, Char);
       if Char /= 'i' then
@@ -164,7 +164,7 @@ package body Hellish_Web.Bencoder is
 
             Append(Reading, (1 => Char));
          end loop;
-         Result := Natural'Value(To_String(Reading));
+         Result := Long_Long_Integer'Value(To_String(Reading));
       end;
 
       Get_Immediate(File, Char);

@@ -3,22 +3,24 @@
 <div class="replies">
     @@TABLE@@
     <div id="child-@_reply_id_@">
-        <div>
-            <div class="reply-subtitle">
-                <a href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
+        <div class="reply-container">
+            <div>
+                <div class="reply-subtitle">
+                    <a href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
 
-                @@IF@@ @_reply_is_author_@
-                <span class="reply-actions">
-                    [
-                    <a href="/post/create?update=@_reply_id_@">Edit</a>
-                    ]
-                </span>
-                @@END_IF@@
+                    @@IF@@ @_reply_is_author_@
+                    <span class="reply-actions">
+                        [
+                        <a href="/post/create?update=@_reply_id_@">Edit</a>
+                        ]
+                    </span>
+                    @@END_IF@@
+                </div>
             </div>
-        </div>
 
-        <div class="reply-content-box">
-            @_reply_content_@
+            <div class="reply-content-box">
+                @_reply_content_@
+            </div>
         </div>
     </div>
     @@END_TABLE@@

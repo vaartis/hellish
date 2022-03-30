@@ -4,12 +4,18 @@
     <style>
      @@INCLUDE@@ shared.css
 
+     :root {
+         --page-width: 800px;
+     }
+
      .page-container {
          position: absolute;
          left: 50%;
          transform: translate(-50%, 0);
 
          margin-top: 3em;
+
+         width: var(--page-width);
      }
 
      .downloads-box {
@@ -17,7 +23,7 @@
          border: hidden;
          border-radius: 10px;
 
-         width: 650px;
+         width: var(--page-width);
          padding: 10px;
      }
 
@@ -26,7 +32,6 @@
          border: hidden;
          border-radius: 10px;
 
-         width: 650px;
          padding: 10px;
      }
 
@@ -60,7 +65,7 @@
          margin-bottom: 1em;
      }
 
-     @@INCLUDE@@ replies.css 650px
+     @@INCLUDE@@ replies.css 800px
     </style>
     <title>@_display_name_@ :: Hellish</title>
 </head>
@@ -75,7 +80,7 @@
             </div>
             @@END_IF@@
 
-            <h2>@_display_name_@</h2>
+            <h2 class="title">@_display_name_@</h2>
             <div>Uploader: <a href="/search?uploader=@_uploader_id_@">@_uploader_@</a></div>
             <p>
                 <h3>Description</h3>

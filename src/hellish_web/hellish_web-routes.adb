@@ -204,12 +204,9 @@ package body Hellish_Web.Routes is
                                   Uploaded => Long_Long_Integer'Value(Params.Get("uploaded")),
                                   Downloaded => Long_Long_Integer'Value(Params.Get("downloaded")),
                                   Left => Long_Long_Integer'Value(Params.Get("left")),
-                                  Last_Seen => Clock),
+                                  Last_Seen => Clock,
+                                  Last_Event => To_Unbounded_String(Params.Get("event"))),
                                  User);
-         if Params.Get("event") = "stopped" then
-            Put_Line("Peer " & Params.Get("peer_id") & " reported stopping");
-         end if;
-
          declare
             Compact : Boolean := not Params.Exist("compact") or Params.Get("compact") = "1";
             Num_Want : Natural := 50;

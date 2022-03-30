@@ -33,9 +33,12 @@ package body Hellish_Web.Peers is
 
                Torrent_Map(Info_Hash).Include(Peer_Id, Joined_Peer);
             else
-               -- Update from existing
-               Uploaded_Diff := Joined_Peer.Uploaded - Torrent_Map(Info_Hash)(Peer_Id).Uploaded;
-               Downloaded_Diff := Joined_Peer.Downloaded - Torrent_Map(Info_Hash)(Peer_Id).Downloaded;
+               if Joined_Peer.Last_Event /= "started" then
+                  -- Update from existing.
+                  -- If we just started, there's supposed to always be 0 UL/DL
+                  Uploaded_Diff := Joined_Peer.Uploaded - Torrent_Map(Info_Hash)(Peer_Id).Uploaded;
+                  Downloaded_Diff := Joined_Peer.Downloaded - Torrent_Map(Info_Hash)(Peer_Id).Downloaded;
+               end if;
 
                Torrent_Map(Info_Hash).Replace(Peer_Id, Joined_Peer);
             end if;
@@ -46,6 +49,9 @@ package body Hellish_Web.Peers is
          Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """ from " &
                     To_String(Joined_Peer.Ip) & ":" & Trim(Joined_Peer.Port'Image, Ada.Strings.Left));
          Put_Line("There are now " & Trim(Torrent_Map(Info_Hash).Length'Image, Ada.Strings.Left) & " peers");
+         if Joined_Peer.Last_Event = "stopped" then
+            Put_Line("Peer " & To_String(Joined_Peer.Peer_Id) & " reported stopping");
+         end if;
 
          for Peer of Torrent_Map(Info_Hash)  loop
             if Peer.Last_Seen + Duration(5 * 60) < Clock then

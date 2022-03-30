@@ -16,6 +16,7 @@ package Hellish_Web.Peers is
       Downloaded: Long_Long_Integer;
       Left: Long_Long_Integer;
       Last_Seen : Time;
+      Last_Event : Unbounded_String;
    end record;
 
    package Peer_Maps is new

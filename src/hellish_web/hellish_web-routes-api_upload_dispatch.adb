@@ -61,6 +61,9 @@ begin
          Decoded_Info.Include("private", Encode(Natural'(1)));
          Decoded.Include("info", Bencode_Value_Holders.To_Holder(Decoded_Info));
          Error_String := To_Unbounded_String("The torrent wasn't set as private, you have to redownload it from this page for it to work.");
+      elsif Decoded_Info.Value.Contains(To_Unbounded_String("meta version")) then
+         return
+           Response.Url("/upload?error=You have uploaded a V2/Hybrid torrent, these are not allowed, as some clients still don't support them.");
       end if;
 
       declare
@@ -76,8 +79,8 @@ begin
          Created_File : File_Type;
       begin
          if Detached_Torrent(Maybe_Existing) /= No_Detached_Torrent then
-            return Response.Url("/upload?error=Torrent with this hash already exists&existing_id="
-                                  & Trim(Maybe_Existing.Id'Image, Ada.Strings.Left));
+            return Response.Url("/view/" & Trim(Maybe_Existing.Id'Image, Ada.Strings.Left)
+                                  & "?error=You have uploaded a torrent that already exists.");
          end if;
 
          Create_Path(Uploads_Path);

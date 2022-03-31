@@ -442,6 +442,7 @@ package body Hellish_Web.Routes is
 
       Params : constant Parameters.List := Status.Parameters(Request);
       Update : String := Params.Get("update");
+      Error : String := Params.Get("error");
    begin
       if not Database.User_Exists(Username) then
          -- Redirect to the login page
@@ -464,6 +465,10 @@ package body Hellish_Web.Routes is
          -- This needs to always be set, as textarea uses all whitespace literally
          -- and the template engine can't have anything else be on the same line as statements
          Insert(Translations, Assoc("update_desc", ""));
+      end if;
+
+      if Error /= "" then
+         Insert(Translations, Assoc("error", error));
       end if;
 
       return Response.Build(Mime.Text_Html,

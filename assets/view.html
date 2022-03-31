@@ -47,12 +47,6 @@
          padding-left: 1em;
      }
 
-     .error {
-         margin-top: 1em;
-         margin-bottom: 1em;
-         color: var(--error-color);
-     }
-
      .upload {
          color: var(--upload-color);
      }
@@ -75,7 +69,7 @@
     <div class="page-container">
         <div>
             @@IF@@ @_EXIST:error_@
-            <div class="error">
+            <div class="hellish-error">
                 Error: @_error_@
             </div>
             @@END_IF@@

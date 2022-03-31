@@ -54,6 +54,12 @@
     @@INCLUDE@@ navbar.html
 
     <div class="centered">
+        @@IF@@ @_EXIST:error_@
+        <div class="hellish-error">
+            @_error_@
+        </div>
+        @@END_IF@@
+
         @@-- If this is an update, don't show unneccessary information
         @@IF@@ not @_EXIST:update_@
         <p class="text-centered">Announce URL</p>

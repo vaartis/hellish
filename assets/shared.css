@@ -20,6 +20,12 @@
     padding-right: 5px;
 }
 
+.hellish-error {
+    margin-top: 1em;
+    margin-bottom: 1em;
+    color: var(--error-color);
+}
+
 body {
     background: var(--bg-color);
     color: var(--text-color);

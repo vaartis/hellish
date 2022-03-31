@@ -34,9 +34,3 @@
     border: hidden;
     border-radius: 10px;
 }
-
-.login-error {
-    margin-top: 1em;
-    margin-bottom: 1em;
-    color: var(--error-color);
-}

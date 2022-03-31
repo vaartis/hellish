@@ -513,6 +513,7 @@ package body Hellish_Web.Routes is
 
          Replies.Next;
       end loop;
+      Insert(Translations, Assoc("replies_total", Total_Count));
       Insert(Translations, Assoc("reply_id", Reply_Ids));
       Insert(Translations, Assoc("reply_author", Replies_Authors));
       Insert(Translations, Assoc("reply_author_id", Replies_Author_Ids));

@@ -52,6 +52,10 @@
      .post-flag {
          margin-left: 0.5em;
      }
+
+     .search-info-column {
+         padding-left: 1em;
+     }
     </style>
     <title>Posts :: Hellish</title>
 </head>
@@ -70,7 +74,8 @@
         <table>
             <tr>
                 <th></th>
-                <th>Author</th>
+                <th class="search-info-column">Author</th>
+                <th class="search-info-column">Replies</th>
             </tr>
             @@TABLE@@
             <tr class="search-line">
@@ -82,8 +87,11 @@
                     </span>
                     @@END_IF@@
                 </td>
-                <td>
+                <td class="search-info-column">
                     <a href="/search?uploader=@_post_author_id_@">@_post_author_@</i>
+                </td>
+                <td class="search-info-column">
+                    @_post_replies_@
                 </td>
             </tr>
             @@END_TABLE@@

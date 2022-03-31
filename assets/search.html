@@ -48,6 +48,10 @@
          margin-bottom: 10px;
          text-align: center;
      }
+
+     .search-info-column {
+         padding-left: 1em;
+     }
     </style>
     <title>Torrents :: Hellish</title>
 </head>
@@ -73,6 +77,7 @@
             <tr>
                 <th></th>
                 <th>Uploader</th>
+                <th class="search-info-column">Comments</th>
             </tr>
             @@TABLE@@
             <tr class="search-line">
@@ -81,6 +86,9 @@
                 </td>
                 <td>
                     <a href="/search?uploader=@_torrent_uploader_id_@">@_torrent_uploader_@</i>
+                </td>
+                <td class="search-info-column">
+                    @_torrent_comments_@
                 </td>
             </tr>
             @@END_TABLE@@

@@ -1,6 +1,16 @@
 @@-- $1 is the parameter for create
+@@-- $2 is how to call a single reply
+@@-- $3 is how to call multiple replies
 
 <div class="replies">
+    <div class="replies-total">
+        @@IF@@ @_replies_total_@ = 1
+        @_replies_total_@ @_$2_@
+        @@ELSE@@
+        @_replies_total_@ @_$3_@
+        @@END_IF@@
+    </div>
+
     @@TABLE@@
     <div id="child-@_reply_id_@">
         <div class="reply-container">

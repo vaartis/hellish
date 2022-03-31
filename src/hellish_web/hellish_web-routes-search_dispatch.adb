@@ -38,7 +38,7 @@ begin
       Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
       Torrent_Names, Torrent_Ids,
-        Torrent_Uploaders, Torrent_Uploader_Ids : Vector_Tag;
+        Torrent_Uploaders, Torrent_Uploader_Ids, Torrent_Comments : Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Found_Torrents.Has_Row loop
@@ -47,6 +47,13 @@ begin
          Torrent_Uploaders := Torrent_Uploaders & Database.Get_User(Found_Torrents.Element.Created_By).Username;
          Torrent_Uploader_Ids := Torrent_Uploader_Ids & Integer'(Found_Torrents.Element.Created_By);
 
+         declare
+            Total_Comments : Integer;
+            Searched_Replies : Post_List := Database.Torrent_Comments(Found_Torrents.Element.Id, 0, 0, Total_Comments);
+         begin
+            Torrent_Comments := Torrent_Comments & Total_Comments;
+         end;
+
          Found_Torrents.Next;
       end loop;
 
@@ -54,6 +61,7 @@ begin
       Insert(Translations, Assoc("torrent_name", Torrent_Names));
       Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
       Insert(Translations, Assoc("torrent_uploader_id", Torrent_Uploader_Ids));
+      Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
 
       if Page_Count > 1 then
          for P in 1..Page_Count loop

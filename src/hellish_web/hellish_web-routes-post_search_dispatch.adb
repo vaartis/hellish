@@ -30,7 +30,7 @@ begin
 
       Post_Titles, Post_Ids,
         Post_Authors, Post_Author_Ids,
-        Post_Flags : Vector_Tag;
+        Post_Flags, Post_Replies : Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Found_Posts.Has_Row loop
@@ -44,6 +44,13 @@ begin
             Post_Flags := Post_Flags & "";
          end if;
 
+         declare
+            Total_Replies : Integer;
+            Searched_Replies : Post_List := Database.Post_Replies(Found_Posts.Element.Id, 0, 0, Total_Replies);
+         begin
+            Post_Replies := Post_Replies & Total_Replies;
+         end;
+
          Found_Posts.Next;
       end loop;
 
@@ -52,6 +59,7 @@ begin
       Insert(Translations, Assoc("post_author", Post_Authors));
       Insert(Translations, Assoc("post_author_id", Post_Author_Ids));
       Insert(Translations, Assoc("post_flag", Post_Flags));
+      Insert(Translations, Assoc("post_replies", Post_Replies));
 
       if Page_Count > 1 then
          for P in 1..Page_Count loop

@@ -194,7 +194,7 @@ package body Hellish_Web.Routes is
 
          if Params.Get("event") = "completed" then
             -- Increment the downloaded count
-            Database.Snatch_Torrent(Info_Hash_Hex);
+            Database.Snatch_Torrent(Info_Hash_Hex, User);
          end if;
 
          Peers.Protected_Map.Add(Info_Hash_Hex,
@@ -652,6 +652,7 @@ package body Hellish_Web.Routes is
             if Stats /= Detached_User_Torrent_Stat'Class(No_Detached_User_Torrent_Stat) then
                Insert(Translations, Assoc("user_uploaded", Bytes_To_Printable(Stats.Uploaded)));
                Insert(Translations, Assoc("user_downloaded", Bytes_To_Printable(Stats.Downloaded)));
+               Insert(Translations, Assoc("user_snatched", Stats.Snatched));
             end if;
          end;
 

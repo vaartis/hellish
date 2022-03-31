@@ -24,7 +24,7 @@ package Hellish_Web.Database is
                                     Uploaded_Diff : Long_Long_Integer; Downloaded_Diff : Long_Long_Integer);
    function Get_Torrent_By_Hash(Info_Hash : String; Session : Session_Type := Get_New_Session) return Detached_Torrent'Class;
    function Get_Torrent(Id : Natural) return Detached_Torrent'Class;
-   procedure Snatch_Torrent(Info_Hash : String);
+   procedure Snatch_Torrent(Info_Hash : String; The_User : Detached_User'Class);
    function Search_Torrents(Query : String;
                             Uploader : Natural;
 

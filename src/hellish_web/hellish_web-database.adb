@@ -26,7 +26,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 1;
+   Latest_Version : Natural := 2;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -294,13 +294,23 @@ package body Hellish_Web.Database is
       return Get_Torrent(Session, Id => Id);
    end Get_Torrent;
 
-   procedure Snatch_Torrent(Info_Hash : String) is
+   procedure Snatch_Torrent(Info_Hash : String; The_User : Detached_User'Class) is
+      use Hellish_Database;
+
       Session : Session_Type := Get_New_Session;
 
       The_Torrent : Detached_Torrent'Class := Get_Torrent_By_Hash(Info_Hash, Session);
+
+      Torrent_Stat_Update : Sql_Query :=
+        Sql_Update(Table => User_Torrent_Stats,
+                   Where => (User_Torrent_Stats.By_User = The_User.Id) and (User_Torrent_Stats.Of_Torrent = The_Torrent.Id),
+                   Set => (User_Torrent_Stats.Snatched = True));
    begin
       The_Torrent.Set_Snatches(The_Torrent.Snatches + 1);
       Session.Persist(The_Torrent);
+
+      Session.Db.Execute(Torrent_Stat_Update);
+
       Session.Commit;
    end Snatch_Torrent;
 

@@ -69,7 +69,7 @@ package Orm is
    No_Torrent : constant Torrent;
 
    type User_Torrent_Stat is new Orm_Element with null record;
-   type User_Torrent_Stat_DDR is new Detached_Data (6) with private;
+   type User_Torrent_Stat_DDR is new Detached_Data (7) with private;
    type Detached_User_Torrent_Stat is  --  Get() returns a User_Torrent_Stat_DDR
    new Sessions.Detached_Element with private;
    type Detached_User_Torrent_Stat_Access is access all Detached_User_Torrent_Stat'Class;
@@ -243,6 +243,10 @@ package Orm is
    procedure Set_Of_Torrent
      (Self  : Detached_User_Torrent_Stat;
       Value : Detached_Torrent'Class);
+
+   function Snatched (Self : User_Torrent_Stat) return Boolean;
+   function Snatched (Self : Detached_User_Torrent_Stat) return Boolean;
+   procedure Set_Snatched (Self : Detached_User_Torrent_Stat; Value : Boolean);
 
    function Uploaded (Self : User_Torrent_Stat) return Long_Long_Integer;
    function Uploaded
@@ -611,7 +615,8 @@ package Orm is
       By_User    : Integer := -1;
       Of_Torrent : Integer := -1;
       Uploaded   : Long_Long_Integer := -1;
-      Downloaded : Long_Long_Integer := -1)
+      Downloaded : Long_Long_Integer := -1;
+      Snatched   : Triboolean := Indeterminate)
      return User_Torrent_Stats_Managers;
 
    ----------------------
@@ -782,12 +787,13 @@ private
     end record;
     type Torrent_Data is access all Torrent_DDR;
     
-    type User_Torrent_Stat_DDR is new Detached_Data (6) with record
+    type User_Torrent_Stat_DDR is new Detached_Data (7) with record
        ORM_By_User       : Integer := -1;
        ORM_Downloaded    : Long_Long_Integer := -1;
        ORM_FK_By_User    : Detached_User_Access := null;
        ORM_FK_Of_Torrent : Detached_Torrent_Access := null;
        ORM_Of_Torrent    : Integer := -1;
+       ORM_Snatched      : Boolean := False;
        ORM_Uploaded      : Long_Long_Integer := -1;
     end record;
     type User_Torrent_Stat_Data is access all User_Torrent_Stat_DDR;

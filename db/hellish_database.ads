@@ -115,6 +115,7 @@ package Hellish_Database is
       Of_Torrent : SQL_Field_Integer (Ta_User_Torrent_Stats, Instance, N_Of_Torrent, Index);
       Uploaded : SQL_Field_Bigint (Ta_User_Torrent_Stats, Instance, N_Uploaded, Index);
       Downloaded : SQL_Field_Bigint (Ta_User_Torrent_Stats, Instance, N_Downloaded, Index);
+      Snatched : SQL_Field_Boolean (Ta_User_Torrent_Stats, Instance, N_Snatched, Index);
    end record;
 
    type T_User_Torrent_Stats (Instance : Cst_String_Access)

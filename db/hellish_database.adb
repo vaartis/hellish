@@ -62,6 +62,7 @@ package body Hellish_Database is
          & "|of_torrent|FK torrents|NOT NULL||" & ASCII.LF
          & "|uploaded|bigint|||" & ASCII.LF
          & "|downloaded|bigint|||" & ASCII.LF
+         & "|snatched|boolean|NOT NULL|FALSE|" & ASCII.LF
          & "|UNIQUE:|by_user,of_torrent|user_torrent_unique" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| invites" & ASCII.LF

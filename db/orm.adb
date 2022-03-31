@@ -64,8 +64,9 @@ package body Orm is
    F_User_Torrent_Stats_Of_Torrent : constant := 1;
    F_User_Torrent_Stats_Uploaded   : constant := 2;
    F_User_Torrent_Stats_Downloaded : constant := 3;
-   Upto_User_Torrent_Stats_0 : constant Counts := ((4,4),(4,4),(4,4),(4,4));
-   Upto_User_Torrent_Stats_1 : constant Counts := ((4,4),(11,11),(11,11),(11,11));
+   F_User_Torrent_Stats_Snatched   : constant := 4;
+   Upto_User_Torrent_Stats_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
+   Upto_User_Torrent_Stats_1 : constant Counts := ((5,5),(12,12),(12,12),(12,12));
    Alias_User_Torrent_Stats : constant Alias_Array := (-1,3,4,-1,-1,6,0);
    F_Users_Id         : constant := 0;
    F_Users_Username   : constant := 1;
@@ -1136,6 +1137,24 @@ package body Orm is
    end Role;
 
    --------------
+   -- Snatched --
+   --------------
+
+   function Snatched (Self : User_Torrent_Stat) return Boolean is
+   begin
+      return Boolean_Value (Self, F_User_Torrent_Stats_Snatched);
+   end Snatched;
+
+   --------------
+   -- Snatched --
+   --------------
+
+   function Snatched (Self : Detached_User_Torrent_Stat) return Boolean is
+   begin
+      return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Snatched;
+   end Snatched;
+
+   --------------
    -- Snatches --
    --------------
 
@@ -1693,7 +1712,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (User_Torrent_Stat_DDR'
-              (Detached_Data with Field_Count => 6, others => <>));
+              (Detached_Data with Field_Count => 7, others => <>));
       end if;
 
       Tmp := User_Torrent_Stat_Data (Result.Unchecked_Get);
@@ -1711,6 +1730,7 @@ package body Orm is
       Tmp.ORM_FK_By_User    := FK_By_User;
       Tmp.ORM_FK_Of_Torrent := FK_Of_Torrent;
       Tmp.ORM_Of_Torrent    := Integer_Value (Self, F_User_Torrent_Stats_Of_Torrent);
+      Tmp.ORM_Snatched      := Boolean_Value (Self, F_User_Torrent_Stats_Snatched);
       Tmp.ORM_Uploaded      := Bigint_Value (Self, F_User_Torrent_Stats_Uploaded);
       Session.Persist (Result);
       return Result;
@@ -1972,7 +1992,8 @@ package body Orm is
       Fields := Fields & Table.By_User
       & Table.Of_Torrent
       & Table.Uploaded
-      & Table.Downloaded;
+      & Table.Downloaded
+      & Table.Snatched;
       if Depth > 0 then
 
          declare
@@ -2146,7 +2167,8 @@ package body Orm is
       By_User    : Integer := -1;
       Of_Torrent : Integer := -1;
       Uploaded   : Long_Long_Integer := -1;
-      Downloaded : Long_Long_Integer := -1)
+      Downloaded : Long_Long_Integer := -1;
+      Snatched   : Triboolean := Indeterminate)
      return User_Torrent_Stats_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2163,6 +2185,9 @@ package body Orm is
       end if;
       if Downloaded /= -1 then
          C := C and DBA.User_Torrent_Stats.Downloaded = Downloaded;
+      end if;
+      if Snatched /= Indeterminate then
+         C := C and DBA.User_Torrent_Stats.Snatched = To_Boolean(Snatched);
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -2905,6 +2930,9 @@ package body Orm is
       end if;
       if Mask (4) then
          A := A & (DBA.User_Torrent_Stats.Downloaded = D.ORM_Downloaded);
+      end if;
+      if Mask (5) then
+         A := A & (DBA.User_Torrent_Stats.Snatched = D.ORM_Snatched);
       end if;
       Q := SQL_Insert (A);
       R.Fetch (Self.Session.DB, Q);
@@ -3796,6 +3824,18 @@ package body Orm is
       D.ORM_Role := Value;
       Self.Set_Modified (7);
    end Set_Role;
+
+   ------------------
+   -- Set_Snatched --
+   ------------------
+
+   procedure Set_Snatched (Self : Detached_User_Torrent_Stat; Value : Boolean)
+   is
+      D : constant User_Torrent_Stat_Data := User_Torrent_Stat_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Snatched := Value;
+      Self.Set_Modified (5);
+   end Set_Snatched;
 
    ------------------
    -- Set_Snatches --

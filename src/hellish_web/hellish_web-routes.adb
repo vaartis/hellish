@@ -910,6 +910,8 @@ package body Hellish_Web.Routes is
 
       Match(Api_Delete_Matcher, Uri, Matches);
       declare
+         use Ada.Directories;
+
          Match : Match_Location := Matches(1);
          Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
 
@@ -921,6 +923,9 @@ package body Hellish_Web.Routes is
 
          Peers.Protected_Map.Remove_Torrent (The_Torrent.Info_Hash);
          Database.Delete_Torrent(Id);
+         Ada.Directories.Delete_File(Compose(Containing_Directory => Uploads_Path,
+                                             Name => The_Torrent.Info_Hash,
+                                             Extension => "torrent"));
 
          return Response.Url("/");
       end;

@@ -54,6 +54,7 @@ package Hellish_Web.Peers is
    protected Protected_Map is
       procedure Add(Info_Hash : String; Joined_Peer : Peer; The_User : Detached_User'Class);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
+      procedure Remove_Torrent(Info_Hash : String);
 
       function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String;
                                           Options : Response_Options) return Bencode_Value_Holders.Holder;

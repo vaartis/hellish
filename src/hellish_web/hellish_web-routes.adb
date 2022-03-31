@@ -919,6 +919,7 @@ package body Hellish_Web.Routes is
             return Response.Acknowledge(Messages.S403, "Forbidden");
          end if;
 
+         Peers.Protected_Map.Remove_Torrent (The_Torrent.Info_Hash);
          Database.Delete_Torrent(Id);
 
          return Response.Url("/");

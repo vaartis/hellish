@@ -79,6 +79,11 @@ package body Hellish_Web.Peers is
          end if;
       end Remove;
 
+      procedure Remove_Torrent(Info_Hash : String) is
+      begin
+         Torrent_Map.Exclude(Info_hash);
+      end;
+
       function Contains(Info_Hash : String) return Boolean is (Torrent_Map.Contains(Info_Hash));
       function Constant_Reference(Info_Hash : String) return Torrent_Maps.Constant_Reference_Type is
         (Torrent_Map.Constant_Reference(Info_Hash));

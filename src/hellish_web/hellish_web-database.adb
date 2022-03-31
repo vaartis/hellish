@@ -346,9 +346,12 @@ package body Hellish_Web.Database is
         Sql_Delete(From => User_Torrent_Stats,
                    Where => User_Torrent_Stats.Of_Torrent = Id);
       Torrent_Delete : Sql_Query :=
-           Sql_Delete(From => Torrents, Where => Torrents.Id = Id);
+        Sql_Delete(From => Torrents, Where => Torrents.Id = Id);
+      Comments_Delete : Sql_Query :=
+           Sql_Delete(From => Posts, Where => Posts.Parent_Torrent = Id);
    begin
       Session.Db.Execute(Stats_Delete);
+      Session.Db.Execute(Comments_Delete);
       Session.Db.Execute(Torrent_Delete);
 
       Session.Commit;

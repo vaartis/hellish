@@ -13,21 +13,9 @@
          width: 60%;
      }
 
-     .content-box {
-         background: var(--panel-color);
-         border: hidden;
-         border-radius: 10px;
-
-         padding: 10px;
-     }
-
-     .content-box p {
-         white-space: pre-line;
-     }
-
      .title {
          font-weight: bold;
-         font-size: 28px;         
+         font-size: 28px;
      }
 
      .subtitle {
@@ -47,9 +35,9 @@
     @@INCLUDE@@ navbar.html
 
     <div class="content">
-        <div>
-            <div>
-                <span class="title">@_title_@</span>
+        <article>
+            <header>
+                <h1 class="title">@_title_@</h1>
                 <div class="subtitle">
                     <a href="/search?uploader=@_author_id_@">@_author_@</a>
 
@@ -61,12 +49,12 @@
                     </div>
                     @@END_IF@@
                 </div>
-            </div>
-            
+            </header>
+
             <div class="content-box">
                 @_content_@
             </div>
-        </div>
+        </article>
 
         @@-- parent is the parameter for new post creation
         @@INCLUDE@@ replies.html parent reply replies

@@ -20,17 +20,3 @@
     width: 6em;
     font-weight: bold;
 }
-
-.login-button {
-    padding: 1em;
-
-    font-weight: bold;
-    font-size: 18px;
-    float: right;
-
-    background: var(--input-color);
-    color: var(--text-color);
-
-    border: hidden;
-    border-radius: 10px;
-}

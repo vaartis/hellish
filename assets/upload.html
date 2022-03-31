@@ -16,22 +16,6 @@
          text-align: center;
      }
 
-     .upload-button {
-         padding: 0.8em;
-         margin-top: 1em;
-
-         font-weight: bold;
-         font-size: 18px;
-
-         background: var(--input-color);
-         color: var(--text-color);
-
-         border: hidden;
-         border-radius: 10px;
-
-         display: block;
-     }
-
      .upload-file {
          margin-top: 1em;
      }
@@ -111,7 +95,7 @@
                 </tr>
             </table>
 
-            <input class="upload-button" type="submit" name="go"
+            <input class="hellish-button" type="submit" name="go"
                    @@IF@@ not @_EXIST:update_@
                    value="Upload!"
                    @@ELSE@@

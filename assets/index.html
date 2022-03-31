@@ -1,6 +1,8 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
      @@INCLUDE@@ shared.css
 
@@ -28,24 +30,11 @@
      }
 
      .news-box {
-         margin-top: 2em;
          position: absolute;
          left: 50%;
          transform: translate(-50%);
 
          width: 60%;
-     }
-
-     .content-box {
-         background: var(--panel-color);
-         border: hidden;
-         border-radius: 10px;
-
-         padding: 10px;
-     }
-
-     .content-box p {
-         white-space: pre-line;
      }
 
      .title {
@@ -63,45 +52,50 @@
 <body>
     @@INCLUDE@@ navbar.html
 
-    <div class="user-info">
+    <aside class="user-info">
         <a href="/search?uploader=@_user_id_@">@_username_@</a>
         <div>
             <span class="upload">▲ @_uploaded_@</span>
             <span class="download">▼ @_downloaded_@</span>
         </div>
         <hr>
-        <div>
+        <nav>
             <a class="user-button" href="/upload">Upload</a>
             <a class="user-button" href="/invite">Invite</a>
             <a class="user-button" href="/post/create">New post</a>
-        </div>
+        </nav>
         <hr>
         <div>
             <a href="/api/user/logout">Log out</a>
         </div>
-    </div>
+    </aside>
 
-    <div class="content">
+    <aside class="content">
         <p>
             Current seeders: <b>@_current_seeders_@</b>
         </p>
         <p>
             Current leechers: <b>@_current_leechers_@</b>
         </p>
+    </aside>
 
+    <main class="content">
         @@IF@@ @_EXIST:news_title_@
-        <div class="news-box">
-            <div>
-                <a href="/post/@_news_id_@" class="title">@_news_title_@</a>
+        <article class="news-box">
+            <header>
+                <h2>
+                    <a href="/post/@_news_id_@" class="title" id="article-title">@_news_title_@</a>
+                </h2>
                 <div class="subtitle">
                     <a href="/search?uploader=@_news_author_id_@">@_news_author_@</a>
                 </div>
-            </div>
+            </header>
 
-            <div class="content-box">
+            <div class="hellish-content-box">
                 @_news_content_@
             </div>
-        </div>
+        </article>
         @@END_IF@@
-    </div>
+    </main>
 </body>
+</html>

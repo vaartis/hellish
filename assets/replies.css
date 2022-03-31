@@ -9,36 +9,8 @@
     width: @_$1_@;
 }
 
-.reply-button {
-    padding: 0.8em;
-    margin-top: 1em;
-
-    font-weight: bold;
-    font-size: 18px;
-
-    background: var(--input-color);
-    color: var(--text-color);
-
-    border: hidden;
-    border-radius: 10px;
-
-    display: block;
-}
-
 .reply-container {
     width: @_$1_@;
-}
-
-.reply-content-box {
-    background: var(--panel-color);
-    border: hidden;
-    border-radius: 10px;
-
-    padding: 10px;
-}
-
-.reply-content-box p {
-    white-space: pre-line;
 }
 
 .replies-pages {

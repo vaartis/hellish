@@ -3,6 +3,7 @@
     --text-color: #e4d5e8;
     --panel-color: #6b1048;
     --input-color: #421e47;
+    --input-active-color: #4c2251;
     --error-color: #f77178;
     --link-color: #cae0f9;
 
@@ -31,10 +32,94 @@ body {
     color: var(--text-color);
 }
 
+h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+    margin: 0;
+}
+
+.hellish-content-box {
+    background: var(--panel-color);
+    border: hidden;
+    border-radius: 10px;
+
+    padding: 10px;
+}
+
+.hellish-content-box p {
+    white-space: pre-line;
+}
+
+.hellish-content-box h1, .hellish-content-box h2, .hellish-content-box h3,
+.hellish-content-box h4, .hellish-content-box h5, .hellish-content-box h6 {
+    font-weight: auto;
+    margin: auto;
+}
+
 a {
     color: var(--link-color);
     text-decoration: none;
     font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.hellish-button {
+    padding: 0.8em;
+    margin-top: 1em;
+
+    font-weight: bold;
+    font-size: 18px;
+
+    background: var(--input-color);
+    color: var(--text-color);
+
+    border: hidden;
+    border-radius: 10px;
+
+    transition: 250ms ease-in;
+}
+
+.hellish-button:hover {
+    background-color: var(--input-active-color);
+    transition: 250ms ease-out;
+}
+
+.hellish-thin-button {
+    padding: 0.5em;
+    margin-top: 1em;
+}
+
+.hellish-thick-button {
+    padding: 1em;
+    margin-top: auto;
+}
+
+.hellish-results-table {
+    border-collapse: collapse;
+}
+
+.hellish-results-header th {
+    padding: 5px 10px;
+}
+
+.hellish-name-column {
+    min-width: 150px;
+}
+
+.search-line td {
+    padding: 0 10px;
+    text-align: center;
+}
+
+.search-line td:first-child {
+    padding: 0 10px 0 0;
+    text-align: left;
+}
+
+.search-line td:last-child {
+    padding: 0 0 0 10px;
 }
 
 @@-- Specifically for navbar.html

@@ -2,7 +2,7 @@
 @@-- $2 is how to call a single reply
 @@-- $3 is how to call multiple replies
 
-<div class="replies">
+<div class="replies" aria-label="Replies">
     <div class="replies-total">
         @@IF@@ @_replies_total_@ = 1
         @_replies_total_@ @_$2_@
@@ -28,7 +28,7 @@
                 </div>
             </div>
 
-            <div class="reply-content-box">
+            <div class="hellish-content-box">
                 @_reply_content_@
             </div>
         </div>
@@ -54,5 +54,5 @@
 <form id="reply-form" class="new-reply-form" action="/api/post/create?@_$1_@=@_id_@" method="POST">
     <textarea required form="reply-form" class="hellish-input-field reply-input" type="textbox"
               name="content" rows="15"></textarea>
-    <input class="reply-button" type="submit" value="Post!">
+    <input class="hellish-button" type="submit" value="Post!">
 </form>

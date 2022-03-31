@@ -40,5 +40,5 @@
 | content        | TEXT                     | NOT NULL |   |                                               |
 | by_user        | FK users(created_posts)  | NOT NULL |   |                                               |
 | parent_post    | FK posts(children_posts) |          |   | The ID of the post that started the thread    |
-| flag           | INTEGER                  | NOT NULL | 0 | 0 = nothing, 1 = news                         |
+| flag           | INTEGER                  | NOT NULL | 0 | 0 = nothing, 1 = news, 2 = request/offer      |
 | parent_torrent | FK torrents(comments)    |          |   | The ID of the torrent that started the thread |

@@ -80,14 +80,23 @@
             <textarea required form="post-form" class="hellish-input-field post-input" type="textbox"
                       name="content" id="content-input" rows="15">@_content_@</textarea>
 
-            @@IF@@ @_admin_@
+            @@IF@@ not @_reply_@
             <div class="after-form">
-                <input type="checkbox" id="news-flag" name="flag" value="1"
-                       @@IF@@ @_EXIST:update_@ and @_flag_@ = 1
-                       checked
-                       @@END_IF@@
-                >
-                <label for="news-flag">News</label>
+                <select class="hellish-select" name="flag">
+                    <option value="0">Normal</option>
+                    @@IF@@ @_admin_@
+                    <option value="1"
+                            @@IF@@ @_EXIST:update_@ and @_flag_@ = 1
+                            selected
+                            @@END_IF@@
+                    >News</option>
+                    @@END_IF@@
+                    <option value="2"
+                            @@IF@@ @_EXIST:update_@ and @_flag_@ = 2
+                            selected
+                            @@END_IF@@
+                    >Request / Offer</option>
+                </select>
             </div>
             @@END_IF@@
 

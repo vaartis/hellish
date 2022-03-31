@@ -38,11 +38,11 @@ begin
          Post_Titles := Post_Titles & Found_Posts.Element.Title;
          Post_Authors := Post_Authors & Database.Get_User(Found_Posts.Element.By_User).Username;
          Post_Author_Ids := Post_Author_Ids & Integer'(Found_Posts.Element.By_User);
-         if Found_Posts.Element.Flag = 1 then
-            Post_Flags := Post_Flags & "News";
-         else
-            Post_Flags := Post_Flags & "";
-         end if;
+
+         Post_Flags := Post_Flags & (case Found_Posts.Element.Flag is
+                                        when 1 => "News",
+                                        when 2 => "Request / Offer",
+                                        when others => "");
 
          declare
             Total_Replies : Integer;

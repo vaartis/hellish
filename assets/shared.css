@@ -10,7 +10,7 @@
     --download-color: #c96454;
 }
 
-.hellish-input-field {
+.hellish-input-field, .hellish-select {
     background: var(--input-color);
     color: var(--text-color);
     border: hidden;

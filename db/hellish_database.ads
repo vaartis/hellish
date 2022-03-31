@@ -64,7 +64,7 @@ package Hellish_Database is
       --  The ID of the post that started the thread
 
       Flag : SQL_Field_Integer (Ta_Posts, Instance, N_Flag, Index);
-      --  0 = nothing, 1 = news
+      --  0 = nothing, 1 = news, 2 = request/offer
 
       Parent_Torrent : SQL_Field_Integer (Ta_Posts, Instance, N_Parent_Torrent, Index);
       --  The ID of the torrent that started the thread

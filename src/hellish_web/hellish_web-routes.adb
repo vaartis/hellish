@@ -1090,8 +1090,10 @@ package body Hellish_Web.Routes is
         and Database.Get_Torrent(Parent_Torrent) /= Detached_Torrent'Class(No_Detached_Torrent) then
          Post.Set_Parent_Torrent(Parent_Torrent);
       end if;
-      if Flag = 1 and The_User.Role = 1 then
-         Post.Set_Flag(Flag);
+      if Parent = -1 and Parent_Torrent = -1 then
+         if (Flag = 1 and The_User.Role = 1) or Flag = 2 then
+            Post.Set_Flag(Flag);
+         end if;
       end if;
 
       Database.Create_Post(Post);

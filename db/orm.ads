@@ -326,7 +326,7 @@ package Orm is
    function Flag (Self : Post) return Integer;
    function Flag (Self : Detached_Post) return Integer;
    procedure Set_Flag (Self : Detached_Post; Value : Integer);
-   --  0 = nothing, 1 = news
+   --  0 = nothing, 1 = news, 2 = request/offer
 
    function Id (Self : Post) return Integer;
    function Id (Self : Detached_Post) return Integer;

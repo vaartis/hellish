@@ -32,7 +32,8 @@ body {
     color: var(--text-color);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1:not(.hellish-content-box h1), h2:not(.hellish-content-box h2), h3:not(.hellish-content-box h3),
+h4:not(.hellish-content-box h4), h5:not(.hellish-content-box h5), h6:not(.hellish-content-box h6) {
     font-weight: normal;
     margin: 0;
 }
@@ -47,12 +48,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .hellish-content-box p {
     white-space: pre-line;
-}
-
-.hellish-content-box h1, .hellish-content-box h2, .hellish-content-box h3,
-.hellish-content-box h4, .hellish-content-box h5, .hellish-content-box h6 {
-    font-weight: auto;
-    margin: auto;
 }
 
 a {

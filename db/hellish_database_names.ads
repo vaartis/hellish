@@ -3,6 +3,8 @@ package Hellish_Database_Names is
    pragma Style_Checks (Off);
    TC_Config : aliased constant String := "config";
    Ta_Config : constant Cst_String_Access := TC_Config'Access;
+   TC_Image_Uploads : aliased constant String := "image_uploads";
+   Ta_Image_Uploads : constant Cst_String_Access := TC_Image_Uploads'Access;
    TC_Invites : aliased constant String := "invites";
    Ta_Invites : constant Cst_String_Access := TC_Invites'Access;
    TC_Peer_Data : aliased constant String := "peer_data";
@@ -32,6 +34,8 @@ package Hellish_Database_Names is
    N_Display_Name : constant Cst_String_Access := NC_display_name'Access;
    NC_Downloaded : aliased constant String := "downloaded";
    N_Downloaded : constant Cst_String_Access := NC_downloaded'Access;
+   NC_Filename : aliased constant String := "filename";
+   N_Filename : constant Cst_String_Access := NC_filename'Access;
    NC_Flag : aliased constant String := "flag";
    N_Flag : constant Cst_String_Access := NC_flag'Access;
    NC_For_User : aliased constant String := "for_user";

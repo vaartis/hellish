@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .page-container {
+         padding-top: 5em;
+         margin-left: 3em;
+     }
+
+     img {
+         max-width: 300px;
+         max-height: 300px;
+     }
+
+     .image-info {
+         display: inline-block;
+         vertical-align: top;
+         margin-left: 1em;
+     }
+
+     pre {
+         font-size: 15px;
+     }
+
+     .image-upload-form {
+         margin-bottom: 2em;
+         text-align: center;
+     }
+
+    </style>
+    <title>Images :: Hellish</title>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="page-container">
+
+        <form class="image-upload-form" enctype="multipart/form-data" action="/api/upload/image" method="POST">
+            @@IF@@ @_EXIST:error_@
+            <div class="hellish-error">
+                @_error_@
+            </div>
+            @@END_IF@@
+
+            <input required class="upload-file" name="file" type="file">
+            <input class="hellish-button hellish-thin-button" type="submit" value="Upload!">
+        </form>
+
+        @@TABLE@@
+        <div class="image-container" id="image-@_image_id_@">
+            <img src="/uploads/images/@_image_name_@">
+
+            <div class="image-info">
+                <b>Markdown</b>
+                <pre>[![](/uploads/images/@_image_name_@)](/uploads/images/@_image_name_@)</pre>
+
+                <div>
+                    [
+                    <a href="/confirm?action=delete the image&ok=/api/delete/image/@_image_id_@">Delete</a>
+                    ]
+                </div>
+            </div>
+        </div>
+        @@END_TABLE@@
+    </div>
+</body>

@@ -12,6 +12,8 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Config_DDR, Config_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( Image_Upload_DDR, Image_Upload_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Invite_DDR, Invite_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Peer_Data_DDR, Peer_Data_Data);
@@ -33,6 +35,11 @@ package body Orm is
    F_Config_Id      : constant := 0;
    F_Config_Version : constant := 1;
    Alias_Config : constant Alias_Array := (0 => -1);
+   F_Image_Uploads_Id       : constant := 0;
+   F_Image_Uploads_By_User  : constant := 1;
+   F_Image_Uploads_Filename : constant := 2;
+   Upto_Image_Uploads_0 : constant Counts := ((3,3),(3,3),(3,3),(3,3));
+   Alias_Image_Uploads : constant Alias_Array := (-1,2,-1);
    F_Invites_Id        : constant := 0;
    F_Invites_Value     : constant := 1;
    F_Invites_Activated : constant := 2;
@@ -90,6 +97,10 @@ package body Orm is
       Session : Session_Type)
      return Detached_Config'Class;
    function Detach_No_Lookup
+     (Self    : Image_Upload'Class;
+      Session : Session_Type)
+     return Detached_Image_Upload'Class;
+   function Detach_No_Lookup
      (Self    : Invite'Class;
       Session : Session_Type)
      return Detached_Invite'Class;
@@ -118,9 +129,19 @@ package body Orm is
    --  the session cache Same as Detach, but does not check the session cache
    --  Same as Detach, but does not check the session cache Same as Detach, but
    --  does not check the session cache Same as Detach, but does not check the
-   --  session cache
+   --  session cache Same as Detach, but does not check the session cache
 
    procedure Do_Query_Config
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Do_Query_Image_Uploads
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -336,6 +357,33 @@ package body Orm is
          return False;
       else
          return Integer'(Op1.Torrent_Id) = Op2.Torrent_Id;
+      end if;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Image_Upload; Op2 : Image_Upload) return Boolean is
+   begin
+      return Integer'(Op1.Id) = Op2.Id;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "="
+     (Op1 : Detached_Image_Upload;
+      Op2 : Detached_Image_Upload)
+     return Boolean is
+   begin
+      if Op1.Is_Null then
+         return Op2.Is_Null;
+      elsif Op2.Is_Null then
+         return False;
+      else
+         return Integer'(Op1.Id) = Op2.Id;
       end if;
    end "=";
 
@@ -564,6 +612,74 @@ package body Orm is
    end By_User;
 
    -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Image_Upload) return Integer is
+   begin
+      return Integer_Value (Self, F_Image_Uploads_By_User);
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_Image_Upload) return Integer is
+   begin
+      return Image_Upload_Data (Self.Unchecked_Get).ORM_By_User;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Image_Upload) return User'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 then
+         return I_Users.Internal_Element
+           (Self,
+            Upto_Image_Uploads_0 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+
+         return Filter (All_Users, Id => Self.By_User)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end By_User;
+
+   -------------
+   -- By_User --
+   -------------
+
+   function By_User (Self : Detached_Image_Upload) return Detached_User'Class
+   is
+      D : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_By_User = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for By_User";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_By_User := new Detached_User'Class'
+           (Get_User (S, Id => D.ORM_By_User));
+      end if;
+      return D.ORM_FK_By_User.all;
+   end By_User;
+
+   -------------
    -- Content --
    -------------
 
@@ -741,6 +857,24 @@ package body Orm is
       return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Downloaded;
    end Downloaded;
 
+   --------------
+   -- Filename --
+   --------------
+
+   function Filename (Self : Image_Upload) return String is
+   begin
+      return String_Value (Self, F_Image_Uploads_Filename);
+   end Filename;
+
+   --------------
+   -- Filename --
+   --------------
+
+   function Filename (Self : Detached_Image_Upload) return String is
+   begin
+      return To_String (Image_Upload_Data (Self.Unchecked_Get).ORM_Filename);
+   end Filename;
+
    ----------
    -- Flag --
    ----------
@@ -915,6 +1049,24 @@ package body Orm is
    function Id (Self : Detached_Post) return Integer is
    begin
       return Post_Data (Self.Unchecked_Get).ORM_Id;
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Image_Upload) return Integer is
+   begin
+      return Integer_Value (Self, F_Image_Uploads_Id);
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Detached_Image_Upload) return Integer is
+   begin
+      return Image_Upload_Data (Self.Unchecked_Get).ORM_Id;
    end Id;
 
    ---------------
@@ -1679,6 +1831,23 @@ package body Orm is
       end if;
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach
+     (Self : Image_Upload'Class)
+     return Detached_Image_Upload'Class
+   is
+      R : constant Detached_Image_Upload'Class := From_Cache (Self.Data.Session, Self.Id);
+   begin
+      if R.Is_Null then
+         return Detach_No_Lookup (Self, Self.Data.Session);
+      else
+         return R;
+      end if;
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -1701,6 +1870,41 @@ package body Orm is
 
       Tmp.ORM_Id         := Integer_Value (Self, F_Config_Id);
       Tmp.ORM_Version    := Integer_Value (Self, F_Config_Version);
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
+     (Self    : Image_Upload'Class;
+      Session : Session_Type)
+     return Detached_Image_Upload'Class
+   is
+      Default    : Detached_Image_Upload;
+      Result     : Detached_Image_Upload'Class := Detached_Image_Upload'Class (Session.Factory (Self, Default));
+      Fk_By_User : Detached_User_Access;
+      Lj         : constant Boolean := Self.Data.Follow_LJ;
+      Tmp        : Image_Upload_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (Image_Upload_DDR'
+              (Detached_Data with Field_Count => 4, others => <>));
+      end if;
+
+      Tmp := Image_Upload_Data (Result.Unchecked_Get);
+      if Self.Depth > 0 then
+         FK_By_User := new Detached_User'Class'(
+            I_Users.Internal_Element
+              (Self, Upto_Image_Uploads_0 (Self.Depth, LJ)).Detach);
+      end if;
+
+      Tmp.ORM_By_User     := Integer_Value (Self, F_Image_Uploads_By_User);
+      Tmp.ORM_FK_By_User  := FK_By_User;
+      Tmp.ORM_Filename    := To_Unbounded_String (String_Value (Self, F_Image_Uploads_Filename));
+      Tmp.ORM_Id          := Integer_Value (Self, F_Image_Uploads_Id);
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1975,6 +2179,50 @@ package body Orm is
       end if;
       From := Empty_Table_List;
    end Do_Query_Config;
+
+   ----------------------------
+   -- Do_Query_Image_Uploads --
+   ----------------------------
+
+   procedure Do_Query_Image_Uploads
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False)
+   is
+      Table : T_Numbered_Image_Uploads(Aliases(Base));
+      C2    : Sql_Criteria;
+      T     : SQL_Table_List;
+   begin
+      if PK_Only then
+         Fields := Fields & Table.Id;
+      else
+         Fields := Fields & Table.Id
+         & Table.By_User
+         & Table.Filename;
+      end if;
+      From := Empty_Table_List;
+      if Depth > 0 then
+
+         declare
+            FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
+         begin Criteria := Criteria
+         and Table.By_User = FK1.Id;
+         From := +Table;
+         C2 := No_Criteria;
+         Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
+         end if;
+         From := From & T;
+      end;
+   end if;
+   end Do_Query_Image_Uploads;
 
    ----------------------
    -- Do_Query_Invites --
@@ -2520,12 +2768,50 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self     : Image_Uploads_Managers'Class;
+      Id       : Integer := -1;
+      By_User  : Integer := -1;
+      Filename : String := No_Update)
+     return Image_Uploads_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : Image_Uploads_Managers;
+   begin
+      if Id /= -1 then
+         C := C and DBA.Image_Uploads.Id = Id;
+      end if;
+      if By_User /= -1 then
+         C := C and DBA.Image_Uploads.By_User = By_User;
+      end if;
+      if Filename /= No_Update then
+         C := C and DBA.Image_Uploads.Filename = Filename;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
 
    overriding procedure Free (Self : in out Config_Ddr) is
    begin
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
+   overriding procedure Free (Self : in out Image_Upload_Ddr) is
+   begin
+      Unchecked_Free (Self.ORM_FK_By_User);
+
       Free (Detached_Data (Self));
    end Free;
 
@@ -2670,6 +2956,18 @@ package body Orm is
    end From_Cache;
 
    ----------------
+   -- From_Cache --
+   ----------------
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Image_Upload'Class is
+   begin
+      return Detached_Image_Upload'Class (Session.From_Cache ((7000000, Id), No_Detached_Image_Upload));
+   end From_Cache;
+
+   ----------------
    -- Get_Config --
    ----------------
 
@@ -2712,6 +3010,50 @@ package body Orm is
          end;
       end if;
    end Get_Config;
+
+   ----------------------
+   -- Get_Image_Upload --
+   ----------------------
+
+   function Get_Image_Upload
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Image_Upload'Class
+   is
+      R : constant Detached_Image_Upload'Class := From_Cache (Session, Id);
+   begin
+      if not R.Is_Null then
+         return R;
+      else
+
+         declare
+            M : Image_Uploads_Managers := Filter
+              (All_Image_Uploads,
+               Id => Id);
+            L : I_Image_Uploads.List;
+         begin
+            M.Select_Related
+              (Depth, Follow_Left_Join => Follow_Left_Join);
+            M.Limit (1);
+            L := M.Get(Session);
+            if not L.Has_Row then
+               return No_Detached_Image_Upload;
+            else
+
+               declare
+                  E : constant Image_Upload := L.Element;
+               begin
+                  --  Workaround bug in gnat which is missing a call
+                  --  to Finalize if we do not reset the list (K321-012)
+                  L := I_Image_Uploads.Empty_List;
+                  return E.Detach_No_Lookup (Session);
+               end;
+            end if;
+         end;
+      end if;
+   end Get_Image_Upload;
 
    ----------------
    -- Get_Invite --
@@ -2961,6 +3303,55 @@ package body Orm is
       if Missing_PK and then Success (Self.Session.DB) then
          PK_Modified := True;
          D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Config.Id);
+      end if;
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Image_Upload;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      D          : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+      Q          : SQL_Query;
+      A          : Sql_Assignment := No_Assignment;
+      Missing_Pk : constant Boolean := D.ORM_Id = -1;
+      R          : Forward_Cursor;
+   begin
+      if Mask (2) then
+         if D.ORM_By_User /= -1 then
+            A := A & (DBA.Image_Uploads.By_User = D.ORM_By_User);
+         else
+
+            declare
+               D2 : constant User_Data :=
+               User_data (D.ORM_FK_By_User.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_By_User.all);
+               end if;
+
+               A := A & (DBA.Image_Uploads.By_User = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Mask (3) then
+         A := A & (DBA.Image_Uploads.Filename = To_String (D.ORM_Filename));
+      end if;
+      if Missing_PK then
+         Q := SQL_Insert (A);
+      else
+         Q := SQL_Update (DBA.Image_Uploads, A, DBA.Image_Uploads.Id = D.ORM_Id);
+      end if;
+      R.Fetch (Self.Session.DB, Q);
+
+      if Missing_PK and then Success (Self.Session.DB) then
+         PK_Modified := True;
+         D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Image_Uploads.Id);
       end if;
    end Insert_Or_Update;
 
@@ -3346,6 +3737,17 @@ package body Orm is
    -- Internal_Delete --
    ---------------------
 
+   overriding procedure Internal_Delete (Self : Detached_Image_Upload)
+   is
+      D : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+   begin
+      Execute (Self.Session.DB, SQL_Delete (DBA.Image_Uploads, DBA.Image_Uploads.Id = D.ORM_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
    overriding procedure Internal_Delete (Self : Detached_Invite)
    is
       D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
@@ -3422,6 +3824,22 @@ package body Orm is
       Do_Query_Config(Fields, From, Criteria,
          0, Alias_Config, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Config;
+
+   ----------------------------------
+   -- Internal_Query_Image_Uploads --
+   ----------------------------------
+
+   procedure Internal_Query_Image_Uploads
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      Do_Query_Image_Uploads(Fields, From, Criteria,
+         0, Alias_Image_Uploads, Depth, Follow_LJ, PK_Only);
+   end Internal_Query_Image_Uploads;
 
    ----------------------------
    -- Internal_Query_Invites --
@@ -3599,6 +4017,19 @@ package body Orm is
    -- Key --
    ---------
 
+   overriding function Key (Self : Image_Upload_Ddr) return Element_Key is
+   begin
+      if Self.ORM_Id = -1 then
+         return (7000000, No_Primary_Key);
+      else
+         return (7000000, Self.ORM_Id);
+      end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
    overriding function Key (Self : Invite_Ddr) return Element_Key is
    begin
       if Self.ORM_Id = -1 then
@@ -3685,6 +4116,19 @@ package body Orm is
       return Result;
    end New_Config;
 
+   ----------------------
+   -- New_Image_Upload --
+   ----------------------
+
+   function New_Image_Upload return Detached_Image_Upload'Class
+   is
+      Result : Detached_Image_Upload;
+      Data   : Image_Upload_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_Image_Upload;
+
    ----------------
    -- New_Invite --
    ----------------
@@ -3762,6 +4206,21 @@ package body Orm is
       Result.Set (Data);
       return Result;
    end New_User_Torrent_Stat;
+
+   ----------------
+   -- On_Persist --
+   ----------------
+
+   overriding procedure On_Persist (Self : Detached_Image_Upload)
+   is
+      D : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+   begin
+      if Persist_Cascade (Self.Session) then
+         if D.ORM_FK_By_User /= null then
+            Self.Session.Persist (D.ORM_FK_By_User.all);
+         end if;
+      end if;
+   end On_Persist;
 
    ----------------
    -- On_Persist --
@@ -3958,6 +4417,39 @@ package body Orm is
    end Set_By_User;
 
    -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User (Self : Detached_Image_Upload; Value : Integer)
+   is
+      D : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value;
+      Self.Set_Modified (2);
+   end Set_By_User;
+
+   -----------------
+   -- Set_By_User --
+   -----------------
+
+   procedure Set_By_User
+     (Self  : Detached_Image_Upload;
+      Value : Detached_User'Class)
+   is
+      D : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_By_User);
+      D.ORM_By_User := Value.Id;
+      D.ORM_FK_By_User := new Detached_User'Class'(Value);
+
+      Self.Set_Modified (2);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_By_User.all);
+      end if;
+   end Set_By_User;
+
+   -----------------
    -- Set_Content --
    -----------------
 
@@ -4063,6 +4555,18 @@ package body Orm is
       D.ORM_Downloaded := Value;
       Self.Set_Modified (4);
    end Set_Downloaded;
+
+   ------------------
+   -- Set_Filename --
+   ------------------
+
+   procedure Set_Filename (Self : Detached_Image_Upload; Value : String)
+   is
+      D : constant Image_Upload_Data := Image_Upload_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Filename := To_Unbounded_String (Value);
+      Self.Set_Modified (3);
+   end Set_Filename;
 
    --------------
    -- Set_Flag --
@@ -4438,5 +4942,40 @@ package body Orm is
       return All_User_Torrent_Stats.Filter
         (SQL_In(DBA.User_Torrent_Stats.By_User, Q));
    end Torrent_Stats;
+
+   ---------------------
+   -- Uploaded_Images --
+   ---------------------
+
+   function Uploaded_Images (Self : User'Class) return Image_Uploads_Managers
+   is
+   begin
+      return Filter (All_Image_Uploads, By_User => Self.Id);
+   end Uploaded_Images;
+
+   ---------------------
+   -- Uploaded_Images --
+   ---------------------
+
+   function Uploaded_Images
+     (Self : Detached_User'Class)
+     return Image_Uploads_Managers is
+   begin
+      return Filter (All_Image_Uploads, By_User => Self.Id);
+   end Uploaded_Images;
+
+   ---------------------
+   -- Uploaded_Images --
+   ---------------------
+
+   function Uploaded_Images
+     (Self : I_Users_Managers'Class)
+     return Image_Uploads_Managers
+   is
+      Q : constant SQL_Query := I_Users.Build_Query(Self, +DBA.Users.Id);
+   begin
+      return All_Image_Uploads.Filter
+        (SQL_In(DBA.Image_Uploads.By_User, Q));
+   end Uploaded_Images;
 end Orm;
 

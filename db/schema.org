@@ -47,3 +47,8 @@
 | TABLE      | peer_data                  |    |   |   |
 | torrent_id | FK torrents(torrent_peers) | PK |   |   |
 | data       | JSON                       |    |   |   |
+
+| TABLE    | image_uploads             | image_upload            |   |
+| id       | AUTOINCREMENT             | PK                      |   |
+| by_user  | FK users(uploaded_images) | NOT NULL                |   |
+| filename | TEXT                      | NOT NULL, UNIQUE, INDEX |   |

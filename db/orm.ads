@@ -44,6 +44,14 @@ package Orm is
    No_Detached_Config : constant Detached_Config;
    No_Config : constant Config;
 
+   type Image_Upload is new Orm_Element with null record;
+   type Image_Upload_DDR is new Detached_Data (4) with private;
+   type Detached_Image_Upload is  --  Get() returns a Image_Upload_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_Image_Upload_Access is access all Detached_Image_Upload'Class;
+   No_Detached_Image_Upload : constant Detached_Image_Upload;
+   No_Image_Upload : constant Image_Upload;
+
    type Invite is new Orm_Element with null record;
    type Invite_DDR is new Detached_Data (7) with private;
    type Detached_Invite is  --  Get() returns a Invite_DDR
@@ -412,11 +420,60 @@ package Orm is
 
    function New_Peer_Data return Detached_Peer_Data'Class;
 
+   -----------------------------
+   -- Elements: Image_Uploads --
+   -----------------------------
+
+   function "=" (Op1 : Image_Upload; Op2 : Image_Upload) return Boolean;
+   function "="
+     (Op1 : Detached_Image_Upload;
+      Op2 : Detached_Image_Upload)
+     return Boolean;
+   --  Compares two elements using only the primary keys. All other fields are
+   --  ignored
+
+   function By_User (Self : Image_Upload) return Integer;
+   function By_User (Self : Detached_Image_Upload) return Integer;
+   procedure Set_By_User (Self : Detached_Image_Upload; Value : Integer);
+   function By_User (Self : Image_Upload) return User'Class;
+   function By_User (Self : Detached_Image_Upload) return Detached_User'Class;
+   procedure Set_By_User
+     (Self  : Detached_Image_Upload;
+      Value : Detached_User'Class);
+
+   function Filename (Self : Image_Upload) return String;
+   function Filename (Self : Detached_Image_Upload) return String;
+   procedure Set_Filename (Self : Detached_Image_Upload; Value : String);
+
+   function Id (Self : Image_Upload) return Integer;
+   function Id (Self : Detached_Image_Upload) return Integer;
+
+   function Detach
+     (Self : Image_Upload'Class)
+     return Detached_Image_Upload'Class;
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Image_Upload'Class;
+   --  Check whether there is already an element with this primary key. If
+   --  not, the returned value will be a null element (test with Is_Null)
+
+   function New_Image_Upload return Detached_Image_Upload'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
 
    procedure Internal_Query_Config
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_Image_Uploads
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -488,6 +545,19 @@ package Orm is
    Empty_Config_List : constant Config_List := I_Config.Empty_List;
    Empty_Direct_Config_List : constant Direct_Config_List :=
    I_Config.Empty_Direct_List;
+
+   type I_Image_Uploads_Managers is abstract new Manager with null record;
+   package I_Image_Uploads is new Generic_Managers
+     (I_Image_Uploads_Managers, Image_Upload, Related_Depth, DBA.Image_Uploads,
+      Internal_Query_Image_Uploads);
+   type Image_Uploads_Managers is new I_Image_Uploads.Manager with null record;
+   subtype Image_Uploads_Stmt is I_Image_Uploads.ORM_Prepared_Statement;
+
+   subtype Image_Upload_List is I_Image_Uploads.List;
+   subtype Direct_Image_Upload_List is I_Image_Uploads.Direct_List;
+   Empty_Image_Upload_List : constant Image_Upload_List := I_Image_Uploads.Empty_List;
+   Empty_Direct_Image_Upload_List : constant Direct_Image_Upload_List :=
+   I_Image_Uploads.Empty_Direct_List;
 
    type I_Invites_Managers is abstract new Manager with null record;
    package I_Invites is new Generic_Managers
@@ -661,6 +731,14 @@ package Orm is
      (Self : I_Users_Managers'Class)
      return User_Torrent_Stats_Managers;
 
+   function Uploaded_Images (Self : User'Class) return Image_Uploads_Managers;
+   function Uploaded_Images
+     (Self : Detached_User'Class)
+     return Image_Uploads_Managers;
+   function Uploaded_Images
+     (Self : I_Users_Managers'Class)
+     return Image_Uploads_Managers;
+
    ---------------------
    -- Manager: Config --
    ---------------------
@@ -754,12 +832,33 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_Peer_Data'Class;
 
+   ----------------------------
+   -- Manager: Image_Uploads --
+   ----------------------------
+
+   function Filter
+     (Self     : Image_Uploads_Managers'Class;
+      Id       : Integer := -1;
+      By_User  : Integer := -1;
+      Filename : String := No_Update)
+     return Image_Uploads_Managers;
+
+   function Get_Image_Upload
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Image_Upload'Class;
+
    --------------
    -- Managers --
    --------------
 
    All_Config : constant Config_Managers :=
      (I_Config.All_Managers with null record);
+
+   All_Image_Uploads : constant Image_Uploads_Managers :=
+     (I_Image_Uploads.All_Managers with null record);
 
    All_Invites : constant Invites_Managers :=
      (I_Invites.All_Managers with null record);
@@ -785,6 +884,7 @@ package Orm is
    --------------
 
    overriding procedure Free (Self : in out Config_Ddr);
+   overriding procedure Free (Self : in out Image_Upload_Ddr);
    overriding procedure Free (Self : in out Invite_Ddr);
    overriding procedure Free (Self : in out Peer_Data_Ddr);
    overriding procedure Free (Self : in out Post_Ddr);
@@ -794,6 +894,10 @@ package Orm is
 
    overriding procedure Insert_Or_Update
      (Self        : in out Detached_Config;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Image_Upload;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
@@ -822,6 +926,7 @@ package Orm is
       Mask        : Dirty_Mask);
 
    overriding procedure Internal_Delete (Self : Detached_Config);
+   overriding procedure Internal_Delete (Self : Detached_Image_Upload);
    overriding procedure Internal_Delete (Self : Detached_Invite);
    overriding procedure Internal_Delete (Self : Detached_Peer_Data);
    overriding procedure Internal_Delete (Self : Detached_Post);
@@ -830,6 +935,7 @@ package Orm is
    overriding procedure Internal_Delete (Self : Detached_User);
 
    overriding function Key (Self : Config_Ddr) return Element_Key;
+   overriding function Key (Self : Image_Upload_Ddr) return Element_Key;
    overriding function Key (Self : Invite_Ddr) return Element_Key;
    overriding function Key (Self : Peer_Data_Ddr) return Element_Key;
    overriding function Key (Self : Post_Ddr) return Element_Key;
@@ -837,6 +943,7 @@ package Orm is
    overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key;
    overriding function Key (Self : User_Ddr) return Element_Key;
 
+   overriding procedure On_Persist (Self : Detached_Image_Upload);
    overriding procedure On_Persist (Self : Detached_Invite);
    overriding procedure On_Persist (Self : Detached_Peer_Data);
    overriding procedure On_Persist (Self : Detached_Post);
@@ -850,6 +957,14 @@ private
        ORM_Version    : Integer := -1;
     end record;
     type Config_Data is access all Config_DDR;
+    
+    type Image_Upload_DDR is new Detached_Data (4) with record
+       ORM_By_User     : Integer := -1;
+       ORM_FK_By_User  : Detached_User_Access := null;
+       ORM_Filename    : Unbounded_String := Null_Unbounded_String;
+       ORM_Id          : Integer := -1;
+    end record;
+    type Image_Upload_Data is access all Image_Upload_DDR;
     
     type Invite_DDR is new Detached_Data (7) with record
        ORM_Activated    : Boolean := False;
@@ -921,6 +1036,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Config : constant Config :=(No_Orm_Element with null record);
     No_Detached_Config : constant Detached_Config :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_Image_Upload
+       is new Sessions.Detached_Element with null record;
+    No_Image_Upload : constant Image_Upload :=(No_Orm_Element with null record);
+    No_Detached_Image_Upload : constant Detached_Image_Upload :=
       (Sessions.Detached_Element with null record);
  
     type Detached_Invite

@@ -29,6 +29,25 @@ package Hellish_Database is
       is new T_Abstract_Config (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   type T_Abstract_Image_Uploads
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Image_Uploads, Instance, Index) with
+   record
+      Id : SQL_Field_Integer (Ta_Image_Uploads, Instance, N_Id, Index);
+      By_User : SQL_Field_Integer (Ta_Image_Uploads, Instance, N_By_User, Index);
+      Filename : SQL_Field_Text (Ta_Image_Uploads, Instance, N_Filename, Index);
+   end record;
+
+   type T_Image_Uploads (Instance : Cst_String_Access)
+      is new T_Abstract_Image_Uploads (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Image_Uploads (Index : Integer)
+      is new T_Abstract_Image_Uploads (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
    type T_Abstract_Invites
       (Instance : Cst_String_Access;
        Index    : Integer)
@@ -171,6 +190,7 @@ package Hellish_Database is
       is new T_Abstract_Users (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   function FK (Self : T_Image_Uploads'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_Peer_Data'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Posts'Class) return SQL_Criteria;
@@ -179,6 +199,7 @@ package Hellish_Database is
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    Config : T_Config (null);
+   Image_Uploads : T_Image_Uploads (null);
    Invites : T_Invites (null);
    Peer_Data : T_Peer_Data (null);
    Posts : T_Posts (null);

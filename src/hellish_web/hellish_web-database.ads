@@ -59,4 +59,9 @@ package Hellish_Web.Database is
 
    procedure Persist_Peers(Info_Hash : String; Data : String);
    function Persisted_Peers return Peer_Data_List;
-end;
+
+   function Add_Uploaded_Image(Username : String; Filename : String) return Detached_Image_Upload'Class;
+   function Delete_Uploaded_Image(Id : Integer) return Boolean;
+   function User_Images(Username : String) return Image_Upload_List;
+   function Get_Image(Id : Natural) return Detached_Image_Upload'Class;
+end Hellish_Web.Database;

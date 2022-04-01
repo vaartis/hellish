@@ -3,6 +3,11 @@ with GNATCOLL.SQL.Exec; use GNATCOLL.SQL.Exec;
 package body Hellish_Database is
    pragma Style_Checks (Off);
 
+   function FK (Self : T_Image_Uploads'Class; Foreign : T_Users'Class) return SQL_Criteria is
+   begin
+      return Self.By_User = Foreign.Id;
+   end FK;
+
    function FK (Self : T_Peer_Data'Class; Foreign : T_Torrents'Class) return SQL_Criteria is
    begin
       return Self.Torrent_Id = Foreign.Id;
@@ -89,6 +94,11 @@ package body Hellish_Database is
          & "|TABLE| peer_data" & ASCII.LF
          & "|torrent_id|FK torrents|PK||" & ASCII.LF
          & "|data|json|||" & ASCII.LF
+         & "" & ASCII.LF
+         & "|TABLE| image_uploads" & ASCII.LF
+         & "|id|AUTOINCREMENT|PK||" & ASCII.LF
+         & "|by_user|FK users|NOT NULL||" & ASCII.LF
+         & "|filename|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
          & "" & ASCII.LF
          & "";
       F : File_Schema_IO;

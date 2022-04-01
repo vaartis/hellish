@@ -27,6 +27,7 @@ private
    type Post_Create_Handler is new Dispatchers.Handler with null record;
    type Post_Search_Handler is new Dispatchers.Handler with null record;
    type Confirm_Handler is new Dispatchers.Handler with null record;
+   type Images_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -42,6 +43,7 @@ private
    overriding function Dispatch(Handler : in Post_Create_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Post_Search_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Confirm_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Images_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -57,6 +59,7 @@ private
    overriding function Clone(Element : in Post_Create_Handler) return Post_Create_Handler is (Element);
    overriding function Clone(Element : in Post_Search_Handler) return Post_Search_Handler is (Element);
    overriding function Clone(Element : in Confirm_Handler) return Confirm_Handler is (Element);
+   overriding function Clone(Element : in Images_Handler) return Images_Handler is (Element);
 
    Index : Index_Handler;
    Announce : Announce_Handler;
@@ -72,6 +75,7 @@ private
    Post_Create : Post_Create_Handler;
    Post_Search : Post_Search_Handler;
    Confirm : Confirm_Handler;
+   Images : Images_Handler;
 
    -- API
 
@@ -81,6 +85,8 @@ private
    type Api_User_Logout_Handler is new Dispatchers.Handler with null record;
    type Api_Post_Create_Handler is new Dispatchers.Handler with null record;
    type Api_Delete_Handler is new Dispatchers.Handler with null record;
+   type Api_Image_Upload_Handler is new Dispatchers.Handler with null record;
+   type Api_Image_Delete_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Api_Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Register_Handler; Request : in Status.Data) return Response.Data;
@@ -88,6 +94,8 @@ private
    overriding function Dispatch(Handler : in Api_User_Logout_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_Post_Create_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_Delete_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Api_Image_Upload_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Api_Image_Delete_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Api_Upload_Handler) return Api_Upload_Handler is (Element);
    overriding function Clone(Element : in Api_User_Register_Handler) return Api_User_Register_Handler is (Element);
@@ -95,6 +103,8 @@ private
    overriding function Clone(Element : in Api_User_Logout_Handler) return Api_User_Logout_Handler is (Element);
    overriding function Clone(Element : in Api_Post_Create_Handler) return Api_Post_Create_Handler is (Element);
    overriding function Clone(Element : in Api_Delete_Handler) return Api_Delete_Handler is (Element);
+   overriding function Clone(Element : in Api_Image_Upload_Handler) return Api_Image_Upload_Handler is (Element);
+   overriding function Clone(Element : in Api_Image_Delete_Handler) return Api_Image_Delete_Handler is (Element);
 
    Api_Upload : Api_Upload_Handler;
    Api_User_Register : Api_User_Register_Handler;
@@ -102,6 +112,18 @@ private
    Api_User_Logout : Api_User_Logout_Handler;
    Api_Post_Create : Api_Post_Create_Handler;
    Api_Delete : Api_Delete_Handler;
+   Api_Image_Upload : Api_Image_Upload_Handler;
+   Api_Image_Delete : Api_Image_Delete_Handler;
+
+   -- Uploads
+
+   type Uploads_Images_Handler is new Dispatchers.Handler with null record;
+
+   overriding function Dispatch(Handler : in Uploads_Images_Handler; Request : in Status.Data) return Response.Data;
+
+   overriding function Clone(Element : in Uploads_Images_Handler) return Uploads_Images_Handler is (Element);
+
+   Uploads_Images : Uploads_Images_Handler;
 
    Http : Server.Http;
    Root : Services.Dispatchers.Uri.Handler;
@@ -118,4 +140,5 @@ private
    Server_Host : Unbounded_String;
 
    Uploads_Path : constant String := "uploads/torrents/";
+   Image_Uploads_Path : constant String := "uploads/images/";
 end Hellish_Web.Routes;

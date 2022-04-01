@@ -26,7 +26,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 3;
+   Latest_Version : Natural := 4;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -572,4 +572,56 @@ package body Hellish_Web.Database is
    begin
       return All_Peer_Data.Get(Session);
    end Persisted_Peers;
+
+   function Add_Uploaded_Image(Username : String; Filename : String) return Detached_Image_Upload'Class is
+      Session : Session_Type := Get_New_Session;
+      The_User : Detached_User'Class := Get_User(Username);
+      Image_List : Image_Upload_List := All_Image_Uploads
+        .Filter(By_User => The_User.Id, Filename => Filename)
+        .Get(Session);
+      The_Image : Detached_Image_Upload'Class := New_Image_Upload;
+   begin
+      if Image_List.Has_Row then
+         The_Image := Image_List.Element.Detach;
+      else
+         The_Image.Set_By_User(The_User);
+         The_Image.Set_Filename(Filename);
+
+         Session.Persist(The_Image);
+         Session.Commit;
+      end if;
+
+      return The_Image;
+   end Add_Uploaded_Image;
+
+   function Delete_Uploaded_Image(Id : Integer) return Boolean is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      The_Image : Detached_Image_Upload'Class := Get_Image_Upload(Session, Id);
+      Delete_Image : Sql_Query := Sql_Delete(From => Image_Uploads, Where => (Image_Uploads.Id = Id));
+   begin
+      Session.Db.Execute(Delete_Image);
+      Session.Commit;
+
+      -- False = no images left; True = this image is used by others, don't delete the file
+      return All_Image_Uploads
+          .Filter(Filename => The_Image.Filename)
+          .Get(Session)
+          .Has_row;
+   end Delete_Uploaded_Image;
+
+   function User_Images(Username : String) return Image_Upload_List is
+      Session : Session_Type := Get_New_Session;
+      The_User : Detached_User'Class := Get_User(Username);
+   begin
+      return All_Image_Uploads.Filter(By_User => The_User.Id).Get(Session);
+   end User_Images;
+
+   function Get_Image(Id : Natural) return Detached_Image_Upload'Class is
+      Session : Session_Type := Get_New_Session;
+   begin
+      return Get_Image_Upload(Session, Id);
+   end Get_Image;
 end;

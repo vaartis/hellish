@@ -5,6 +5,8 @@ package Hellish_Database_Names is
    Ta_Config : constant Cst_String_Access := TC_Config'Access;
    TC_Invites : aliased constant String := "invites";
    Ta_Invites : constant Cst_String_Access := TC_Invites'Access;
+   TC_Peer_Data : aliased constant String := "peer_data";
+   Ta_Peer_Data : constant Cst_String_Access := TC_Peer_Data'Access;
    TC_Posts : aliased constant String := "posts";
    Ta_Posts : constant Cst_String_Access := TC_Posts'Access;
    TC_Torrents : aliased constant String := "torrents";
@@ -22,6 +24,8 @@ package Hellish_Database_Names is
    N_Content : constant Cst_String_Access := NC_content'Access;
    NC_Created_By : aliased constant String := "created_by";
    N_Created_By : constant Cst_String_Access := NC_created_by'Access;
+   NC_Data : aliased constant String := """data""";
+   N_Data : constant Cst_String_Access := NC_data'Access;
    NC_Description : aliased constant String := "description";
    N_Description : constant Cst_String_Access := NC_description'Access;
    NC_Display_Name : aliased constant String := "display_name";
@@ -54,6 +58,8 @@ package Hellish_Database_Names is
    N_Snatches : constant Cst_String_Access := NC_snatches'Access;
    NC_Title : aliased constant String := "title";
    N_Title : constant Cst_String_Access := NC_title'Access;
+   NC_Torrent_Id : aliased constant String := "torrent_id";
+   N_Torrent_Id : constant Cst_String_Access := NC_torrent_id'Access;
    NC_Uploaded : aliased constant String := "uploaded";
    N_Uploaded : constant Cst_String_Access := NC_uploaded'Access;
    NC_Username : aliased constant String := "username";

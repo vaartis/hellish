@@ -205,8 +205,8 @@ package body Hellish_Web.Routes is
                                   Downloaded => Long_Long_Integer'Value(Params.Get("downloaded")),
                                   Left => Long_Long_Integer'Value(Params.Get("left")),
                                   Last_Seen => Clock,
-                                  Last_Event => To_Unbounded_String(Params.Get("event"))),
-                                 User);
+                                  Last_Event => To_Unbounded_String(Params.Get("event")),
+                                  User => User));
          declare
             Compact : Boolean := not Params.Exist("compact") or Params.Get("compact") = "1";
             Num_Want : Natural := 50;
@@ -1137,6 +1137,7 @@ package body Hellish_Web.Routes is
       end loop;
 
       Database.Init;
+      Peers.Protected_Map.Load_Persisted_Peers;
 
       if Ada.Directories.Exists(Session_File_Name) then
          Session.Load(Session_File_Name);

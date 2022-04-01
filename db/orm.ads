@@ -52,6 +52,14 @@ package Orm is
    No_Detached_Invite : constant Detached_Invite;
    No_Invite : constant Invite;
 
+   type Peer_Data is new Orm_Element with null record;
+   type Peer_Data_DDR is new Detached_Data (3) with private;
+   type Detached_Peer_Data is  --  Get() returns a Peer_Data_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_Peer_Data_Access is access all Detached_Peer_Data'Class;
+   No_Detached_Peer_Data : constant Detached_Peer_Data;
+   No_Peer_Data : constant Peer_Data;
+
    type Post is new Orm_Element with null record;
    type Post_DDR is new Detached_Data (10) with private;
    type Detached_Post is  --  Get() returns a Post_DDR
@@ -369,6 +377,41 @@ package Orm is
 
    function New_Post return Detached_Post'Class;
 
+   -------------------------
+   -- Elements: Peer_Data --
+   -------------------------
+
+   function "=" (Op1 : Peer_Data; Op2 : Peer_Data) return Boolean;
+   function "="
+     (Op1 : Detached_Peer_Data;
+      Op2 : Detached_Peer_Data)
+     return Boolean;
+   --  Compares two elements using only the primary keys. All other fields are
+   --  ignored
+
+   function Data (Self : Peer_Data) return String;
+   function Data (Self : Detached_Peer_Data) return String;
+   procedure Set_Data (Self : Detached_Peer_Data; Value : String);
+
+   function Torrent_Id (Self : Peer_Data) return Integer;
+   function Torrent_Id (Self : Detached_Peer_Data) return Integer;
+   function Torrent_Id (Self : Peer_Data) return Torrent'Class;
+   function Torrent_Id (Self : Detached_Peer_Data) return Detached_Torrent'Class;
+   procedure Set_Torrent_Id
+     (Self  : Detached_Peer_Data;
+      Value : Detached_Torrent'Class);
+
+   function Detach (Self : Peer_Data'Class) return Detached_Peer_Data'Class;
+
+   function From_Cache
+     (Session    : Session_Type;
+      Torrent_Id : Integer)
+     return Detached_Peer_Data'Class;
+   --  Check whether there is already an element with this primary key. If
+   --  not, the returned value will be a null element (test with Is_Null)
+
+   function New_Peer_Data return Detached_Peer_Data'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
@@ -382,6 +425,14 @@ package Orm is
       Pk_Only   : Boolean := False);
 
    procedure Internal_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_Peer_Data
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -450,6 +501,19 @@ package Orm is
    Empty_Invite_List : constant Invite_List := I_Invites.Empty_List;
    Empty_Direct_Invite_List : constant Direct_Invite_List :=
    I_Invites.Empty_Direct_List;
+
+   type I_Peer_Data_Managers is abstract new Manager with null record;
+   package I_Peer_Data is new Generic_Managers
+     (I_Peer_Data_Managers, Peer_Data, Related_Depth, DBA.Peer_Data,
+      Internal_Query_Peer_Data);
+   type Peer_Data_Managers is new I_Peer_Data.Manager with null record;
+   subtype Peer_Data_Stmt is I_Peer_Data.ORM_Prepared_Statement;
+
+   subtype Peer_Data_List is I_Peer_Data.List;
+   subtype Direct_Peer_Data_List is I_Peer_Data.Direct_List;
+   Empty_Peer_Data_List : constant Peer_Data_List := I_Peer_Data.Empty_List;
+   Empty_Direct_Peer_Data_List : constant Direct_Peer_Data_List :=
+   I_Peer_Data.Empty_Direct_List;
 
    type I_Posts_Managers is abstract new Manager with null record;
    package I_Posts is new Generic_Managers
@@ -538,6 +602,14 @@ package Orm is
       Depth            : Related_Depth := 0;
       Follow_Left_Join : Boolean := False)
      return Detached_Torrent'Class;
+
+   function Torrent_Peers (Self : Torrent'Class) return Peer_Data_Managers;
+   function Torrent_Peers
+     (Self : Detached_Torrent'Class)
+     return Peer_Data_Managers;
+   function Torrent_Peers
+     (Self : I_Torrents_Managers'Class)
+     return Peer_Data_Managers;
 
    --------------------
    -- Manager: Users --
@@ -665,6 +737,23 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_Post'Class;
 
+   ------------------------
+   -- Manager: Peer_Data --
+   ------------------------
+
+   function Filter
+     (Self       : Peer_Data_Managers'Class;
+      Torrent_Id : Integer := -1;
+      Data       : String := No_Update)
+     return Peer_Data_Managers;
+
+   function Get_Peer_Data
+     (Session          : Session_Type;
+      Torrent_Id       : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Peer_Data'Class;
+
    --------------
    -- Managers --
    --------------
@@ -674,6 +763,9 @@ package Orm is
 
    All_Invites : constant Invites_Managers :=
      (I_Invites.All_Managers with null record);
+
+   All_Peer_Data : constant Peer_Data_Managers :=
+     (I_Peer_Data.All_Managers with null record);
 
    All_Posts : constant Posts_Managers :=
      (I_Posts.All_Managers with null record);
@@ -694,6 +786,7 @@ package Orm is
 
    overriding procedure Free (Self : in out Config_Ddr);
    overriding procedure Free (Self : in out Invite_Ddr);
+   overriding procedure Free (Self : in out Peer_Data_Ddr);
    overriding procedure Free (Self : in out Post_Ddr);
    overriding procedure Free (Self : in out Torrent_Ddr);
    overriding procedure Free (Self : in out User_Torrent_Stat_Ddr);
@@ -705,6 +798,10 @@ package Orm is
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
      (Self        : in out Detached_Invite;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Peer_Data;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
@@ -726,6 +823,7 @@ package Orm is
 
    overriding procedure Internal_Delete (Self : Detached_Config);
    overriding procedure Internal_Delete (Self : Detached_Invite);
+   overriding procedure Internal_Delete (Self : Detached_Peer_Data);
    overriding procedure Internal_Delete (Self : Detached_Post);
    overriding procedure Internal_Delete (Self : Detached_Torrent);
    overriding procedure Internal_Delete (Self : Detached_User_Torrent_Stat);
@@ -733,12 +831,14 @@ package Orm is
 
    overriding function Key (Self : Config_Ddr) return Element_Key;
    overriding function Key (Self : Invite_Ddr) return Element_Key;
+   overriding function Key (Self : Peer_Data_Ddr) return Element_Key;
    overriding function Key (Self : Post_Ddr) return Element_Key;
    overriding function Key (Self : Torrent_Ddr) return Element_Key;
    overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key;
    overriding function Key (Self : User_Ddr) return Element_Key;
 
    overriding procedure On_Persist (Self : Detached_Invite);
+   overriding procedure On_Persist (Self : Detached_Peer_Data);
    overriding procedure On_Persist (Self : Detached_Post);
    overriding procedure On_Persist (Self : Detached_Torrent);
    overriding procedure On_Persist (Self : Detached_User_Torrent_Stat);
@@ -761,6 +861,13 @@ private
        ORM_Value        : Unbounded_String := Null_Unbounded_String;
     end record;
     type Invite_Data is access all Invite_DDR;
+    
+    type Peer_Data_DDR is new Detached_Data (3) with record
+       ORM_Data          : Unbounded_String := Null_Unbounded_String;
+       ORM_FK_Torrent_Id : Detached_Torrent_Access := null;
+       ORM_Torrent_Id    : Integer := -1;
+    end record;
+    type Peer_Data_Data is access all Peer_Data_DDR;
     
     type Post_DDR is new Detached_Data (10) with record
        ORM_By_User           : Integer := -1;
@@ -820,6 +927,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Invite : constant Invite :=(No_Orm_Element with null record);
     No_Detached_Invite : constant Detached_Invite :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_Peer_Data
+       is new Sessions.Detached_Element with null record;
+    No_Peer_Data : constant Peer_Data :=(No_Orm_Element with null record);
+    No_Detached_Peer_Data : constant Detached_Peer_Data :=
       (Sessions.Detached_Element with null record);
  
     type Detached_Post

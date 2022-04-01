@@ -2,6 +2,7 @@ with GNATCOLL.SQL; use GNATCOLL.SQL;
 pragma Warnings (Off, "no entities of * are referenced");
 pragma Warnings (Off, "use clause for package * has no effect");
 with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
 pragma Warnings (On, "no entities of * are referenced");
 pragma Warnings (On, "use clause for package * has no effect");
 with GNATCOLL.SQL.Exec;
@@ -47,6 +48,24 @@ package Hellish_Database is
 
    type T_Numbered_Invites (Index : Integer)
       is new T_Abstract_Invites (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
+   type T_Abstract_Peer_Data
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Peer_Data, Instance, Index) with
+   record
+      Torrent_Id : SQL_Field_Integer (Ta_Peer_Data, Instance, N_Torrent_Id, Index);
+      Data : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Peer_Data, Instance, N_Data, Index);
+   end record;
+
+   type T_Peer_Data (Instance : Cst_String_Access)
+      is new T_Abstract_Peer_Data (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Peer_Data (Index : Integer)
+      is new T_Abstract_Peer_Data (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
    type T_Abstract_Posts
@@ -152,6 +171,7 @@ package Hellish_Database is
       is new T_Abstract_Users (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   function FK (Self : T_Peer_Data'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Posts'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
@@ -160,6 +180,7 @@ package Hellish_Database is
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    Config : T_Config (null);
    Invites : T_Invites (null);
+   Peer_Data : T_Peer_Data (null);
    Posts : T_Posts (null);
    Torrents : T_Torrents (null);
    User_Torrent_Stats : T_User_Torrent_Stats (null);

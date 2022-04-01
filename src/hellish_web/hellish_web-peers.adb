@@ -4,11 +4,13 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Interfaces; use Interfaces;
 with System; use System;
 
+with Gnatcoll.Json;
+
 with Hellish_Web.Database;
 
 package body Hellish_Web.Peers is
    protected body Protected_Map is
-      procedure Add(Info_Hash : String; Joined_Peer : Peer; The_User : Detached_User'Class) is
+      procedure Add(Info_Hash : String; Joined_Peer : Peer) is
          Peer_Id : String := To_String(Joined_Peer.Peer_Id);
 
          Uploaded_Diff : Long_Long_Integer := 0;
@@ -33,18 +35,18 @@ package body Hellish_Web.Peers is
 
                Torrent_Map(Info_Hash).Include(Peer_Id, Joined_Peer);
             else
-               if Joined_Peer.Last_Event /= "started" then
-                  -- Update from existing.
-                  -- If we just started, there's supposed to always be 0 UL/DL
-                  Uploaded_Diff := Joined_Peer.Uploaded - Torrent_Map(Info_Hash)(Peer_Id).Uploaded;
-                  Downloaded_Diff := Joined_Peer.Downloaded - Torrent_Map(Info_Hash)(Peer_Id).Downloaded;
-               end if;
+               -- Update from existing.
+               Uploaded_Diff := Joined_Peer.Uploaded - Torrent_Map(Info_Hash)(Peer_Id).Uploaded;
+               Downloaded_Diff := Joined_Peer.Downloaded - Torrent_Map(Info_Hash)(Peer_Id).Downloaded;
 
                Torrent_Map(Info_Hash).Replace(Peer_Id, Joined_Peer);
             end if;
          end if;
 
-         Database.Update_Torrent_Up_Down(The_User, Info_Hash, Uploaded_Diff, Downloaded_Diff);
+         -- If the peer just started, there's supposed to always be 0 UL/DL
+         if Joined_Peer.Last_Event /= "started" then
+            Database.Update_Torrent_Up_Down(Joined_Peer.User, Info_Hash, Uploaded_Diff, Downloaded_Diff);
+         end if;
 
          Put_Line("Peer """ & To_String(Joined_Peer.Peer_Id) & """ JOINED """ & Info_Hash & """ from " &
                     To_String(Joined_Peer.Ip) & ":" & Trim(Joined_Peer.Port'Image, Ada.Strings.Left));
@@ -59,6 +61,8 @@ package body Hellish_Web.Peers is
                Remove(Info_Hash, Peer.Peer_Id);
             end if;
          end loop;
+
+         Persist_Peers(Info_Hash);
       end Add;
 
       procedure Remove(Info_Hash : String; Peer_Id : Unbounded_String) is
@@ -215,5 +219,64 @@ package body Hellish_Web.Peers is
 
          return Stats;
       end Total_Stat_Data;
+
+      procedure Persist_Peers(Info_Hash : String) is
+         use Gnatcoll.Json;
+
+         Peers_Json : Json_Value := Create_Object;
+         Torrent_Peers : Peer_Maps.Map := Torrent_Map(Info_Hash);
+      begin
+         for Peer of Torrent_Peers loop
+            declare
+               Peer_Json : Json_Value := Create_Object;
+            begin
+               Peer_Json.Set_Field("ip", Create(Peer.Ip));
+               Peer_Json.Set_Field("port", Create(Peer.Port));
+               Peer_Json.Set_Field("user_id", Create(Peer.User.Id));
+
+               Peer_Json.Set_Field("uploaded", Create(Peer.Uploaded));
+               Peer_Json.Set_Field("downloaded", Create(Peer.Downloaded));
+               Peer_Json.Set_Field("left", Create(Peer.Left));
+
+               Peers_Json.Set_Field(To_String(Peer.Peer_Id), Peer_Json);
+            end;
+         end loop;
+
+         Database.Persist_Peers(Info_Hash, Peers_Json.Write);
+      end Persist_Peers;
+
+      procedure Load_Persisted_Peers is
+         use Gnatcoll.Json;
+
+         Persisted_Peers : Peer_Data_List := Database.Persisted_Peers;
+
+         Peers_Json : Json_Value;
+         The_Torrent : Detached_Torrent'Class := No_Detached_Torrent;
+      begin
+         while Persisted_Peers.Has_Row loop
+            Peers_Json := Read(Orm.Data(Persisted_Peers.Element));
+            The_Torrent := Database.Get_Torrent(Persisted_Peers.Element.Torrent_Id);
+
+            declare
+               procedure Iter(Name : String; Value : Json_Value) is
+               begin
+                  Add(The_Torrent.Info_Hash,
+                      (Peer_Id => To_Unbounded_String(Name),
+                       Ip => Get(Value, "ip"),
+                       Port => Get(Value, "port"),
+                       Uploaded => Get(Value, "uploaded").Get,
+                       Downloaded => Get(Value, "downloaded").Get,
+                       Left => Get(Value, "left").Get,
+                       Last_Seen => Clock,
+                       Last_Event => To_Unbounded_String("started"),
+                       User => Detached_User(Database.Get_User(Integer'(Get(Value, "user_id"))))));
+               end Iter;
+            begin
+               Map_Json_Object(Peers_Json, Iter'Access);
+            end;
+
+            Persisted_Peers.Next;
+         end loop;
+      end;
    end Protected_Map;
 end Hellish_Web.Peers;

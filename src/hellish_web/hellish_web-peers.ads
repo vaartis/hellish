@@ -17,6 +17,7 @@ package Hellish_Web.Peers is
       Left: Long_Long_Integer;
       Last_Seen : Time;
       Last_Event : Unbounded_String;
+      User : Detached_User;
    end record;
 
    package Peer_Maps is new
@@ -52,7 +53,7 @@ package Hellish_Web.Peers is
    end record;
 
    protected Protected_Map is
-      procedure Add(Info_Hash : String; Joined_Peer : Peer; The_User : Detached_User'Class);
+      procedure Add(Info_Hash : String; Joined_Peer : Peer);
       procedure Remove(Info_Hash : String; Peer_id : Unbounded_String);
       procedure Remove_Torrent(Info_Hash : String);
 
@@ -62,8 +63,11 @@ package Hellish_Web.Peers is
       function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data;
 
       function Total_Stat_Data return Total_Stats;
+
+      procedure Load_Persisted_Peers;
    private
       function Ip_Port_Bytes(From_Peer : Peer) return String;
+      procedure Persist_Peers(Info_Hash : String);
 
       Torrent_Map : Torrent_Maps.Map;
    end Protected_Map;

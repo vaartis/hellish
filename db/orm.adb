@@ -14,6 +14,8 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Invite_DDR, Invite_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( Peer_Data_DDR, Peer_Data_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Post_DDR, Post_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Torrent_DDR, Torrent_Data);
@@ -39,6 +41,10 @@ package body Orm is
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Upto_Invites_1 : constant Counts := ((5,5),(12,12),(12,12),(12,12));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
+   F_Peer_Data_Torrent_Id : constant := 0;
+   F_Peer_Data_Data       : constant := 1;
+   Upto_Peer_Data_0 : constant Counts := ((2,2),(2,2),(2,2),(2,2));
+   Alias_Peer_Data : constant Alias_Array := (-1,2,-1,4,-1);
    F_Posts_Id             : constant := 0;
    F_Posts_Title          : constant := 1;
    F_Posts_Content        : constant := 2;
@@ -88,6 +94,10 @@ package body Orm is
       Session : Session_Type)
      return Detached_Invite'Class;
    function Detach_No_Lookup
+     (Self    : Peer_Data'Class;
+      Session : Session_Type)
+     return Detached_Peer_Data'Class;
+   function Detach_No_Lookup
      (Self    : Post'Class;
       Session : Session_Type)
      return Detached_Post'Class;
@@ -107,7 +117,8 @@ package body Orm is
    --  but does not check the session cache Same as Detach, but does not check
    --  the session cache Same as Detach, but does not check the session cache
    --  Same as Detach, but does not check the session cache Same as Detach, but
-   --  does not check the session cache
+   --  does not check the session cache Same as Detach, but does not check the
+   --  session cache
 
    procedure Do_Query_Config
      (Fields    : in out SQL_Field_List;
@@ -120,6 +131,16 @@ package body Orm is
       Pk_Only   : Boolean := False);
 
    procedure Do_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Do_Query_Peer_Data
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -288,6 +309,33 @@ package body Orm is
          return False;
       else
          return Integer'(Op1.Id) = Op2.Id;
+      end if;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Peer_Data; Op2 : Peer_Data) return Boolean is
+   begin
+      return Integer'(Op1.Torrent_Id) = Op2.Torrent_Id;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "="
+     (Op1 : Detached_Peer_Data;
+      Op2 : Detached_Peer_Data)
+     return Boolean is
+   begin
+      if Op1.Is_Null then
+         return Op2.Is_Null;
+      elsif Op2.Is_Null then
+         return False;
+      else
+         return Integer'(Op1.Torrent_Id) = Op2.Torrent_Id;
       end if;
    end "=";
 
@@ -600,6 +648,24 @@ package body Orm is
       end if;
       return D.ORM_FK_Created_By.all;
    end Created_By;
+
+   ----------
+   -- Data --
+   ----------
+
+   function Data (Self : Peer_Data) return String is
+   begin
+      return String_Value (Self, F_Peer_Data_Data);
+   end Data;
+
+   ----------
+   -- Data --
+   ----------
+
+   function Data (Self : Detached_Peer_Data) return String is
+   begin
+      return To_String (Peer_Data_Data (Self.Unchecked_Get).ORM_Data);
+   end Data;
 
    -----------------
    -- Description --
@@ -1190,6 +1256,74 @@ package body Orm is
       return To_String (Post_Data (Self.Unchecked_Get).ORM_Title);
    end Title;
 
+   ----------------
+   -- Torrent_Id --
+   ----------------
+
+   function Torrent_Id (Self : Peer_Data) return Integer is
+   begin
+      return Integer_Value (Self, F_Peer_Data_Torrent_Id);
+   end Torrent_Id;
+
+   ----------------
+   -- Torrent_Id --
+   ----------------
+
+   function Torrent_Id (Self : Detached_Peer_Data) return Integer is
+   begin
+      return Peer_Data_Data (Self.Unchecked_Get).ORM_Torrent_Id;
+   end Torrent_Id;
+
+   ----------------
+   -- Torrent_Id --
+   ----------------
+
+   function Torrent_Id (Self : Peer_Data) return Torrent'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 then
+         return I_Torrents.Internal_Element
+           (Self,
+            Upto_Peer_Data_0 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Torrent_Id";
+         end if;
+
+         return Filter (All_Torrents, Id => Self.Torrent_Id)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end Torrent_Id;
+
+   ----------------
+   -- Torrent_Id --
+   ----------------
+
+   function Torrent_Id (Self : Detached_Peer_Data) return Detached_Torrent'Class
+   is
+      D : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_Torrent_Id = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Torrent_Id";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_Torrent_Id := new Detached_Torrent'Class'
+           (Get_Torrent (S, Id => D.ORM_Torrent_Id));
+      end if;
+      return D.ORM_FK_Torrent_Id.all;
+   end Torrent_Id;
+
    --------------
    -- Uploaded --
    --------------
@@ -1530,6 +1664,21 @@ package body Orm is
       end if;
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach (Self : Peer_Data'Class) return Detached_Peer_Data'Class
+   is
+      R : constant Detached_Peer_Data'Class := From_Cache (Self.Data.Session, Self.Torrent_Id);
+   begin
+      if R.Is_Null then
+         return Detach_No_Lookup (Self, Self.Data.Session);
+      else
+         return R;
+      end if;
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -1597,6 +1746,40 @@ package body Orm is
       Tmp.ORM_For_User     := Integer_Value (Self, F_Invites_For_User);
       Tmp.ORM_Id           := Integer_Value (Self, F_Invites_Id);
       Tmp.ORM_Value        := To_Unbounded_String (String_Value (Self, F_Invites_Value));
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
+     (Self    : Peer_Data'Class;
+      Session : Session_Type)
+     return Detached_Peer_Data'Class
+   is
+      Default       : Detached_Peer_Data;
+      Result        : Detached_Peer_Data'Class := Detached_Peer_Data'Class (Session.Factory (Self, Default));
+      Fk_Torrent_Id : Detached_Torrent_Access;
+      Lj            : constant Boolean := Self.Data.Follow_LJ;
+      Tmp           : Peer_Data_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (Peer_Data_DDR'
+              (Detached_Data with Field_Count => 3, others => <>));
+      end if;
+
+      Tmp := Peer_Data_Data (Result.Unchecked_Get);
+      if Self.Depth > 0 then
+         FK_Torrent_Id := new Detached_Torrent'Class'(
+            I_Torrents.Internal_Element
+              (Self, Upto_Peer_Data_0 (Self.Depth, LJ)).Detach);
+      end if;
+
+      Tmp.ORM_Data          := To_Unbounded_String (String_Value (Self, F_Peer_Data_Data));
+      Tmp.ORM_FK_Torrent_Id := FK_Torrent_Id;
+      Tmp.ORM_Torrent_Id    := Integer_Value (Self, F_Peer_Data_Torrent_Id);
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -1852,6 +2035,49 @@ package body Orm is
       end;
    end if;
    end Do_Query_Invites;
+
+   ------------------------
+   -- Do_Query_Peer_Data --
+   ------------------------
+
+   procedure Do_Query_Peer_Data
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False)
+   is
+      Table : T_Numbered_Peer_Data(Aliases(Base));
+      C2    : Sql_Criteria;
+      T     : SQL_Table_List;
+   begin
+      if PK_Only then
+         Fields := Fields & Table.Torrent_Id;
+      else
+         Fields := Fields & Table.Torrent_Id
+         & Table.Data;
+      end if;
+      From := Empty_Table_List;
+      if Depth > 0 then
+
+         declare
+            FK1 : T_Numbered_Torrents(Aliases(Aliases(Base + 1)));
+         begin Criteria := Criteria
+         and Table.Torrent_Id = FK1.Id;
+         From := +Table;
+         C2 := No_Criteria;
+         Do_Query_Torrents(Fields, T, C2,Aliases(Base + 1),
+            Aliases, Depth - 1, Follow_LJ);
+         if Depth > 1 then
+            Criteria := Criteria and C2;
+         end if;
+         From := From & T;
+      end;
+   end if;
+   end Do_Query_Peer_Data;
 
    --------------------
    -- Do_Query_Posts --
@@ -2271,6 +2497,29 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self       : Peer_Data_Managers'Class;
+      Torrent_Id : Integer := -1;
+      Data       : String := No_Update)
+     return Peer_Data_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : Peer_Data_Managers;
+   begin
+      if Torrent_Id /= -1 then
+         C := C and DBA.Peer_Data.Torrent_Id = Torrent_Id;
+      end if;
+      if Data /= No_Update then
+         C := C and DBA.Peer_Data.Data = Data;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
@@ -2288,6 +2537,17 @@ package body Orm is
    begin
       Unchecked_Free (Self.ORM_FK_By_User);
       Unchecked_Free (Self.ORM_FK_For_User);
+
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
+   overriding procedure Free (Self : in out Peer_Data_Ddr) is
+   begin
+      Unchecked_Free (Self.ORM_FK_Torrent_Id);
 
       Free (Detached_Data (Self));
    end Free;
@@ -2398,6 +2658,18 @@ package body Orm is
    end From_Cache;
 
    ----------------
+   -- From_Cache --
+   ----------------
+
+   function From_Cache
+     (Session    : Session_Type;
+      Torrent_Id : Integer)
+     return Detached_Peer_Data'Class is
+   begin
+      return Detached_Peer_Data'Class (Session.From_Cache ((6000000, Torrent_Id), No_Detached_Peer_Data));
+   end From_Cache;
+
+   ----------------
    -- Get_Config --
    ----------------
 
@@ -2484,6 +2756,50 @@ package body Orm is
          end;
       end if;
    end Get_Invite;
+
+   -------------------
+   -- Get_Peer_Data --
+   -------------------
+
+   function Get_Peer_Data
+     (Session          : Session_Type;
+      Torrent_Id       : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Peer_Data'Class
+   is
+      R : constant Detached_Peer_Data'Class := From_Cache (Session, Torrent_Id);
+   begin
+      if not R.Is_Null then
+         return R;
+      else
+
+         declare
+            M : Peer_Data_Managers := Filter
+              (All_Peer_Data,
+               Torrent_Id => Torrent_Id);
+            L : I_Peer_Data.List;
+         begin
+            M.Select_Related
+              (Depth, Follow_Left_Join => Follow_Left_Join);
+            M.Limit (1);
+            L := M.Get(Session);
+            if not L.Has_Row then
+               return No_Detached_Peer_Data;
+            else
+
+               declare
+                  E : constant Peer_Data := L.Element;
+               begin
+                  --  Workaround bug in gnat which is missing a call
+                  --  to Finalize if we do not reset the list (K321-012)
+                  L := I_Peer_Data.Empty_List;
+                  return E.Detach_No_Lookup (Session);
+               end;
+            end if;
+         end;
+      end if;
+   end Get_Peer_Data;
 
    --------------
    -- Get_Post --
@@ -2715,6 +3031,37 @@ package body Orm is
       if Missing_PK and then Success (Self.Session.DB) then
          PK_Modified := True;
          D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Invites.Id);
+      end if;
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Peer_Data;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      D          : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
+      Q          : SQL_Query;
+      A          : Sql_Assignment := No_Assignment;
+      Missing_Pk : constant Boolean := D.ORM_Torrent_Id = -1;
+      R          : Forward_Cursor;
+   begin
+      if Mask (2) then
+         A := A & (DBA.Peer_Data.Data = To_String (D.ORM_Data));
+      end if;
+      if Missing_PK then
+         Q := SQL_Insert (A);
+      else
+         Q := SQL_Update (DBA.Peer_Data, A, DBA.Peer_Data.Torrent_Id = D.ORM_Torrent_Id);
+      end if;
+      R.Fetch (Self.Session.DB, Q);
+
+      if Missing_PK and then Success (Self.Session.DB) then
+         PK_Modified := True;
+         D.ORM_Torrent_Id := R.Last_Id (Self.Session.DB, DBA.Peer_Data.Torrent_Id);
       end if;
    end Insert_Or_Update;
 
@@ -3010,6 +3357,17 @@ package body Orm is
    -- Internal_Delete --
    ---------------------
 
+   overriding procedure Internal_Delete (Self : Detached_Peer_Data)
+   is
+      D : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
+   begin
+      Execute (Self.Session.DB, SQL_Delete (DBA.Peer_Data, DBA.Peer_Data.Torrent_Id = D.ORM_Torrent_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
    overriding procedure Internal_Delete (Self : Detached_Post)
    is
       D : constant Post_Data := Post_Data (Self.Unchecked_Get);
@@ -3080,6 +3438,22 @@ package body Orm is
       Do_Query_Invites(Fields, From, Criteria,
          0, Alias_Invites, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Invites;
+
+   ------------------------------
+   -- Internal_Query_Peer_Data --
+   ------------------------------
+
+   procedure Internal_Query_Peer_Data
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      Do_Query_Peer_Data(Fields, From, Criteria,
+         0, Alias_Peer_Data, Depth, Follow_LJ, PK_Only);
+   end Internal_Query_Peer_Data;
 
    --------------------------
    -- Internal_Query_Posts --
@@ -3238,6 +3612,19 @@ package body Orm is
    -- Key --
    ---------
 
+   overriding function Key (Self : Peer_Data_Ddr) return Element_Key is
+   begin
+      if Self.ORM_Torrent_Id = -1 then
+         return (6000000, No_Primary_Key);
+      else
+         return (6000000, Self.ORM_Torrent_Id);
+      end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
    overriding function Key (Self : Post_Ddr) return Element_Key is
    begin
       if Self.ORM_Id = -1 then
@@ -3311,6 +3698,19 @@ package body Orm is
       return Result;
    end New_Invite;
 
+   -------------------
+   -- New_Peer_Data --
+   -------------------
+
+   function New_Peer_Data return Detached_Peer_Data'Class
+   is
+      Result : Detached_Peer_Data;
+      Data   : Peer_Data_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_Peer_Data;
+
    --------------
    -- New_Post --
    --------------
@@ -3377,6 +3777,21 @@ package body Orm is
          end if;
          if D.ORM_FK_For_User /= null then
             Self.Session.Persist (D.ORM_FK_For_User.all);
+         end if;
+      end if;
+   end On_Persist;
+
+   ----------------
+   -- On_Persist --
+   ----------------
+
+   overriding procedure On_Persist (Self : Detached_Peer_Data)
+   is
+      D : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
+   begin
+      if Persist_Cascade (Self.Session) then
+         if D.ORM_FK_Torrent_Id /= null then
+            Self.Session.Persist (D.ORM_FK_Torrent_Id.all);
          end if;
       end if;
    end On_Persist;
@@ -3586,6 +4001,18 @@ package body Orm is
          Self.Session.Persist (D.ORM_FK_Created_By.all);
       end if;
    end Set_Created_By;
+
+   --------------
+   -- Set_Data --
+   --------------
+
+   procedure Set_Data (Self : Detached_Peer_Data; Value : String)
+   is
+      D : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Data := To_Unbounded_String (Value);
+      Self.Set_Modified (2);
+   end Set_Data;
 
    ---------------------
    -- Set_Description --
@@ -3861,6 +4288,26 @@ package body Orm is
       Self.Set_Modified (2);
    end Set_Title;
 
+   --------------------
+   -- Set_Torrent_Id --
+   --------------------
+
+   procedure Set_Torrent_Id
+     (Self  : Detached_Peer_Data;
+      Value : Detached_Torrent'Class)
+   is
+      D : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Torrent_Id);
+      D.ORM_Torrent_Id := Value.Id;
+      D.ORM_FK_Torrent_Id := new Detached_Torrent'Class'(Value);
+
+      Self.Set_Modified (1);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_Torrent_Id.all);
+      end if;
+   end Set_Torrent_Id;
+
    ------------------
    -- Set_Uploaded --
    ------------------
@@ -3922,6 +4369,40 @@ package body Orm is
       D.ORM_Version := Value;
       Self.Set_Modified (2);
    end Set_Version;
+
+   -------------------
+   -- Torrent_Peers --
+   -------------------
+
+   function Torrent_Peers (Self : Torrent'Class) return Peer_Data_Managers is
+   begin
+      return Filter (All_Peer_Data, Torrent_Id => Self.Id);
+   end Torrent_Peers;
+
+   -------------------
+   -- Torrent_Peers --
+   -------------------
+
+   function Torrent_Peers
+     (Self : Detached_Torrent'Class)
+     return Peer_Data_Managers is
+   begin
+      return Filter (All_Peer_Data, Torrent_Id => Self.Id);
+   end Torrent_Peers;
+
+   -------------------
+   -- Torrent_Peers --
+   -------------------
+
+   function Torrent_Peers
+     (Self : I_Torrents_Managers'Class)
+     return Peer_Data_Managers
+   is
+      Q : constant SQL_Query := I_Torrents.Build_Query(Self, +DBA.Torrents.Id);
+   begin
+      return All_Peer_Data.Filter
+        (SQL_In(DBA.Peer_Data.Torrent_Id, Q));
+   end Torrent_Peers;
 
    -------------------
    -- Torrent_Stats --

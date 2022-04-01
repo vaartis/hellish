@@ -26,7 +26,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 2;
+   Latest_Version : Natural := 3;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -358,10 +358,13 @@ package body Hellish_Web.Database is
       Torrent_Delete : Sql_Query :=
         Sql_Delete(From => Torrents, Where => Torrents.Id = Id);
       Comments_Delete : Sql_Query :=
-           Sql_Delete(From => Posts, Where => Posts.Parent_Torrent = Id);
+        Sql_Delete(From => Posts, Where => Posts.Parent_Torrent = Id);
+      Peers_Delete : Sql_Query :=
+        Sql_Delete(From => Hellish_Database.Peer_Data, Where => Hellish_Database.Peer_Data.Torrent_Id = Id);
    begin
       Session.Db.Execute(Stats_Delete);
       Session.Db.Execute(Comments_Delete);
+      Session.Db.Execute(Peers_Delete);
       Session.Db.Execute(Torrent_Delete);
 
       Session.Commit;
@@ -549,4 +552,24 @@ package body Hellish_Web.Database is
 
       return The_Query_Managers.Get(Session, Params => Params);
    end Search_Posts;
+
+   Peers_Insert_Statement : Prepared_Statement :=
+     Prepare("INSERT INTO peer_data (torrent_id, data) VALUES ($1, $2) " &
+               "ON CONFLICT (torrent_id) DO UPDATE SET data = EXCLUDED.data;");
+   procedure Persist_Peers(Info_Hash : String; Data : String) is
+      Session : Session_Type := Get_New_Session;
+      The_Torrent : Detached_Torrent'Class := Get_Torrent_By_Hash(Info_Hash, Session);
+
+      Torrent_Peers : Detached_Peer_Data'Class := New_Peer_Data;
+   begin
+      Session.Db.Execute(Peers_Insert_Statement, Params => (1 => +The_Torrent.Id, 2 => +Data));
+
+      Session.Commit;
+   end Persist_Peers;
+
+   function Persisted_Peers return Peer_Data_List is
+      Session : Session_Type := Get_New_Session;
+   begin
+      return All_Peer_Data.Get(Session);
+   end Persisted_Peers;
 end;

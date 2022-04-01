@@ -56,4 +56,7 @@ package Hellish_Web.Database is
                          Offset : Natural;
                          Limit : Natural;
                          Total_Count : out Natural) return Post_List;
+
+   procedure Persist_Peers(Info_Hash : String; Data : String);
+   function Persisted_Peers return Peer_Data_List;
 end;

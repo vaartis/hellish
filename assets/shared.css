@@ -101,6 +101,7 @@ a:hover {
 
 .hellish-results-table {
     border-collapse: collapse;
+    margin-top: 1em;
 }
 
 .hellish-results-header th {

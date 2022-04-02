@@ -93,6 +93,23 @@
                                   name="description" rows="15">@_update_desc_@</textarea>
                     </td>
                 </tr>
+
+                <tr>
+                    <td>Category</td>
+                    <td>
+                        <select name="category" form="upload-form">
+                            @@TABLE@@
+                            <option value="@_category_value_@"
+                                    @@IF@@ @_EXIST:update_@ and (@_update_category_@ = @_category_value_@)
+                                    selected
+                                    @@END_IF@@
+                            >
+                                @_category_name_@
+                            </option>
+                            @@END_TABLE@@
+                        </select>
+                    </td>
+                </tr>
             </table>
 
             <input class="hellish-button" type="submit" name="go"

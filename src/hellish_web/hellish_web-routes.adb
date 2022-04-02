@@ -4,9 +4,10 @@ with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Float_Text_Io; use Ada.Float_Text_Io;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
 with Ada.Exceptions; use Ada.Exceptions;
-with Ada.Directories;
 with Ada.Containers.Indefinite_Holders;
 with Ada.Calendar; use Ada.Calendar;
+with Ada.Directories;
+with Ada.Containers.Indefinite_Ordered_Maps;
 
 with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.SHA1;
@@ -132,6 +133,13 @@ package body Hellish_Web.Routes is
    function User_Announce_Url(The_User : Detached_User'Class) return String is
      ((if Https then "https://" else "http://") &
         (if Server_Host /= "" then To_String(Server_Host) else Host) & "/" & The_User.Passkey & "/announce");
+
+
+   package Torrent_Category_Maps is new Ada.Containers.Indefinite_Ordered_Maps
+     (Key_Type => Integer,
+      Element_Type => String);
+   use Torrent_Category_Maps;
+   Torrent_Categories : Torrent_Category_Maps.Map := Empty_Map;
 
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
 
@@ -444,6 +452,8 @@ package body Hellish_Web.Routes is
       Params : constant Parameters.List := Status.Parameters(Request);
       Update : String := Params.Get("update");
       Error : String := Params.Get("error");
+
+      Category_Names, Category_Values : Vector_Tag;
    begin
       if not Database.User_Exists(Username) then
          -- Redirect to the login page
@@ -461,12 +471,20 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("update", Update));
             Insert(Translations, Assoc("update_name", The_Torrent.Display_Name));
             Insert(Translations, Assoc("update_desc", The_Torrent.Description));
+            Insert(Translations, Assoc("update_category", The_Torrent.Category));
          end;
       else
          -- This needs to always be set, as textarea uses all whitespace literally
          -- and the template engine can't have anything else be on the same line as statements
          Insert(Translations, Assoc("update_desc", ""));
       end if;
+
+      for Category_Cursor in Torrent_Categories.Iterate loop
+         Category_Values := Category_Values & Key(Category_Cursor);
+         Category_Names := Category_Names & Element(Category_Cursor);
+      end loop;
+      Insert(Translations, Assoc("category_name", Category_Names));
+      Insert(Translations, Assoc("category_value", Category_Values));
 
       if Error /= "" then
          Insert(Translations, Assoc("error", error));
@@ -596,7 +614,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("id", Id));
          Insert(Translations, Assoc("display_name", Html_Name));
          Insert(Translations, Assoc("description", Html_Desc));
-         Insert(Translations, Assoc("original_name", Original_File_Name));
+         Insert(Translations, Assoc("category", Torrent_Categories(The_Torrent.Category)));
          Insert(Translations, Assoc("uploader", Uploader.Username));
          Insert(Translations, Assoc("uploader_id", Uploader.Id));
          Insert(Translations, Assoc("is_uploader", Uploader = The_User or The_User.Role = 1));
@@ -1308,6 +1326,15 @@ package body Hellish_Web.Routes is
       if Ada.Directories.Exists(Session_File_Name) then
          Session.Load(Session_File_Name);
       end if;
+
+      Torrent_Categories.Insert(0, "Other");
+      Torrent_Categories.Insert(1, "Music");
+      Torrent_Categories.Insert(2, "Applications");
+      Torrent_Categories.Insert(3, "Anime");
+      Torrent_Categories.Insert(4, "Movies");
+      Torrent_Categories.Insert(5, "TV");
+      Torrent_Categories.Insert(6, "Games - PC");
+      Torrent_Categories.Insert(7, "Games - Other");
 
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register(Root, "/login", Login);

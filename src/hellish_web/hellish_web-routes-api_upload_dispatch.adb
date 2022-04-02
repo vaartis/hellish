@@ -9,6 +9,7 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
    File_Path : String := Params.Get("file");
    Display_Name : String := Params.Get("name");
    Description : String := Params.Get("description");
+   Category : Integer := Integer'Value(Params.Get("category"));
    Update : String := Params.Get("update");
 
    Session_Id : Session.Id := Request_Session(Request);
@@ -18,6 +19,11 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
    begin
       The_Torrent.Set_Display_Name(Display_Name);
       The_Torrent.Set_Description(Description);
+
+      if Torrent_Categories.Contains(Category) then
+         The_Torrent.Set_Category(Category);
+      end if;
+
       Database.Create_Torrent(The_Torrent);
    end Set_Updatable_Fields_And_Create;
 begin

@@ -77,7 +77,7 @@ package Orm is
    No_Post : constant Post;
 
    type Torrent is new Orm_Element with null record;
-   type Torrent_DDR is new Detached_Data (7) with private;
+   type Torrent_DDR is new Detached_Data (8) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
    new Sessions.Detached_Element with private;
    type Detached_Torrent_Access is access all Detached_Torrent'Class;
@@ -109,6 +109,11 @@ package Orm is
    function "=" (Op1 : Detached_Torrent; Op2 : Detached_Torrent) return Boolean;
    --  Compares two elements using only the primary keys. All other fields are
    --  ignored
+
+   function Category (Self : Torrent) return Integer;
+   function Category (Self : Detached_Torrent) return Integer;
+   procedure Set_Category (Self : Detached_Torrent; Value : Integer);
+   --  0 = Other
 
    function Created_By (Self : Torrent) return Integer;
    function Created_By (Self : Detached_Torrent) return Integer;
@@ -663,7 +668,8 @@ package Orm is
       Created_By   : Integer := -1;
       Display_Name : String := No_Update;
       Description  : String := No_Update;
-      Snatches     : Integer := -1)
+      Snatches     : Integer := -1;
+      Category     : Integer := -1)
      return Torrents_Managers;
 
    function Get_Torrent
@@ -998,7 +1004,8 @@ private
     end record;
     type Post_Data is access all Post_DDR;
     
-    type Torrent_DDR is new Detached_Data (7) with record
+    type Torrent_DDR is new Detached_Data (8) with record
+       ORM_Category        : Integer := 0;
        ORM_Created_By      : Integer := -1;
        ORM_Description     : Unbounded_String := Null_Unbounded_String;
        ORM_Display_Name    : Unbounded_String := Null_Unbounded_String;

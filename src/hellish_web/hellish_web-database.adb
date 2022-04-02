@@ -26,7 +26,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 4;
+   Latest_Version : Natural := 5;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=

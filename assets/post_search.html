@@ -49,14 +49,16 @@
     @@INCLUDE@@ navbar.html
 
     <div class="page-container">
-        <form action="/post/search" method="GET">
-            <input class="search-input hellish-input-field" name="query" role="search"
-                   @@IF@@ @_EXIST:query_@
-                   value="@_WEB_ESCAPE:query_@"
-                   @@END_IF@@
-            >
-            <input class="hellish-button hellish-thin-button" type="submit" value="Search!">
-        </form>
+        <div class="search-bar-container">
+            <form action="/post/search" method="GET">
+                <input class="search-input hellish-input-field" name="query" role="search"
+                       @@IF@@ @_EXIST:query_@
+                       value="@_WEB_ESCAPE:query_@"
+                       @@END_IF@@
+                >
+                <input class="hellish-button hellish-thin-button" type="submit" value="Search!">
+            </form>
+        </div>
         <table class="hellish-results-table">
             <colgroup>
                 <col class="hellish-results-column">

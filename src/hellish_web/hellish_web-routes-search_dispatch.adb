@@ -38,7 +38,8 @@ begin
       Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
       Torrent_Names, Torrent_Ids,
-        Torrent_Uploaders, Torrent_Uploader_Ids, Torrent_Comments : Vector_Tag;
+        Torrent_Uploaders, Torrent_Uploader_Ids, Torrent_Comments,
+        The_Torrent_Categories: Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Found_Torrents.Has_Row loop
@@ -54,6 +55,8 @@ begin
             Torrent_Comments := Torrent_Comments & Total_Comments;
          end;
 
+         The_Torrent_Categories := The_Torrent_Categories & Torrent_Categories(Found_Torrents.Element.Category);
+
          Found_Torrents.Next;
       end loop;
 
@@ -62,6 +65,7 @@ begin
       Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
       Insert(Translations, Assoc("torrent_uploader_id", Torrent_Uploader_Ids));
       Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
+      Insert(Translations, Assoc("torrent_category", The_Torrent_Categories));
 
       if Page_Count > 1 then
          for P in 1..Page_Count loop

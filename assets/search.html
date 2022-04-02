@@ -64,12 +64,14 @@
                 <col class="hellish-results-column">
                 <col class="hellish-name-column">
                 <col class="hellish-number-column">
+                <col>
             </colgroup>
             <thead>
                 <tr class="hellish-results-header">
                     <th></th>
                     <th>Uploader</th>
                     <th>Comments</th>
+                    <th>Category</th>
                 </tr>
             </thead>
             @@TABLE@@
@@ -82,6 +84,9 @@
                 </td>
                 <td class="search-info-column">
                     @_torrent_comments_@
+                </td>
+                <td class="search-info-column">
+                    @_torrent_category_@
                 </td>
             </tr>
             @@END_TABLE@@

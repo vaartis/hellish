@@ -5,6 +5,7 @@
 | display_name | TEXT                       | NOT NULL                |   |                              |
 | description  | TEXT                       | NOT NULL                |   |                              |
 | snatches     | INTEGER                    | NOT NULL                |   | Total number of downloads    |
+| category     | INTEGER                    | NOT NULL, INDEX         | 0 | 0 = Other                    |
 
 | TABLE      | users         | user                    |   |                     |
 | id         | AUTOINCREMENT | PK                      |   |                     |

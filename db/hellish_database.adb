@@ -53,6 +53,7 @@ package body Hellish_Database is
          & "|display_name|Text|NOT NULL||" & ASCII.LF
          & "|description|Text|NOT NULL||" & ASCII.LF
          & "|snatches|Integer|NOT NULL||" & ASCII.LF
+         & "|category|Integer|NOT NULL,INDEX|0|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| users" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF

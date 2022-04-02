@@ -133,6 +133,9 @@ package Hellish_Database is
       Snatches : SQL_Field_Integer (Ta_Torrents, Instance, N_Snatches, Index);
       --  Total number of downloads
 
+      Category : SQL_Field_Integer (Ta_Torrents, Instance, N_Category, Index);
+      --  0 = Other
+
    end record;
 
    type T_Torrents (Instance : Cst_String_Access)

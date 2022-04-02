@@ -55,7 +55,7 @@ h4:not(.hellish-content-box h4), h5:not(.hellish-content-box h5), h6:not(.hellis
 }
 
 .hellish-content-box img {
-    max-width: 400px;
+    max-width: 40%;
 }
 
 a {

@@ -972,23 +972,26 @@ package body Hellish_Web.Routes is
 
       declare
          File : File_Type;
+         File_Stream : Stream_Access;
          Content : Unbounded_String;
 
          New_Name : Unbounded_String;
          Upload_Path : Unbounded_String;
       begin
          Open(File, Mode => In_File, Name => File_Path);
-         while End_Of_File(File) loop
-            Content := Content & Character'Input(Stream(File));
+         File_Stream := Stream(File);
+         while not End_Of_File(File) loop
+            Content := Content & Character'Input(File_Stream);
          end loop;
          Close(File);
+         Put_Line(To_String(Content));
 
          declare
             Sha1_Digest : String := Gnat.Sha1.Digest(To_String(Content));
             New_Name : String :=  Compose(Name => Sha1_Digest, Extension => Ada.Directories.Extension(File_Path));
             Upload_Path : String := Compose(Containing_Directory => Image_Uploads_Path, Name => New_Name);
 
-            The_Image : Detached_Image_Upload'Class := Database.Add_Uploaded_Image(username, New_Name);
+            The_Image : Detached_Image_Upload'Class := Database.Add_Uploaded_Image(Username, New_Name);
          begin
             -- No need to copy it again..
             if not Exists(Upload_Path) then

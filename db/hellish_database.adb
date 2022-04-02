@@ -52,7 +52,6 @@ package body Hellish_Database is
          & "|created_by|FK users|NOT NULL,INDEX||" & ASCII.LF
          & "|display_name|Text|NOT NULL||" & ASCII.LF
          & "|description|Text|NOT NULL||" & ASCII.LF
-         & "|snatches|Integer|NOT NULL||" & ASCII.LF
          & "|category|Integer|NOT NULL,INDEX|0|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| users" & ASCII.LF

@@ -130,9 +130,6 @@ package Hellish_Database is
       Created_By : SQL_Field_Integer (Ta_Torrents, Instance, N_Created_By, Index);
       Display_Name : SQL_Field_Text (Ta_Torrents, Instance, N_Display_Name, Index);
       Description : SQL_Field_Text (Ta_Torrents, Instance, N_Description, Index);
-      Snatches : SQL_Field_Integer (Ta_Torrents, Instance, N_Snatches, Index);
-      --  Total number of downloads
-
       Category : SQL_Field_Integer (Ta_Torrents, Instance, N_Category, Index);
       --  0 = Other
 

@@ -59,20 +59,19 @@ package body Orm is
    F_Posts_Parent_Post    : constant := 4;
    F_Posts_Flag           : constant := 5;
    F_Posts_Parent_Torrent : constant := 6;
-   Counts_Posts : constant Counts := ((7,7),(14,28),(14,56),(14,84));
+   Counts_Posts : constant Counts := ((7,7),(14,27),(14,54),(14,81));
    Upto_Posts_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
    Upto_Posts_1 : constant Counts := ((7,7),(14,14),(14,14),(14,14));
-   Upto_Posts_2 : constant Counts := ((7,7),(14,21),(14,42),(14,70));
+   Upto_Posts_2 : constant Counts := ((7,7),(14,21),(14,41),(14,68));
    Alias_Posts : constant Alias_Array := (-1,4,5,20,-1,0,9,10,17,1,2,14,15,16,4,5,6,3,19,7,-1,22,8);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
    F_Torrents_Created_By   : constant := 2;
    F_Torrents_Display_Name : constant := 3;
    F_Torrents_Description  : constant := 4;
-   F_Torrents_Snatches     : constant := 5;
-   F_Torrents_Category     : constant := 6;
-   Counts_Torrents : constant Counts := ((7,7),(14,14),(14,14),(14,14));
-   Upto_Torrents_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
+   F_Torrents_Category     : constant := 5;
+   Counts_Torrents : constant Counts := ((6,6),(13,13),(13,13),(13,13));
+   Upto_Torrents_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
    F_User_Torrent_Stats_By_User    : constant := 0;
    F_User_Torrent_Stats_Of_Torrent : constant := 1;
@@ -1391,24 +1390,6 @@ package body Orm is
       return User_Torrent_Stat_Data (Self.Unchecked_Get).ORM_Snatched;
    end Snatched;
 
-   --------------
-   -- Snatches --
-   --------------
-
-   function Snatches (Self : Torrent) return Integer is
-   begin
-      return Integer_Value (Self, F_Torrents_Snatches);
-   end Snatches;
-
-   --------------
-   -- Snatches --
-   --------------
-
-   function Snatches (Self : Detached_Torrent) return Integer is
-   begin
-      return Torrent_Data (Self.Unchecked_Get).ORM_Snatches;
-   end Snatches;
-
    -----------
    -- Title --
    -----------
@@ -2079,7 +2060,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Torrent_DDR'
-              (Detached_Data with Field_Count => 8, others => <>));
+              (Detached_Data with Field_Count => 7, others => <>));
       end if;
 
       Tmp := Torrent_Data (Result.Unchecked_Get);
@@ -2096,7 +2077,6 @@ package body Orm is
       Tmp.ORM_FK_Created_By   := FK_Created_By;
       Tmp.ORM_Id              := Integer_Value (Self, F_Torrents_Id);
       Tmp.ORM_Info_Hash       := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
-      Tmp.ORM_Snatches        := Integer_Value (Self, F_Torrents_Snatches);
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -2445,7 +2425,6 @@ package body Orm is
          & Table.Created_By
          & Table.Display_Name
          & Table.Description
-         & Table.Snatches
          & Table.Category;
       end if;
       From := Empty_Table_List;
@@ -2559,7 +2538,6 @@ package body Orm is
       Created_By   : Integer := -1;
       Display_Name : String := No_Update;
       Description  : String := No_Update;
-      Snatches     : Integer := -1;
       Category     : Integer := -1)
      return Torrents_Managers
    is
@@ -2580,9 +2558,6 @@ package body Orm is
       end if;
       if Description /= No_Update then
          C := C and DBA.Torrents.Description = Description;
-      end if;
-      if Snatches /= -1 then
-         C := C and DBA.Torrents.Snatches = Snatches;
       end if;
       if Category /= -1 then
          C := C and DBA.Torrents.Category = Category;
@@ -3622,9 +3597,6 @@ package body Orm is
          A := A & (DBA.Torrents.Description = To_String (D.ORM_Description));
       end if;
       if Mask (6) then
-         A := A & (DBA.Torrents.Snatches = D.ORM_Snatches);
-      end if;
-      if Mask (7) then
          A := A & (DBA.Torrents.Category = D.ORM_Category);
       end if;
       if Missing_PK then
@@ -4486,7 +4458,7 @@ package body Orm is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
    begin
       D.ORM_Category := Value;
-      Self.Set_Modified (7);
+      Self.Set_Modified (6);
    end Set_Category;
 
    -----------------
@@ -4807,18 +4779,6 @@ package body Orm is
       D.ORM_Snatched := Value;
       Self.Set_Modified (5);
    end Set_Snatched;
-
-   ------------------
-   -- Set_Snatches --
-   ------------------
-
-   procedure Set_Snatches (Self : Detached_Torrent; Value : Integer)
-   is
-      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
-   begin
-      D.ORM_Snatches := Value;
-      Self.Set_Modified (6);
-   end Set_Snatches;
 
    ---------------
    -- Set_Title --

@@ -101,7 +101,6 @@ begin
          -- The fields mentioned here explicitly can't be updated
          The_Torrent.Set_Info_Hash(Sha1_Hash);
          The_Torrent.Set_Created_By(Created_By);
-         The_Torrent.Set_Snatches(0);
          Set_Updatable_Fields_And_Create(The_Torrent);
 
          if Error_String = "" then

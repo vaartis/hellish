@@ -147,7 +147,7 @@ package body Hellish_Web.Peers is
             begin
                Result_Map.Include(To_Unbounded_String("complete"), Encode(Stats.Complete));
                Result_Map.Include(To_Unbounded_String("incomplete"), Encode(Stats.Incomplete));
-               Result_Map.Include(To_Unbounded_String("downloaded"), Encode(The_Torrent.Snatches));
+               Result_Map.Include(To_Unbounded_String("downloaded"), Encode(Database.Torrent_Snatches(The_Torrent)));
             end;
          end if;
 
@@ -169,7 +169,7 @@ package body Hellish_Web.Peers is
                end if;
             end loop;
          end if;
-         Result.Downloaded := The_Torrent.Snatches;
+         Result.Downloaded := Database.Torrent_Snatches(The_Torrent);
 
          return Result;
       end Scrape_Stats;

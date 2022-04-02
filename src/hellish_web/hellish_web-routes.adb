@@ -662,7 +662,7 @@ package body Hellish_Web.Routes is
          begin
             Insert(Translations, Assoc("seeding", Peer_Data.Complete));
             Insert(Translations, Assoc("leeching", Peer_Data.Incomplete));
-            Insert(Translations, Assoc("snatches", The_Torrent.Snatches));
+            Insert(Translations, Assoc("snatches", Database.Torrent_Snatches(The_Torrent)));
          end;
 
          declare

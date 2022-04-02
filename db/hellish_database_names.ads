@@ -60,8 +60,6 @@ package Hellish_Database_Names is
    N_Role : constant Cst_String_Access := NC_role'Access;
    NC_Snatched : aliased constant String := "snatched";
    N_Snatched : constant Cst_String_Access := NC_snatched'Access;
-   NC_Snatches : aliased constant String := "snatches";
-   N_Snatches : constant Cst_String_Access := NC_snatches'Access;
    NC_Title : aliased constant String := "title";
    N_Title : constant Cst_String_Access := NC_title'Access;
    NC_Torrent_Id : aliased constant String := "torrent_id";

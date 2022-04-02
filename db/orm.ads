@@ -77,7 +77,7 @@ package Orm is
    No_Post : constant Post;
 
    type Torrent is new Orm_Element with null record;
-   type Torrent_DDR is new Detached_Data (8) with private;
+   type Torrent_DDR is new Detached_Data (7) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
    new Sessions.Detached_Element with private;
    type Detached_Torrent_Access is access all Detached_Torrent'Class;
@@ -139,11 +139,6 @@ package Orm is
    function Info_Hash (Self : Detached_Torrent) return String;
    procedure Set_Info_Hash (Self : Detached_Torrent; Value : String);
    --  The SHA1 hash of the torrent
-
-   function Snatches (Self : Torrent) return Integer;
-   function Snatches (Self : Detached_Torrent) return Integer;
-   procedure Set_Snatches (Self : Detached_Torrent; Value : Integer);
-   --  Total number of downloads
 
    function Detach (Self : Torrent'Class) return Detached_Torrent'Class;
 
@@ -668,7 +663,6 @@ package Orm is
       Created_By   : Integer := -1;
       Display_Name : String := No_Update;
       Description  : String := No_Update;
-      Snatches     : Integer := -1;
       Category     : Integer := -1)
      return Torrents_Managers;
 
@@ -1004,7 +998,7 @@ private
     end record;
     type Post_Data is access all Post_DDR;
     
-    type Torrent_DDR is new Detached_Data (8) with record
+    type Torrent_DDR is new Detached_Data (7) with record
        ORM_Category        : Integer := 0;
        ORM_Created_By      : Integer := -1;
        ORM_Description     : Unbounded_String := Null_Unbounded_String;
@@ -1012,7 +1006,6 @@ private
        ORM_FK_Created_By   : Detached_User_Access := null;
        ORM_Id              : Integer := -1;
        ORM_Info_Hash       : Unbounded_String := Null_Unbounded_String;
-       ORM_Snatches        : Integer := -1;
     end record;
     type Torrent_Data is access all Torrent_DDR;
     

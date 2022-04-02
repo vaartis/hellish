@@ -1002,7 +1002,6 @@ package body Hellish_Web.Routes is
             Content := Content & Character'Input(File_Stream);
          end loop;
          Close(File);
-         Put_Line(To_String(Content));
 
          declare
             Sha1_Digest : String := Gnat.Sha1.Digest(To_String(Content));

@@ -47,7 +47,11 @@ h4:not(.hellish-content-box h4), h5:not(.hellish-content-box h5), h6:not(.hellis
 }
 
 .hellish-content-box p {
-    white-space: pre-line;
+    white-space: pre-wrap;
+}
+
+.hellish-content-box pre {
+    white-space: pre-wrap;
 }
 
 .hellish-content-box img {

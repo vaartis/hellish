@@ -260,16 +260,18 @@ package body Hellish_Web.Peers is
             declare
                procedure Iter(Name : String; Value : Json_Value) is
                begin
-                  Add(The_Torrent.Info_Hash,
-                      (Peer_Id => To_Unbounded_String(Name),
-                       Ip => Get(Value, "ip"),
-                       Port => Get(Value, "port"),
-                       Uploaded => Get(Value, "uploaded").Get,
-                       Downloaded => Get(Value, "downloaded").Get,
-                       Left => Get(Value, "left").Get,
-                       Last_Seen => Clock,
-                       Last_Event => To_Unbounded_String("started"),
-                       User => Detached_User(Database.Get_User(Integer'(Get(Value, "user_id"))))));
+                  if The_Torrent /= Detached_Torrent'Class(No_Detached_Torrent) then
+                     Add(The_Torrent.Info_Hash,
+                         (Peer_Id => To_Unbounded_String(Name),
+                          Ip => Get(Value, "ip"),
+                          Port => Get(Value, "port"),
+                          Uploaded => Get(Value, "uploaded").Get,
+                          Downloaded => Get(Value, "downloaded").Get,
+                          Left => Get(Value, "left").Get,
+                          Last_Seen => Clock,
+                          Last_Event => To_Unbounded_String("started"),
+                          User => Detached_User(Database.Get_User(Integer'(Get(Value, "user_id"))))));
+                  end if;
                end Iter;
             begin
                Map_Json_Object(Peers_Json, Iter'Access);

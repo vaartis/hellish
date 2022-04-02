@@ -28,6 +28,7 @@ package Hellish_Web.Database is
    function Torrent_Snatches(The_Torrent : Detached_Torrent'Class) return Integer;
    function Search_Torrents(Query : String;
                             Uploader : Natural;
+                            Category : Integer;
 
                             Offset : Natural;
                             Limit : Natural;
@@ -53,6 +54,7 @@ package Hellish_Web.Database is
                          Total_Count : out Natural) return Post_List;
    function Get_Latest_News return Detached_Post'Class;
    function Search_Posts(Query : String;
+                         Flag : Integer;
 
                          Offset : Natural;
                          Limit : Natural;

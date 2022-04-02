@@ -154,6 +154,7 @@ package body Posts is
       Query : String := Params.Get("query");
       Uploader : Natural := (if Params.Exist("uploader") then Natural'Value(Params.Get("uploader")) else 0);
       Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
+      Flag : Integer := (if Params.Exist("flag") then Integer'Value(Params.Get("flag")) else -1);
 
       Translations : Translate_Set;
    begin
@@ -170,13 +171,14 @@ package body Posts is
          Page_Size : constant Natural := 25;
          Page_Offset : constant Natural := (Page - 1) * Page_Size;
          Total_Count : Natural;
-         Found_Posts : Post_List := Database.Search_Posts(Query, Page_Offset, Page_Size, Total_Count);
+         Found_Posts : Post_List := Database.Search_Posts(Query, Flag,
+                                                          Page_Offset, Page_Size, Total_Count);
          -- Round up
          Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
          Post_Titles, Post_Ids,
            Post_Authors, Post_Author_Ids,
-           Post_Flags, Post_Replies : Vector_Tag;
+           The_Post_Flags, Post_Replies : Vector_Tag;
          Pages, Page_Addresses : Vector_Tag;
       begin
          while Found_Posts.Has_Row loop
@@ -185,10 +187,9 @@ package body Posts is
             Post_Authors := Post_Authors & Database.Get_User(Found_Posts.Element.By_User).Username;
             Post_Author_Ids := Post_Author_Ids & Integer'(Found_Posts.Element.By_User);
 
-            Post_Flags := Post_Flags & (case Found_Posts.Element.Flag is
-                                           when 1 => "News",
-                                           when 2 => "Request / Offer",
-                                           when others => "");
+            The_Post_Flags := The_Post_Flags & (if Post_Flags.Contains(Found_Posts.Element.Flag)
+                                                then Post_Flags(Found_Posts.Element.Flag)
+                                                else "");
 
             declare
                Total_Replies : Integer;
@@ -204,7 +205,7 @@ package body Posts is
          Insert(Translations, Assoc("post_title", Post_Titles));
          Insert(Translations, Assoc("post_author", Post_Authors));
          Insert(Translations, Assoc("post_author_id", Post_Author_Ids));
-         Insert(Translations, Assoc("post_flag", Post_Flags));
+         Insert(Translations, Assoc("post_flag", The_Post_Flags));
          Insert(Translations, Assoc("post_replies", Post_Replies));
 
          if Page_Count > 1 then
@@ -227,7 +228,20 @@ package body Posts is
 
             Insert(Translations, Assoc("page", Pages));
             Insert(Translations, Assoc("page_address", Page_Addresses));
+
          end if;
+
+         declare
+            Flag_Names, Flag_Values : Vector_Tag;
+         begin
+            Insert(Translations, Assoc("search_flag", Flag));
+            for Flag_Cursor in Post_Flags.Iterate loop
+               Flag_Values := Flag_Values & Key(Flag_Cursor);
+               Flag_Names := Flag_Names & Element(Flag_Cursor);
+            end loop;
+            Insert(Translations, Assoc("flag_name", Flag_Names));
+            Insert(Translations, Assoc("flag_value", Flag_Values));
+      end;
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/post_search.html", Translations)));

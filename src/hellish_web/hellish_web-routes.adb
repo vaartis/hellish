@@ -135,11 +135,12 @@ package body Hellish_Web.Routes is
         (if Server_Host /= "" then To_String(Server_Host) else Host) & "/" & The_User.Passkey & "/announce");
 
 
-   package Torrent_Category_Maps is new Ada.Containers.Indefinite_Ordered_Maps
+   package Int_String_Maps is new Ada.Containers.Indefinite_Ordered_Maps
      (Key_Type => Integer,
       Element_Type => String);
-   use Torrent_Category_Maps;
-   Torrent_Categories : Torrent_Category_Maps.Map := Empty_Map;
+   use Int_String_Maps;
+   Torrent_Categories : Int_String_Maps.Map := Empty_Map;
+   Post_Flags : Int_String_Maps.Map := Empty_Map;
 
    procedure Replies_Translations(Parent : Integer;
                                   The_User : Detached_User'Class;
@@ -990,6 +991,9 @@ package body Hellish_Web.Routes is
       Torrent_Categories.Insert(5, "TV");
       Torrent_Categories.Insert(6, "Games - PC");
       Torrent_Categories.Insert(7, "Games - Other");
+
+      Post_Flags.Insert(1, "News");
+      Post_Flags.Insert(2, "Request / Offer");
 
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register(Root, "/login", Login);

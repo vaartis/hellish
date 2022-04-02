@@ -329,6 +329,7 @@ package body Hellish_Web.Database is
 
    function Search_Torrents(Query : String;
                             Uploader : Natural;
+                            Category : Integer;
 
                             Offset : Natural;
                             Limit : Natural;
@@ -341,7 +342,10 @@ package body Hellish_Web.Database is
            or Ilike(Hellish_Database.Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"))) and
         -- Only search by uploader if not 0
         ((Integer_Param(2) = 0)
-           or Hellish_Database.Torrents.Created_By = Integer_Param(2));
+           or Hellish_Database.Torrents.Created_By = Integer_Param(2)) and
+        -- Only search by category if it's not -1
+        (Integer_Param(3) = -1
+           or Hellish_Database.Torrents.Category = Integer_Param(3));
 
       Session : Session_Type := Get_New_Session;
       The_Query_Managers : Torrents_Managers := All_Torrents
@@ -352,7 +356,7 @@ package body Hellish_Web.Database is
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
         Sql_Select(From => Torrents, Fields => Apply(Func_Count, Torrents.Id), Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query, 2 => +Uploader);
+      Params : Sql_Parameters := (1 => +Query, 2 => +Uploader, 3 => +Category);
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);
@@ -536,6 +540,7 @@ package body Hellish_Web.Database is
    end Get_Latest_News;
 
    function Search_Posts(Query : String;
+                         Flag : Integer;
 
                          Offset : Natural;
                          Limit : Natural;
@@ -545,9 +550,11 @@ package body Hellish_Web.Database is
       Search_Criteria : Sql_Criteria :=
         -- Only search by display_name of query is not empty
         ((Text_Param(1) = "")
-           or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%")))
+           or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%"))) and
         -- Only show posts without parents
-        and (Is_Null(Posts.Parent_Post) and Is_Null(Posts.Parent_Torrent));
+        (Is_Null(Posts.Parent_Post) and Is_Null(Posts.Parent_Torrent)) and
+        ((Integer_Param(2) = -1) or
+           Hellish_Database.Posts.Flag = Integer_Param(2));
 
       Session : Session_Type := Get_New_Session;
       The_Query_Managers : Posts_Managers := All_Posts
@@ -558,7 +565,7 @@ package body Hellish_Web.Database is
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
         Sql_Select(From => Posts, Fields => Apply(Func_Count, Posts.Id), Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query);
+      Params : Sql_Parameters := (1 => +Query, 2 => +Flag);
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);

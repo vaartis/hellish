@@ -51,13 +51,28 @@
         </div>
         @@END_IF@@
 
-        <form action="/search" method="GET">
+        <form action="/search" id="search-form" method="GET">
             <input class="search-input hellish-input-field" name="query" role="search"
                    @@IF@@ @_EXIST:query_@
                    value="@_WEB_ESCAPE:query_@"
                    @@END_IF@@
             >
             <input class="hellish-button hellish-thin-button" type="submit" value="Search!">
+            <div>
+                <label for="search-category">Category</label>
+                <select class="hellish-select" id="search-category" form="search-form" name="category">
+                    <option value="-1">None</option>
+                    @@TABLE@@
+                    <option value="@_category_value_@"
+                            @@IF@@ @_search_category_@ = @_category_value_@
+                            selected
+                            @@END_IF@@
+                    >
+                        @_category_name_@
+                    </option>
+                    @@END_TABLE@@
+                </select>
+            </div>
         </form>
         <table class="hellish-results-table">
             <colgroup>

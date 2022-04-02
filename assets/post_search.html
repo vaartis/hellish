@@ -50,13 +50,29 @@
 
     <div class="page-container">
         <div class="search-bar-container">
-            <form action="/post/search" method="GET">
+            <form action="/post/search" id="search-form" method="GET">
                 <input class="search-input hellish-input-field" name="query" role="search"
                        @@IF@@ @_EXIST:query_@
                        value="@_WEB_ESCAPE:query_@"
                        @@END_IF@@
                 >
                 <input class="hellish-button hellish-thin-button" type="submit" value="Search!">
+
+                <div>
+                    <label for="search-flag">Flag</label>
+                    <select class="hellish-select" id="search-flag" form="search-form" name="flag">
+                        <option value="-1">None</option>
+                        @@TABLE@@
+                        <option value="@_flag_value_@"
+                                @@IF@@ @_search_flag_@ = @_flag_value_@
+                                selected
+                                @@END_IF@@
+                        >
+                            @_flag_name_@
+                        </option>
+                        @@END_TABLE@@
+                    </select>
+                </div>
             </form>
         </div>
         <table class="hellish-results-table">

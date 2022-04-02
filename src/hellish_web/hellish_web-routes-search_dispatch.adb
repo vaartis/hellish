@@ -8,6 +8,7 @@ function Search_Dispatch(Handler : in Search_Handler;
    Query : String := Params.Get("query");
    Uploader : Natural := (if Params.Exist("uploader") then Natural'Value(Params.Get("uploader")) else 0);
    Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
+   Category : Integer := (if Params.Exist("category") then Integer'Value(Params.Get("category")) else -1);
 
    Translations : Translate_Set;
 begin
@@ -33,7 +34,8 @@ begin
       Page_Size : constant Natural := 25;
       Page_Offset : constant Natural := (Page - 1) * Page_Size;
       Total_Count : Natural;
-      Found_Torrents : Torrent_List := Database.Search_Torrents(Query, Uploader, Page_Offset, Page_Size, Total_Count);
+      Found_Torrents : Torrent_List := Database.Search_Torrents(Query, Uploader, Category, 
+                                                                Page_Offset, Page_Size, Total_Count);
       -- Round up
       Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
@@ -88,6 +90,18 @@ begin
          Insert(Translations, Assoc("page", Pages));
          Insert(Translations, Assoc("page_address", Page_Addresses));
       end if;
+
+      declare
+         Category_Names, Category_Values : Vector_Tag;
+      begin
+         Insert(Translations, Assoc("search_category", Category));
+         for Category_Cursor in Torrent_Categories.Iterate loop
+            Category_Values := Category_Values & Key(Category_Cursor);
+            Category_Names := Category_Names & Element(Category_Cursor);
+         end loop;
+         Insert(Translations, Assoc("category_name", Category_Names));
+         Insert(Translations, Assoc("category_value", Category_Values));
+      end;
 
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/search.html", Translations)));

@@ -141,8 +141,78 @@ package body Hellish_Web.Routes is
    use Torrent_Category_Maps;
    Torrent_Categories : Torrent_Category_Maps.Map := Empty_Map;
 
-   Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
+   procedure Replies_Translations(Parent : Integer;
+                                  The_User : Detached_User'Class;
+                                  Translations : in out Translate_Set;
+                                  Fetch_Function : access function(Parent : Integer;
+                                                                   Offset : Natural;
+                                                                   Limit : Integer;
+                                                                   Total_Count : out Natural) return Post_List;
+                                  Request : Status.Data
+                                 ) is
+      Page_Size : constant Natural := 25;
 
+      Params : Parameters.List := Status.Parameters(Request);
+      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
+
+      Page_Offset : constant Natural := (Page - 1) * Page_Size;
+      Total_Count : Natural;
+      Replies : Post_List := Fetch_Function(Parent, Page_Offset, Page_Size, Total_Count);
+      -- Round up
+      Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
+
+      Reply : Orm.Post;
+      Reply_Author : Detached_User'Class := No_Detached_User;
+      Reply_Ids, Replies_Authors, Replies_Author_Ids, Replies_Content,
+        Replies_Is_Author : Vector_Tag;
+      Pages, Page_Addresses : Vector_Tag;
+   begin
+      while Replies.Has_row loop
+         Reply := Replies.Element;
+         Reply_Author := Database.Get_User(Reply.By_User);
+
+         Reply_Ids := Reply_Ids & Reply.Id;
+         Replies_Authors := Replies_Authors & Reply_Author.Username;
+         Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
+         Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content, Default_Md_Flags);
+         Replies_Is_Author := Replies_Is_Author & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
+
+         Replies.Next;
+      end loop;
+      Insert(Translations, Assoc("replies_total", Total_Count));
+      Insert(Translations, Assoc("reply_id", Reply_Ids));
+      Insert(Translations, Assoc("reply_author", Replies_Authors));
+      Insert(Translations, Assoc("reply_author_id", Replies_Author_Ids));
+      Insert(Translations, Assoc("reply_content", Replies_Content));
+      Insert(Translations, Assoc("reply_is_author", Replies_Is_Author));
+
+      if Page_Count > 1 then
+         for P in 1..Page_Count loop
+            if P <= 10 or P = Page_Count then
+               if P = Page_Count and Page_Count > 11 then
+                  -- Insert a ... before the last page
+                  Pages := Pages & "...";
+                  Page_Addresses := Page_Addresses & "";
+               end if;
+
+               Pages := Pages & P;
+
+               Params.Update(To_Unbounded_String("page"),
+                             To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
+                             Decode => False);
+               Page_Addresses := Page_Addresses & String'(Status.Uri(Request) & Params.Uri_Format);
+            end if;
+         end loop;
+
+         Insert(Translations, Assoc("page", Pages));
+         Insert(Translations, Assoc("page_address", Page_Addresses));
+      end if;
+   end Replies_Translations;
+
+   package body Images is separate;
+   package body Posts is separate;
+
+   Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
    function Dispatch
      (Handler : in Announce_Handler;
       Request : in Status.Data) return Response.Data is
@@ -494,74 +564,6 @@ package body Hellish_Web.Routes is
                             String'(Templates_Parser.Parse("assets/upload.html", Translations)));
    end Dispatch;
 
-   procedure Replies_Translations(Parent : Integer;
-                                  The_User : Detached_User'Class;
-                                  Translations : in out Translate_Set;
-                                  Fetch_Function : access function(Parent : Integer;
-                                                                   Offset : Natural;
-                                                                   Limit : Integer;
-                                                                   Total_Count : out Natural) return Post_List;
-                                  Request : Status.Data
-                                 ) is
-      Page_Size : constant Natural := 25;
-
-      Params : Parameters.List := Status.Parameters(Request);
-      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
-
-      Page_Offset : constant Natural := (Page - 1) * Page_Size;
-      Total_Count : Natural;
-      Replies : Post_List := Fetch_Function(Parent, Page_Offset, Page_Size, Total_Count);
-      -- Round up
-      Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
-
-      Reply : Orm.Post;
-      Reply_Author : Detached_User'Class := No_Detached_User;
-      Reply_Ids, Replies_Authors, Replies_Author_Ids, Replies_Content,
-        Replies_Is_Author : Vector_Tag;
-      Pages, Page_Addresses : Vector_Tag;
-   begin
-      while Replies.Has_row loop
-         Reply := Replies.Element;
-         Reply_Author := Database.Get_User(Reply.By_User);
-
-         Reply_Ids := Reply_Ids & Reply.Id;
-         Replies_Authors := Replies_Authors & Reply_Author.Username;
-         Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
-         Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content, Default_Md_Flags);
-         Replies_Is_Author := Replies_Is_Author & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
-
-         Replies.Next;
-      end loop;
-      Insert(Translations, Assoc("replies_total", Total_Count));
-      Insert(Translations, Assoc("reply_id", Reply_Ids));
-      Insert(Translations, Assoc("reply_author", Replies_Authors));
-      Insert(Translations, Assoc("reply_author_id", Replies_Author_Ids));
-      Insert(Translations, Assoc("reply_content", Replies_Content));
-      Insert(Translations, Assoc("reply_is_author", Replies_Is_Author));
-
-      if Page_Count > 1 then
-         for P in 1..Page_Count loop
-            if P <= 10 or P = Page_Count then
-               if P = Page_Count and Page_Count > 11 then
-                  -- Insert a ... before the last page
-                  Pages := Pages & "...";
-                  Page_Addresses := Page_Addresses & "";
-               end if;
-
-               Pages := Pages & P;
-
-               Params.Update(To_Unbounded_String("page"),
-                             To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
-                             Decode => False);
-               Page_Addresses := Page_Addresses & String'(Status.Uri(Request) & Params.Uri_Format);
-            end if;
-         end loop;
-
-         Insert(Translations, Assoc("page", Pages));
-         Insert(Translations, Assoc("page_address", Page_Addresses));
-      end if;
-   end Replies_Translations;
-
    View_Id_Matcher : constant Pattern_Matcher := Compile("/view/(\d+)");
    function Dispatch
      (Handler : in View_Handler;
@@ -737,156 +739,6 @@ package body Hellish_Web.Routes is
    overriding function Dispatch(Handler : in Search_Handler;
                                 Request : in Status.Data) return Response.Data renames Search_Dispatch;
 
-   Post_Id_Matcher : constant Pattern_Matcher := Compile("/post/(\d+)");
-   function Dispatch
-     (Handler : in Post_Handler;
-      Request : in Status.Data) return Response.Data is
-
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
-
-      Page_Size : constant Natural := 25;
-   begin
-      if not Database.User_Exists(Username) then
-         -- Redirect to the login page
-         return Response.Url(Location => "/login");
-      end if;
-
-      Match(Post_Id_Matcher, Uri, Matches);
-      declare
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
-
-         Parent_Post : Detached_Post'Class := No_Detached_Post;
-         Post : Detached_Post'Class := Database.Get_Post(Id, Parent_Post);
-         Author : Detached_User'Class := Database.Get_User(Post.By_User);
-
-         Parent_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Post.Parent_Torrent);
-
-         Translations : Translate_Set;
-      begin
-         if Parent_Post /= Detached_Post'Class(No_Detached_Post) then
-            declare
-               Total_Searched : Integer;
-               -- -1 means all
-               Searched_Replies : Post_List := Database.Post_Replies(Parent_Post.Id, 0, -1, Total_Searched);
-               Searched_N : Natural := 0;
-
-               Found_Page : Natural := 1;
-            begin
-               while Searched_Replies.Has_Row loop
-                  Searched_N := Searched_N + 1;
-
-                  if Searched_Replies.Element.Id = Post.Id then
-                     Found_Page := Natural(Float'Ceiling(Float(Searched_N) / Float(Page_Size)));
-                  end if;
-
-                  Searched_Replies.Next;
-               end loop;
-
-               return Response.Url("/post/"
-                                     & Trim(Parent_Post.Id'Image, Ada.Strings.Left)
-                                     & "?page=" & Trim(Found_Page'Image, Ada.Strings.Left)
-                                     & "#child-" & Trim(Post.Id'Image, Ada.Strings.Left));
-            end;
-         elsif Parent_Torrent /= Detached_Torrent'Class(No_Detached_Torrent) then
-            declare
-               Total_Searched : Integer;
-               -- -1 means all
-               Searched_Replies : Post_List := Database.Torrent_Comments(Parent_Torrent.Id, 0, -1, Total_Searched);
-               Searched_N : Natural := 0;
-
-               Found_Page : Natural := 1;
-            begin
-               while Searched_Replies.Has_Row loop
-                  Searched_N := Searched_N + 1;
-
-                  if Searched_Replies.Element.Id = Post.Id then
-                     Found_Page := Natural(Float'Ceiling(Float(Searched_N) / Float(Page_Size)));
-                  end if;
-
-                  Searched_Replies.Next;
-               end loop;
-
-               return Response.Url("/view/"
-                                     & Trim(Parent_Torrent.Id'Image, Ada.Strings.Left)
-                                     & "?page=" & Trim(Found_Page'Image, Ada.Strings.Left)
-                                     & "#child-" & Trim(Post.Id'Image, Ada.Strings.Left));
-            end;
-         end if;
-         declare
-            Html_Title : String := Templates_Parser.Utils.Web_Escape(Post.Title);
-            -- This both translates markdown to html and escapes whatever html the text might've had,
-            -- so should be safe
-            Post_Content : String := Markdown.To_Html(Post.Content, Default_Md_Flags);
-
-            The_User : Detached_User'Class := Database.Get_User(Username);
-         begin
-            Insert(Translations, Assoc("id", Post.Id));
-            Insert(Translations, Assoc("title", Html_Title));
-            Insert(Translations, Assoc("content", Post_Content));
-            Insert(Translations, Assoc("author", Author.Username));
-            Insert(Translations, Assoc("author_id", Author.Id));
-            Insert(Translations, Assoc("is_author", Author.Id = The_User.Id or The_User.Role = 1));
-
-            Replies_Translations(Post.Id, The_User, Translations, Database.Post_Replies'Access, Request);
-
-            return Response.Build(Mime.Text_Html,
-                                  String'(Templates_Parser.Parse("assets/post.html", Translations)));
-         end;
-      end;
-   end Dispatch;
-
-   overriding function Dispatch(Handler : in Post_Create_Handler;
-                                Request : in Status.Data) return Response.Data is
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-
-      Translations : Translate_Set;
-      The_User : Detached_User'Class := No_Detached_user;
-
-      Params : Parameters.List := Status.Parameters(Request);
-      Update : Natural := (if Params.Exist("update") then Natural'Value(Params.Get("update")) else 0);
-   begin
-      if not Database.User_Exists(Username) then
-         -- Redirect to the login page
-         return Response.Url(Location => "/login");
-      end if;
-
-      The_User := Database.Get_User(Username);
-      Insert(Translations, Assoc("admin", The_User.Role = 1));
-
-      Insert(Translations, Assoc("reply", False));
-      Insert(Translations, Assoc("content", ""));
-      if Update /= 0 then
-         declare
-            Parent_Post : Detached_Post'Class := No_Detached_Post;
-            The_Post : Detached_Post'Class := Database.Get_Post(Update, Parent_Post);
-            Parent_Torrent : Detached_Torrent'Class := Database.Get_Torrent(The_Post.Parent_Torrent);
-         begin
-            if Parent_Post /= Detached_Post'Class(No_Detached_Post)
-              or Parent_Torrent /= Detached_Torrent'Class(No_Detached_Torrent)  then
-               Insert(Translations, Assoc("reply", True));
-            end if;
-            Insert(Translations, Assoc("update", Update));
-            Insert(Translations, Assoc("title", The_Post.Title));
-            Insert(Translations, Assoc("content", The_Post.Content));
-            Insert(Translations, Assoc("flag", The_Post.Flag));
-         end;
-      end if;
-
-      return Response.Build(Mime.Text_Html,
-                               String'(Templates_Parser.Parse("assets/post_create.html", Translations)));
-   end Dispatch;
-
-   function Post_Search_Dispatch(Handler : in Post_Search_Handler;
-                                 Request : in Status.Data) return Response.Data is separate;
-   overriding function Dispatch(Handler : in Post_Search_Handler;
-                                Request : in Status.Data) return Response.Data renames Post_Search_Dispatch;
-
    overriding function Dispatch(Handler : in Confirm_Handler;
                                 Request : in Status.Data) return Response.Data is
       Session_Id : Session.Id := Request_Session(Request);
@@ -911,44 +763,6 @@ package body Hellish_Web.Routes is
                                String'(Templates_Parser.Parse("assets/confirm.html", Translations)));
    end Dispatch;
 
-   overriding function Dispatch(Handler : in Images_Handler;
-                                Request : in Status.Data) return Response.Data is
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-
-      Params : constant Parameters.List := Status.Parameters(Request);
-      Error : String := Params.Get("error");
-
-      Translations : Translate_Set;
-   begin
-      if not Database.User_Exists(Username) then
-         -- Redirect to the login page
-         return Response.Url(Location => "/login");
-      end if;
-
-      declare
-         User_Images : Image_Upload_List := Database.User_Images(Username);
-
-         Image_Names, Image_Ids : Vector_Tag;
-      begin
-         while User_Images.Has_Row loop
-            Image_Names := Image_Names & User_Images.Element.Filename;
-            Image_Ids := Image_Ids & User_Images.Element.Id;
-
-            User_Images.Next;
-         end loop;
-
-         Insert(Translations, Assoc("image_name", Image_Names));
-         Insert(Translations, Assoc("image_id", Image_Ids));
-      end;
-      if Error /= "" then
-         Insert(Translations, Assoc("error", Error));
-      end if;
-
-      return Response.Build(Mime.Text_Html,
-                            String'(Templates_Parser.Parse("assets/images.html", Translations)));
-   end Dispatch;
-
    -- API
 
    function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
@@ -956,107 +770,6 @@ package body Hellish_Web.Routes is
    function Dispatch
      (Handler : in Api_Upload_Handler;
       Request : in Status.Data) return Response.Data renames Api_Upload_Dispatch;
-
-   function Dispatch
-     (Handler : in Api_Image_Upload_Handler;
-      Request : in Status.Data) return Response.Data is
-      use Ada.Directories;
-
-      Params : constant Parameters.List := Status.Parameters(Request);
-
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-
-      File_Path : String := Params.Get("file");
-
-      -- Approx. 1MB
-      Max_Size : constant Natural := 1024 * 1024;
-
-      Mime_Type : String := Mime.Content_Type(File_Path);
-   begin
-      if not Database.User_Exists(Username) then
-         return Response.Acknowledge(Messages.S403, "Forbidden");
-      end if;
-
-      if Size(File_Path) > File_Size(Max_Size) then
-         return Response.Url(Location => "/images?error=Image too big (max size is "
-                               & Bytes_To_Printable(Long_Long_Integer(Max_Size)) & ")");
-      end if;
-      if not MIME.Is_Image(Mime_Type) then
-         return Response.Url(Location => "/images?error=File is not an image, but " & Mime.Content_Type(Mime_Type));
-      end if;
-
-      Create_Path(Image_Uploads_Path);
-
-      declare
-         File : File_Type;
-         File_Stream : Stream_Access;
-         Content : Unbounded_String;
-
-         New_Name : Unbounded_String;
-         Upload_Path : Unbounded_String;
-      begin
-         Open(File, Mode => In_File, Name => File_Path);
-         File_Stream := Stream(File);
-         while not End_Of_File(File) loop
-            Content := Content & Character'Input(File_Stream);
-         end loop;
-         Close(File);
-
-         declare
-            Sha1_Digest : String := Gnat.Sha1.Digest(To_String(Content));
-            New_Name : String :=  Compose(Name => Sha1_Digest, Extension => Ada.Directories.Extension(File_Path));
-            Upload_Path : String := Compose(Containing_Directory => Image_Uploads_Path, Name => New_Name);
-
-            The_Image : Detached_Image_Upload'Class := Database.Add_Uploaded_Image(Username, New_Name);
-         begin
-            -- No need to copy it again..
-            if not Exists(Upload_Path) then
-               Copy_File(File_Path, Upload_Path);
-            end if;
-
-            return Response.Url(Location => "/images#image-" & Trim(The_Image.Id'Image, Ada.Strings.Left));
-         end;
-      end;
-   end;
-
-   Api_Image_Delete_Matcher : constant Pattern_Matcher := Compile("/api/delete/image/(\d+)");
-   function Dispatch
-     (Handler : in Api_Image_Delete_Handler;
-      Request : in Status.Data) return Response.Data is
-      Params : constant Parameters.List := Status.Parameters(Request);
-
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
-   begin
-      if not Database.User_Exists(Username) then
-         return Response.Acknowledge(Messages.S403, "Forbidden");
-      end if;
-
-      Match(Api_Image_Delete_Matcher, Uri, Matches);
-      declare
-         use Ada.Directories;
-
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
-
-         The_Image : Detached_Image_Upload'Class := Database.Get_Image(Id);
-         The_User : Detached_User'class := Database.Get_User(Username);
-      begin
-         if The_Image.By_User /= The_User.Id and The_User.Role /= 1 then
-            return Response.Acknowledge(Messages.S403, "Forbidden");
-         end if;
-
-         if not Database.Delete_Uploaded_Image(Id) then
-            Delete_File(Compose(Containing_Directory => Image_Uploads_Path, Name => The_Image.Filename));
-         end if;
-
-         return Response.Url(Location => "/images");
-      end;
-   end Dispatch;
 
    Api_Delete_Matcher : constant Pattern_Matcher := Compile("/api/delete/(\d+)");
    overriding function Dispatch(Handler : in Api_Delete_Handler;
@@ -1203,63 +916,6 @@ package body Hellish_Web.Routes is
       return Result;
    end Dispatch;
 
-   overriding function Dispatch(Handler : in Api_Post_Create_Handler;
-                                Request : in Status.Data) return Response.Data is
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-      The_User : Detached_User'Class := No_Detached_User;
-
-      Params : constant Parameters.List := Status.Parameters(Request);
-      Title : String := Params.Get("title");
-      Content : String := Params.Get("content");
-      Parent : Integer := (if Params.Exist("parent") then Natural'Value(Params.Get("parent")) else -1);
-      Parent_Torrent : Integer := (if Params.Exist("parent_torrent")
-                                   then Natural'Value(Params.Get("parent_torrent"))
-                                   else -1);
-      Flag : Integer := (if Params.Exist("flag") then Natural'Value(Params.Get("flag")) else 0);
-
-      Update : Integer := (if Params.Exist("update") then Natural'Value(Params.Get("update")) else -1);
-      Updated_Post : Detached_Post'Class := No_Detached_Post;
-
-      Parent_Post : Detached_Post'Class := No_Detached_Post;
-      Post : Detached_Post'Class := New_Post;
-   begin
-      if not Database.User_Exists(Username) then
-         return Response.Acknowledge(Messages.S403, "Forbidden");
-      end if;
-      The_User := Database.Get_User(Username);
-
-      if Update /= -1 then
-         Updated_Post := Database.Get_Post(Update, Parent_Post);
-         if Integer'(Updated_Post.By_User) /= The_User.Id and The_User.Role /= 1 then
-            return Response.Acknowledge(Messages.S403, "Forbidden");
-         end if;
-         Post := Updated_Post;
-      end if;
-
-      Post.Set_By_User(The_User.Id);
-      Post.Set_Content(Content);
-
-      if Title /= "" then
-         Post.Set_Title(Title);
-      end if;
-      if Parent /= -1 then
-         Post.Set_Parent_Post(Parent);
-      elsif Parent_Torrent /= -1
-        and Database.Get_Torrent(Parent_Torrent) /= Detached_Torrent'Class(No_Detached_Torrent) then
-         Post.Set_Parent_Torrent(Parent_Torrent);
-      end if;
-      if Parent = -1 and Parent_Torrent = -1 then
-         if (Flag = 1 and The_User.Role = 1) or Flag = 2 then
-            Post.Set_Flag(Flag);
-         end if;
-      end if;
-
-      Database.Create_Post(Post);
-
-      return Response.Url("/post/" & Trim(Post.Id'Image, Ada.Strings.Left));
-   end Dispatch;
-
    -- Uploads
 
    Uploads_Images_Matcher : constant Pattern_Matcher := Compile("/uploads/images/(\w+\.\w+)");
@@ -1345,20 +1001,20 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/view/(\d+)", View);
       Services.Dispatchers.Uri.Register(Root, "/invite", Invite);
       Services.Dispatchers.Uri.Register(Root, "/search", Search);
-      Services.Dispatchers.Uri.Register(Root, "/post/create", Post_Create);
-      Services.Dispatchers.Uri.Register(Root, "/post/search", Post_Search);
-      Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Post);
+      Services.Dispatchers.Uri.Register(Root, "/post/create", Posts.Post_Create);
+      Services.Dispatchers.Uri.Register(Root, "/post/search", Posts.Post_Search);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Posts.Post);
       Services.Dispatchers.Uri.Register(Root, "/confirm", Confirm);
-      Services.Dispatchers.Uri.Register(Root, "/images", Images);
+      Services.Dispatchers.Uri.Register(Root, "/images", Images.Images);
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
       Services.Dispatchers.Uri.Register(Root, "/api/user/logout", Api_User_Logout);
       Services.Dispatchers.Uri.Register(Root, "/api/upload", Api_Upload);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/(\d+)", Api_Delete);
-      Services.Dispatchers.Uri.Register(Root, "/api/post/create", Api_Post_Create);
-      Services.Dispatchers.Uri.Register(Root, "/api/upload/image", Api_Image_Upload);
-      Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/image/(\d+)", Api_Image_Delete);
+      Services.Dispatchers.Uri.Register(Root, "/api/post/create", Posts.Api_Post_Create);
+      Services.Dispatchers.Uri.Register(Root, "/api/upload/image", Images.Api_Image_Upload);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/image/(\d+)", Images.Api_Image_Delete);
 
       Services.Dispatchers.Uri.Register_Regexp(Root, "/uploads/images/(\w+\.\w+)", Uploads_Images);
 

@@ -142,7 +142,8 @@ package body Hellish_Web.Routes is
    Torrent_Categories : constant Int_String_Maps.Map :=
      (0 => "Other", 1 => "Music", 2 => "Applications",
       3 => "Anime", 4 => "Movies", 5 => "TV",
-      6 => "Games - PC", 7 => "Games - Other");
+      6 => "Games - PC", 7 => "Games - Other",
+      8 => "Books", 9 => "Comics");
    Post_Flags : constant Int_String_Maps.Map :=
      (1 => "News", 2 => "Request / Offer");
 

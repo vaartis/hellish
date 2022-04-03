@@ -139,8 +139,12 @@ package body Hellish_Web.Routes is
      (Key_Type => Integer,
       Element_Type => String);
    use Int_String_Maps;
-   Torrent_Categories : Int_String_Maps.Map := Empty_Map;
-   Post_Flags : Int_String_Maps.Map := Empty_Map;
+   Torrent_Categories : constant Int_String_Maps.Map :=
+     (0 => "Other", 1 => "Music", 2 => "Applications",
+      3 => "Anime", 4 => "Movies", 5 => "TV",
+      6 => "Games - PC", 7 => "Games - Other");
+   Post_Flags : constant Int_String_Maps.Map :=
+     (1 => "News", 2 => "Request / Offer");
 
    procedure Replies_Translations(Parent : Integer;
                                   The_User : Detached_User'Class;
@@ -172,11 +176,11 @@ package body Hellish_Web.Routes is
          Reply := Replies.Element;
          Reply_Author := Database.Get_User(Reply.By_User);
 
-         Reply_Ids := Reply_Ids & Reply.Id;
-         Replies_Authors := Replies_Authors & Reply_Author.Username;
-         Replies_Author_Ids := Replies_Author_Ids & Reply_Author.Id;
-         Replies_Content := Replies_Content & Markdown.To_Html(Reply.Content, Default_Md_Flags);
-         Replies_Is_Author := Replies_Is_Author & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
+         Reply_Ids := @ & Reply.Id;
+         Replies_Authors := @ & Reply_Author.Username;
+         Replies_Author_Ids := @ & Reply_Author.Id;
+         Replies_Content := @ & Markdown.To_Html(Reply.Content, Default_Md_Flags);
+         Replies_Is_Author := @ & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
 
          Replies.Next;
       end loop;
@@ -192,16 +196,16 @@ package body Hellish_Web.Routes is
             if P <= 10 or P = Page_Count then
                if P = Page_Count and Page_Count > 11 then
                   -- Insert a ... before the last page
-                  Pages := Pages & "...";
-                  Page_Addresses := Page_Addresses & "";
+                  Pages := @ & "...";
+                  Page_Addresses := @ & "";
                end if;
 
-               Pages := Pages & P;
+               Pages := @ & P;
 
                Params.Update(To_Unbounded_String("page"),
                              To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
                              Decode => False);
-               Page_Addresses := Page_Addresses & String'(Status.Uri(Request) & Params.Uri_Format);
+               Page_Addresses := @ & String'(Status.Uri(Request) & Params.Uri_Format);
             end if;
          end loop;
 
@@ -551,8 +555,8 @@ package body Hellish_Web.Routes is
       end if;
 
       for Category_Cursor in Torrent_Categories.Iterate loop
-         Category_Values := Category_Values & Key(Category_Cursor);
-         Category_Names := Category_Names & Element(Category_Cursor);
+         Category_Values := @ & Key(Category_Cursor);
+         Category_Names := @ & Element(Category_Cursor);
       end loop;
       Insert(Translations, Assoc("category_name", Category_Names));
       Insert(Translations, Assoc("category_value", Category_Values));
@@ -637,13 +641,13 @@ package body Hellish_Web.Routes is
                      Size : Long_Long_Integer := Bencode_Integer(File.Value(To_Unbounded_String("length")).Element.Element).Value;
                   begin
                      for Path_Part of File_Path_List.Value loop
-                        File_Path := File_Path & "/" & Bencode_String(Path_Part.Element).Value;
+                        File_Path := @ & "/" & Bencode_String(Path_Part.Element).Value;
                      end loop;
 
                      -- Just in case the file name has something funny, escape it. It's user generated data after all.
-                     File_Names := File_Names & Templates_Parser.Utils.Web_Escape(To_String(File_Path));
-                     File_Sizes := File_Sizes & Bytes_To_Printable(size);
-                     Total_Size := Total_Size + Size;
+                     File_Names := @ & Templates_Parser.Utils.Web_Escape(To_String(File_Path));
+                     File_Sizes := @ & Bytes_To_Printable(size);
+                     Total_Size := @ + Size;
                   end;
                end loop;
             end;
@@ -651,8 +655,8 @@ package body Hellish_Web.Routes is
             declare
                Size : Long_Long_Integer := Bencode_Integer(Bencoded_Info.Value(To_Unbounded_String("length")).Element.Element).Value;
             begin
-               File_Names := File_Names & ("/" & Original_File_Name);
-               File_Sizes := File_Sizes & Bytes_To_Printable(Size);
+               File_Names := @ & ("/" & Original_File_Name);
+               File_Sizes := @ & Bytes_To_Printable(Size);
                Total_Size := Size;
             end;
          end if;
@@ -720,9 +724,9 @@ package body Hellish_Web.Routes is
          while Invited_Users.Has_row loop
             Invited_User := Invited_Users.Element.For_User.Detach;
 
-            Invited_User_Names := Invited_User_Names & Invited_User.Username;
-            Invited_User_Ul := Invited_User_Ul & Bytes_To_Printable(Invited_User.Uploaded);
-            Invited_User_Dl := Invited_User_Dl & Bytes_To_Printable(Invited_User.Downloaded);
+            Invited_User_Names := @ & Invited_User.Username;
+            Invited_User_Ul := @ & Bytes_To_Printable(Invited_User.Uploaded);
+            Invited_User_Dl := @ & Bytes_To_Printable(Invited_User.Downloaded);
 
             Invited_Users.Next;
          end loop;
@@ -982,18 +986,6 @@ package body Hellish_Web.Routes is
       if Ada.Directories.Exists(Session_File_Name) then
          Session.Load(Session_File_Name);
       end if;
-
-      Torrent_Categories.Insert(0, "Other");
-      Torrent_Categories.Insert(1, "Music");
-      Torrent_Categories.Insert(2, "Applications");
-      Torrent_Categories.Insert(3, "Anime");
-      Torrent_Categories.Insert(4, "Movies");
-      Torrent_Categories.Insert(5, "TV");
-      Torrent_Categories.Insert(6, "Games - PC");
-      Torrent_Categories.Insert(7, "Games - Other");
-
-      Post_Flags.Insert(1, "News");
-      Post_Flags.Insert(2, "Request / Offer");
 
       Services.Dispatchers.Uri.Register(Root, "/", Index);
       Services.Dispatchers.Uri.Register(Root, "/login", Login);

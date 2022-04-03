@@ -182,20 +182,20 @@ package body Posts is
          Pages, Page_Addresses : Vector_Tag;
       begin
          while Found_Posts.Has_Row loop
-            Post_Ids := Post_Ids & Found_Posts.Element.Id;
-            Post_Titles := Post_Titles & Found_Posts.Element.Title;
-            Post_Authors := Post_Authors & Database.Get_User(Found_Posts.Element.By_User).Username;
-            Post_Author_Ids := Post_Author_Ids & Integer'(Found_Posts.Element.By_User);
+            Post_Ids := @ & Found_Posts.Element.Id;
+            Post_Titles := @ & Found_Posts.Element.Title;
+            Post_Authors := @ & Database.Get_User(Found_Posts.Element.By_User).Username;
+            Post_Author_Ids := @ & Integer'(Found_Posts.Element.By_User);
 
-            The_Post_Flags := The_Post_Flags & (if Post_Flags.Contains(Found_Posts.Element.Flag)
-                                                then Post_Flags(Found_Posts.Element.Flag)
-                                                else "");
+            The_Post_Flags := @ & (if Post_Flags.Contains(Found_Posts.Element.Flag)
+                                   then Post_Flags(Found_Posts.Element.Flag)
+                                   else "");
 
             declare
                Total_Replies : Integer;
                Searched_Replies : Post_List := Database.Post_Replies(Found_Posts.Element.Id, 0, 0, Total_Replies);
             begin
-               Post_Replies := Post_Replies & Total_Replies;
+               Post_Replies := @ & Total_Replies;
             end;
 
             Found_Posts.Next;
@@ -213,16 +213,16 @@ package body Posts is
                if P <= 10 or P = Page_Count then
                   if P = Page_Count and Page_Count > 11 then
                      -- Insert a ... before the last page
-                  Pages := Pages & "...";
-                     Page_Addresses := Page_Addresses & "";
+                     Pages := @ & "...";
+                     Page_Addresses := @ & "";
                   end if;
 
-                  Pages := Pages & P;
+                  Pages := @ & P;
 
                   Params.Update(To_Unbounded_String("page"),
                                 To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
                                 Decode => False);
-                  Page_Addresses := Page_Addresses & String'("/post/search" & Params.Uri_Format);
+                  Page_Addresses := @ & String'("/post/search" & Params.Uri_Format);
                end if;
             end loop;
 
@@ -236,8 +236,8 @@ package body Posts is
          begin
             Insert(Translations, Assoc("search_flag", Flag));
             for Flag_Cursor in Post_Flags.Iterate loop
-               Flag_Values := Flag_Values & Key(Flag_Cursor);
-               Flag_Names := Flag_Names & Element(Flag_Cursor);
+               Flag_Values := @ & Key(Flag_Cursor);
+               Flag_Names := @ & Element(Flag_Cursor);
             end loop;
             Insert(Translations, Assoc("flag_name", Flag_Names));
             Insert(Translations, Assoc("flag_value", Flag_Values));

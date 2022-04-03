@@ -45,19 +45,19 @@ begin
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Found_Torrents.Has_Row loop
-         Torrent_Ids := Torrent_Ids & Found_Torrents.Element.Id;
-         Torrent_Names := Torrent_Names & Found_Torrents.Element.Display_Name;
-         Torrent_Uploaders := Torrent_Uploaders & Database.Get_User(Found_Torrents.Element.Created_By).Username;
-         Torrent_Uploader_Ids := Torrent_Uploader_Ids & Integer'(Found_Torrents.Element.Created_By);
+         Torrent_Ids := @ & Found_Torrents.Element.Id;
+         Torrent_Names := @ & Found_Torrents.Element.Display_Name;
+         Torrent_Uploaders := @ & Database.Get_User(Found_Torrents.Element.Created_By).Username;
+         Torrent_Uploader_Ids := @ & Integer'(Found_Torrents.Element.Created_By);
 
          declare
             Total_Comments : Integer;
             Searched_Replies : Post_List := Database.Torrent_Comments(Found_Torrents.Element.Id, 0, 0, Total_Comments);
          begin
-            Torrent_Comments := Torrent_Comments & Total_Comments;
+            Torrent_Comments := @ & Total_Comments;
          end;
 
-         The_Torrent_Categories := The_Torrent_Categories & Torrent_Categories(Found_Torrents.Element.Category);
+         The_Torrent_Categories := @ & Torrent_Categories(Found_Torrents.Element.Category);
 
          Found_Torrents.Next;
       end loop;
@@ -74,16 +74,16 @@ begin
             if P <= 10 or P = Page_Count then
                if P = Page_Count and Page_Count > 11 then
                   -- Insert a ... before the last page
-                  Pages := Pages & "...";
-                  Page_Addresses := Page_Addresses & "";
+                  Pages := @ & "...";
+                  Page_Addresses := @ & "";
                end if;
 
-               Pages := Pages & P;
+               Pages := @ & P;
 
                Params.Update(To_Unbounded_String("page"),
                              To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
                              Decode => False);
-               Page_Addresses := Page_Addresses & String'("/search" & Params.Uri_Format);
+               Page_Addresses := @ & String'("/search" & Params.Uri_Format);
             end if;
          end loop;
 
@@ -96,8 +96,8 @@ begin
       begin
          Insert(Translations, Assoc("search_category", Category));
          for Category_Cursor in Torrent_Categories.Iterate loop
-            Category_Values := Category_Values & Key(Category_Cursor);
-            Category_Names := Category_Names & Element(Category_Cursor);
+            Category_Values := @ & Key(Category_Cursor);
+            Category_Names := @ & Element(Category_Cursor);
          end loop;
          Insert(Translations, Assoc("category_name", Category_Names));
          Insert(Translations, Assoc("category_value", Category_Values));

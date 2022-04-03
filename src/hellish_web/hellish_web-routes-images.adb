@@ -21,8 +21,8 @@ package body Images is
          Image_Names, Image_Ids : Vector_Tag;
       begin
          while User_Images.Has_Row loop
-            Image_Names := Image_Names & User_Images.Element.Filename;
-            Image_Ids := Image_Ids & User_Images.Element.Id;
+            Image_Names := @ & User_Images.Element.Filename;
+            Image_Ids := @ & User_Images.Element.Id;
 
             User_Images.Next;
          end loop;
@@ -82,7 +82,7 @@ package body Images is
          Open(File, Mode => In_File, Name => File_Path);
          File_Stream := Stream(File);
          while not End_Of_File(File) loop
-            Content := Content & Character'Input(File_Stream);
+            Content := @ & Character'Input(File_Stream);
          end loop;
          Close(File);
 

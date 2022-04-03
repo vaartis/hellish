@@ -46,7 +46,7 @@ package body Orm is
    F_Invites_By_User   : constant := 3;
    F_Invites_For_User  : constant := 4;
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
-   Upto_Invites_1 : constant Counts := ((5,5),(12,12),(12,12),(12,12));
+   Upto_Invites_1 : constant Counts := ((5,5),(13,13),(13,13),(13,13));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
    F_Peer_Data_Torrent_Id : constant := 0;
    F_Peer_Data_Data       : constant := 1;
@@ -59,10 +59,10 @@ package body Orm is
    F_Posts_Parent_Post    : constant := 4;
    F_Posts_Flag           : constant := 5;
    F_Posts_Parent_Torrent : constant := 6;
-   Counts_Posts : constant Counts := ((7,7),(14,27),(14,54),(14,81));
+   Counts_Posts : constant Counts := ((7,7),(15,28),(15,57),(15,86));
    Upto_Posts_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
-   Upto_Posts_1 : constant Counts := ((7,7),(14,14),(14,14),(14,14));
-   Upto_Posts_2 : constant Counts := ((7,7),(14,21),(14,41),(14,68));
+   Upto_Posts_1 : constant Counts := ((7,7),(15,15),(15,15),(15,15));
+   Upto_Posts_2 : constant Counts := ((7,7),(15,22),(15,43),(15,72));
    Alias_Posts : constant Alias_Array := (-1,4,5,20,-1,0,9,10,17,1,2,14,15,16,4,5,6,3,19,7,-1,22,8);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
@@ -70,7 +70,7 @@ package body Orm is
    F_Torrents_Display_Name : constant := 3;
    F_Torrents_Description  : constant := 4;
    F_Torrents_Category     : constant := 5;
-   Counts_Torrents : constant Counts := ((6,6),(13,13),(13,13),(13,13));
+   Counts_Torrents : constant Counts := ((6,6),(14,14),(14,14),(14,14));
    Upto_Torrents_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
    F_User_Torrent_Stats_By_User    : constant := 0;
@@ -79,7 +79,7 @@ package body Orm is
    F_User_Torrent_Stats_Downloaded : constant := 3;
    F_User_Torrent_Stats_Snatched   : constant := 4;
    Upto_User_Torrent_Stats_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
-   Upto_User_Torrent_Stats_1 : constant Counts := ((5,5),(12,12),(12,12),(12,12));
+   Upto_User_Torrent_Stats_1 : constant Counts := ((5,5),(13,13),(13,13),(13,13));
    Alias_User_Torrent_Stats : constant Alias_Array := (-1,3,4,-1,-1,6,0);
    F_Users_Id         : constant := 0;
    F_Users_Username   : constant := 1;
@@ -88,7 +88,8 @@ package body Orm is
    F_Users_Uploaded   : constant := 4;
    F_Users_Downloaded : constant := 5;
    F_Users_Role       : constant := 6;
-   Counts_Users : constant Counts := ((7,7),(7,7),(7,7),(7,7));
+   F_Users_Profile    : constant := 7;
+   Counts_Users : constant Counts := ((8,8),(8,8),(8,8),(8,8));
    Alias_Users : constant Alias_Array := (0 => -1);
 
    pragma Warnings (On);
@@ -1354,6 +1355,24 @@ package body Orm is
       return To_String (User_Data (Self.Unchecked_Get).ORM_Password);
    end Password;
 
+   -------------
+   -- Profile --
+   -------------
+
+   function Profile (Self : User) return String is
+   begin
+      return String_Value (Self, F_Users_Profile);
+   end Profile;
+
+   -------------
+   -- Profile --
+   -------------
+
+   function Profile (Self : Detached_User) return String is
+   begin
+      return To_String (User_Data (Self.Unchecked_Get).ORM_Profile);
+   end Profile;
+
    ----------
    -- Role --
    ----------
@@ -2138,7 +2157,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (User_DDR'
-              (Detached_Data with Field_Count => 7, others => <>));
+              (Detached_Data with Field_Count => 8, others => <>));
       end if;
 
       Tmp := User_Data (Result.Unchecked_Get);
@@ -2147,6 +2166,7 @@ package body Orm is
       Tmp.ORM_Id            := Integer_Value (Self, F_Users_Id);
       Tmp.ORM_Passkey       := To_Unbounded_String (String_Value (Self, F_Users_Passkey));
       Tmp.ORM_Password      := To_Unbounded_String (String_Value (Self, F_Users_Password));
+      Tmp.ORM_Profile       := To_Unbounded_String (String_Value (Self, F_Users_Profile));
       Tmp.ORM_Role          := Integer_Value (Self, F_Users_Role);
       Tmp.ORM_Uploaded      := Bigint_Value (Self, F_Users_Uploaded);
       Tmp.ORM_Username      := To_Unbounded_String (String_Value (Self, F_Users_Username));
@@ -2522,7 +2542,8 @@ package body Orm is
          & Table.Passkey
          & Table.Uploaded
          & Table.Downloaded
-         & Table.Role;
+         & Table.Role
+         & Table.Profile;
       end if;
       From := Empty_Table_List;
    end Do_Query_Users;
@@ -2578,7 +2599,8 @@ package body Orm is
       Passkey    : String := No_Update;
       Uploaded   : Long_Long_Integer := -1;
       Downloaded : Long_Long_Integer := -1;
-      Role       : Integer := -1)
+      Role       : Integer := -1;
+      Profile    : String := No_Update)
      return Users_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2604,6 +2626,9 @@ package body Orm is
       end if;
       if Role /= -1 then
          C := C and DBA.Users.Role = Role;
+      end if;
+      if Profile /= No_Update then
+         C := C and DBA.Users.Profile = Profile;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -3709,6 +3734,9 @@ package body Orm is
       if Mask (7) then
          A := A & (DBA.Users.Role = D.ORM_Role);
       end if;
+      if Mask (8) then
+         A := A & (DBA.Users.Profile = To_String (D.ORM_Profile));
+      end if;
       if Missing_PK then
          Q := SQL_Insert (A);
       else
@@ -4755,6 +4783,18 @@ package body Orm is
       D.ORM_Password := To_Unbounded_String (Value);
       Self.Set_Modified (3);
    end Set_Password;
+
+   -----------------
+   -- Set_Profile --
+   -----------------
+
+   procedure Set_Profile (Self : Detached_User; Value : String)
+   is
+      D : constant User_Data := User_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Profile := To_Unbounded_String (Value);
+      Self.Set_Modified (8);
+   end Set_Profile;
 
    --------------
    -- Set_Role --

@@ -9,6 +9,7 @@ function Search_Dispatch(Handler : in Search_Handler;
    Uploader : Natural := (if Params.Exist("uploader") then Natural'Value(Params.Get("uploader")) else 0);
    Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
    Category : Integer := (if Params.Exist("category") then Integer'Value(Params.Get("category")) else -1);
+   Snatched_By : Integer := (if Params.Exist("snatched_by") then Integer'Value(Params.Get("snatched_by")) else -1);
 
    Translations : Translate_Set;
 begin
@@ -29,26 +30,33 @@ begin
          end if;
       end;
    end if;
+   if Snatched_By /= -1 then
+      declare
+         Snatched_User : Detached_User'Class := Database.Get_User(Snatched_By);
+      begin
+         if Detached_User(Snatched_User) /= No_Detached_User then
+            Insert(Translations, Assoc("query_snatched", Snatched_User.Username));
+         end if;
+      end;      
+   end if;
 
    declare
       Page_Size : constant Natural := 25;
       Page_Offset : constant Natural := (Page - 1) * Page_Size;
       Total_Count : Natural;
-      Found_Torrents : Torrent_List := Database.Search_Torrents(Query, Uploader, Category, 
-                                                                Page_Offset, Page_Size, Total_Count);
+      Found_Torrents : Direct_Torrent_List := Database.Search_Torrents(Query, Uploader, Category, Snatched_By,
+                                                                       Page_Offset, Page_Size, Total_Count);
       -- Round up
       Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
       Torrent_Names, Torrent_Ids,
-        Torrent_Uploaders, Torrent_Uploader_Ids, Torrent_Comments,
-        The_Torrent_Categories: Vector_Tag;
+        Torrent_Uploaders, Torrent_Comments, The_Torrent_Categories: Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Found_Torrents.Has_Row loop
          Torrent_Ids := @ & Found_Torrents.Element.Id;
          Torrent_Names := @ & Found_Torrents.Element.Display_Name;
          Torrent_Uploaders := @ & Database.Get_User(Found_Torrents.Element.Created_By).Username;
-         Torrent_Uploader_Ids := @ & Integer'(Found_Torrents.Element.Created_By);
 
          declare
             Total_Comments : Integer;
@@ -65,7 +73,6 @@ begin
       Insert(Translations, Assoc("torrent_id", Torrent_Ids));
       Insert(Translations, Assoc("torrent_name", Torrent_Names));
       Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
-      Insert(Translations, Assoc("torrent_uploader_id", Torrent_Uploader_Ids));
       Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
       Insert(Translations, Assoc("torrent_category", The_Torrent_Categories));
 

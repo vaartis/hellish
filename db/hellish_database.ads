@@ -3,6 +3,7 @@ pragma Warnings (Off, "no entities of * are referenced");
 pragma Warnings (Off, "use clause for package * has no effect");
 with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
 with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
 pragma Warnings (On, "no entities of * are referenced");
 pragma Warnings (On, "use clause for package * has no effect");
 with GNATCOLL.SQL.Exec;
@@ -179,6 +180,7 @@ package Hellish_Database is
       Role : SQL_Field_Integer (Ta_Users, Instance, N_Role, Index);
       --  0 = user, 1 = admin
 
+      Profile : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Users, Instance, N_Profile, Index);
    end record;
 
    type T_Users (Instance : Cst_String_Access)

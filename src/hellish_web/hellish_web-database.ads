@@ -18,6 +18,7 @@ package Hellish_Web.Database is
    function User_Exists(Name : String; Session : Session_Type := Get_New_Session) return Boolean;
    function Get_User_By_Passkey(Passkey : String) return Detached_User'Class;
    function Get_Invited_Users(By_User : Detached_User'Class) return Invite_List;
+   procedure Update_User(The_User : Detached_User'Class);
 
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class);
    procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;
@@ -29,10 +30,11 @@ package Hellish_Web.Database is
    function Search_Torrents(Query : String;
                             Uploader : Natural;
                             Category : Integer;
+                            Snatched_By : Integer;
 
                             Offset : Natural;
                             Limit : Natural;
-                            Total_Count : out Natural) return Torrent_List;
+                            Total_Count : out Natural) return Direct_Torrent_List;
    procedure Delete_Torrent(Id : Natural);
    function Torrent_Comments(Parent_Torrent : Integer;
                              Offset : Natural;
@@ -55,6 +57,7 @@ package Hellish_Web.Database is
    function Get_Latest_News return Detached_Post'Class;
    function Search_Posts(Query : String;
                          Flag : Integer;
+                         Author : Integer;
 
                          Offset : Natural;
                          Limit : Natural;

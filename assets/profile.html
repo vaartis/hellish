@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .page-container {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%);
+         margin-top: 3em;
+
+         width: 60%;
+     }
+
+     .upload {
+         color: var(--upload-color);
+     }
+
+     .download {
+         color: var(--download-color);
+     }
+
+     .user-buttons {
+         margin-top: 1em;
+         margin-bottom: 1em;
+     }
+
+     td:nth-child(odd) {
+         border-right: solid var(--panel-color) 2px;
+         padding-right: 2em;
+     }
+     td:nth-child(even) {
+         padding-left: 1em;
+     }
+
+     tr {
+         line-height: 4em;
+     }
+
+     .profile-input {
+         width: 600px;
+     }
+
+     .stats-block {
+         margin-top: 1em;
+         margin-bottom: 1em;
+     }
+
+     .profile-picture {
+         max-width: 20%;
+     }
+    </style>
+    <title>@_username_@ :: Hellish</title>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="page-container">
+        <h2>@_username_@</h2>
+
+        <div class="stats-block">
+            <span class="upload">▲ @_uploaded_@</span>
+            <span class="download">▼ @_downloaded_@</span>
+        </div>
+
+        @@IF@@ not @_IS_EMPTY:profile_picture_@
+        <img class="profile-picture" src="@_encoded_profile_picture_@">
+        @@END_IF@@
+
+        @@IF@@ not @_IS_EMPTY:rendered_about_@
+        <div class="hellish-content-box">
+            @_rendered_about_@
+        </div>
+        @@END_IF@@
+
+        <div class="user-buttons">
+            [
+            <a href="/search?uploader=@_user_id_@">Uploads (@_upload_count_@)</a>
+            |
+            <a href="/search?snatched_by=@_user_id_@">Snatches (@_snatch_count_@)</a>
+            |
+            <a href="/post/search?author=@_user_id_@">Posts (@_post_count_@)</a>
+            ]
+        </div>
+
+        @@IF@@ @_is_owner_@
+        <hr>
+        <form action="/profile/@_username_@" id="profile-form" method="POST">
+            <table>
+                <tr>
+                    <td>Profile picture</td>
+                    <td><input class="hellish-input-field profile-input" name="profile_picture" type="text" value="@_profile_picture_@"></td>
+                </tr>
+                <tr>
+                    <td>About</td>
+                    <td>
+                        <textarea form="profile-form" class="hellish-input-field profile-input" type="textbox"
+                                  name="about" rows="15">@_profile_about_@</textarea>
+                    </td>
+                </tr>
+            </table>
+            <input class="hellish-button" type="submit" value="Update!">
+        </form>
+        @@END_IF@@
+    </div>
+</body>
+</html>

@@ -13,10 +13,13 @@
 
     @@TABLE@@
     <div id="child-@_reply_id_@">
-        <div class="reply-container">
-            <div>
+        <table class="reply-container">
+            <td class="reply-profile-picture-container">
+                <img src="@_reply_profile_picture_@">
+            </td>
+            <td>
                 <div class="reply-subtitle">
-                    <a href="/search?uploader=@_reply_author_id_@">@_reply_author_@</a>
+                    <a href="/profile/@_reply_author_@">@_reply_author_@</a>
 
                     @@IF@@ @_reply_is_author_@
                     <span class="reply-actions">
@@ -26,12 +29,13 @@
                     </span>
                     @@END_IF@@
                 </div>
-            </div>
 
-            <div class="hellish-content-box">
-                @_reply_content_@
-            </div>
-        </div>
+
+                <div class="hellish-content-box">
+                    @_reply_content_@
+                </div>
+            </td>
+        </table>
     </div>
     @@END_TABLE@@
 </div>

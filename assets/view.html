@@ -5,7 +5,7 @@
      @@INCLUDE@@ shared.css
 
      :root {
-         --page-width: 800px;
+         --page-width: 900px;
      }
 
      .page-container {
@@ -23,19 +23,15 @@
          border: hidden;
          border-radius: 10px;
 
-         width: var(--page-width);
+         width: 100%;
          padding: 10px;
      }
 
-     .description-box p {
-         white-space: pre-line;
-     }
-
-     td:nth-child(odd) {
+     .downloads-box td:nth-child(odd) {
          border-right: solid var(--input-color) 2px;
          padding-right: 2em;
      }
-     td:nth-child(even) {
+     .downloads-box td:nth-child(even) {
          padding-left: 1em;
      }
 
@@ -51,7 +47,7 @@
          margin-bottom: 1em;
      }
 
-     @@INCLUDE@@ replies.css 800px
+     @@INCLUDE@@ replies.css 15%
     </style>
     <title>@_display_name_@ :: Hellish</title>
 </head>
@@ -67,7 +63,7 @@
             @@END_IF@@
 
             <h2 class="title">@_display_name_@</h2>
-            <div>Uploader: <a href="/search?uploader=@_uploader_id_@">@_uploader_@</a></div>
+            <div>Uploader: <a href="/profile/@_uploader_@">@_uploader_@</a></div>
             <div>Category: @_category_@</div>
             <p>
                 <h3>Description</h3>

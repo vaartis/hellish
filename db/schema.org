@@ -6,14 +6,15 @@
 | description  | TEXT                       | NOT NULL                |   |                              |
 | category     | INTEGER                    | NOT NULL, INDEX         | 0 | 0 = Other                    |
 
-| TABLE      | users         | user                    |   |                     |
-| id         | AUTOINCREMENT | PK                      |   |                     |
-| username   | TEXT          | NOT NULL, UNIQUE, INDEX |   |                     |
-| password   | TEXT          | NOT NULL                |   |                     |
-| passkey    | TEXT          | NOT NULL, UNIQUE, INDEX |   |                     |
-| uploaded   | BIGINT        |                         | 0 |                     |
-| downloaded | BIGINT        |                         | 0 |                     |
-| role       | INTEGER       | NOT NULL                | 0 | 0 = user, 1 = admin |
+| TABLE      | users         | user                    |      |                     |
+| id         | AUTOINCREMENT | PK                      |      |                     |
+| username   | TEXT          | NOT NULL, UNIQUE, INDEX |      |                     |
+| password   | TEXT          | NOT NULL                |      |                     |
+| passkey    | TEXT          | NOT NULL, UNIQUE, INDEX |      |                     |
+| uploaded   | BIGINT        |                         |    0 |                     |
+| downloaded | BIGINT        |                         |    0 |                     |
+| role       | INTEGER       | NOT NULL                |    0 | 0 = user, 1 = admin |
+| profile    | JSON          | NOT NULL                | '{}' |                     |
 
 | TABLE   | config        | config   |   |   |
 | id      | AUTOINCREMENT | PK       |   |   |

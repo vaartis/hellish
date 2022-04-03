@@ -1,4 +1,4 @@
-@@-- $1 is width for content
+@@-- $1 is width for profile picture
 
 .new-reply-form {
     margin-top: 30px;
@@ -6,11 +6,25 @@
 }
 
 .reply-input {
-    width: @_$1_@;
+    width: 100%;
 }
 
 .reply-container {
+    width: 100%;
+}
+
+.reply-profile-picture-container {
     width: @_$1_@;
+    padding-right: 1em;
+}
+
+.reply-profile-picture-container img {
+    width: 100%;
+}
+
+.reply-container td {
+    vertical-align: top;
+    padding-bottom: 1em;
 }
 
 .replies-pages {
@@ -24,7 +38,6 @@
 }
 
 .reply-subtitle {
-    padding-top: 5px;
     padding-bottom: 10px;
 }
 
@@ -34,4 +47,5 @@
 
 .replies-total {
     font-size: 24px;
+    margin-bottom: 0.5em;
 }

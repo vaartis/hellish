@@ -26,7 +26,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 6;
+   Latest_Version : Natural := 7;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -223,6 +223,13 @@ package body Hellish_Web.Database is
       return Detached_User(User_Data) /= No_Detached_User and then Password_Hash_Matches(User_Data.Password, Password);
    end Verify_User_Credentials;
 
+   procedure Update_User(The_User : Detached_User'Class) is
+      Session : Session_Type := Get_New_Session;
+   begin
+      Session.Persist(The_User);
+      Session.Commit;
+   end;
+
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class) is
       Session : Session_Type := Get_New_Session;
    begin
@@ -330,38 +337,55 @@ package body Hellish_Web.Database is
    function Search_Torrents(Query : String;
                             Uploader : Natural;
                             Category : Integer;
+                            Snatched_By : Integer;
 
                             Offset : Natural;
                             Limit : Natural;
-                            Total_Count : out Natural) return Torrent_List is
+                            Total_Count : out Natural) return Direct_Torrent_List is
       use Hellish_Database;
 
       Search_Criteria : Sql_Criteria :=
         -- Only search by display_name of query is not empty
         ((Text_Param(1) = "")
-           or Ilike(Hellish_Database.Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"))) and
+           or Ilike(Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"))) and
         -- Only search by uploader if not 0
         ((Integer_Param(2) = 0)
-           or Hellish_Database.Torrents.Created_By = Integer_Param(2)) and
+           or Torrents.Created_By = Integer_Param(2)) and
         -- Only search by category if it's not -1
-        (Integer_Param(3) = -1
-           or Hellish_Database.Torrents.Category = Integer_Param(3));
+        ((Integer_Param(3) = -1)
+           or Torrents.Category = Integer_Param(3)) and
+        -- Only search by snatcher if it's not -1
+        ((Integer_Param(4) = -1)
+           or (User_Torrent_Stats.By_User = Integer_Param(4) and
+                 User_Torrent_Stats.Snatched = True));
 
       Session : Session_Type := Get_New_Session;
-      The_Query_Managers : Torrents_Managers := All_Torrents
-        .Limit(Limit, From => Offset)
-        .Order_By(Desc(Torrents.Id))
-        .Filter(Search_Criteria);
+
+      Search_Query : Sql_Query :=
+        Sql_Select(From => Left_Join(Torrents, User_Torrent_Stats, Torrents.Id = User_Torrent_Stats.Of_Torrent),
+                   -- This is idiotic, but the library doesn't generate the list of all fields
+                   Fields => From_String("torrents.*"),
+                   Limit => Limit, Offset => Offset,
+                   Order_By => Desc(Torrents.Id),
+                   Where => Search_Criteria,
+                   Distinct => True);
 
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
-        Sql_Select(From => Torrents, Fields => Apply(Func_Count, Torrents.Id), Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query, 2 => +Uploader, 3 => +Category);
+        Sql_Select(From => Left_Join(Torrents, User_Torrent_Stats, Torrents.Id = User_Torrent_Stats.Of_Torrent),
+                   Fields => Apply(Func_Count, From_String("DISTINCT torrents.id")),
+                   Where => Search_Criteria);
+      Params : Sql_Parameters := (1 => +Query, 2 => +Uploader, 3 => +Category, 4 => +Snatched_By);
+
+      The_Query_Managers : Torrents_Managers := All_Torrents;
+      Result_List : Direct_Torrent_List;
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);
 
-      return The_Query_Managers.Get(Session, Params => Params);
+      Result_List.Fetch(Session.Db, Search_Query, Params);
+
+      return Result_List;
    end Search_Torrents;
 
    procedure Delete_Torrent(Id : Natural) is
@@ -406,7 +430,7 @@ package body Hellish_Web.Database is
       Count_Cur.Fetch(Session.Db, Count_Query);
       Total_Count := Count_Cur.Integer_Value(0);
       if Limit /= -1 then
-         The_Post_Managers := The_Post_Managers.Limit(Limit, From => Offset);
+         The_Post_Managers := @.Limit(Limit, From => Offset);
       end if;
 
       return The_Post_Managers.Get(Session);
@@ -514,7 +538,7 @@ package body Hellish_Web.Database is
       Count_Cur.Fetch(Session.Db, Count_Query);
       Total_Count := Count_Cur.Integer_Value(0);
       if Limit /= -1 then
-         The_Post_Managers := The_Post_Managers.Limit(Limit, From => Offset);
+         The_Post_Managers := @.Limit(Limit, From => Offset);
       end if;
 
       return The_Post_Managers.Get(Session);
@@ -541,6 +565,7 @@ package body Hellish_Web.Database is
 
    function Search_Posts(Query : String;
                          Flag : Integer;
+                         Author : Integer;
 
                          Offset : Natural;
                          Limit : Natural;
@@ -554,7 +579,10 @@ package body Hellish_Web.Database is
         -- Only show posts without parents
         (Is_Null(Posts.Parent_Post) and Is_Null(Posts.Parent_Torrent)) and
         ((Integer_Param(2) = -1) or
-           Hellish_Database.Posts.Flag = Integer_Param(2));
+           Hellish_Database.Posts.Flag = Integer_Param(2)) and
+        -- Only search by author if name is not zero
+        ((Integer_Param(3) = 0) or
+           Hellish_Database.Posts.By_User = Integer_Param(3));
 
       Session : Session_Type := Get_New_Session;
       The_Query_Managers : Posts_Managers := All_Posts
@@ -565,7 +593,7 @@ package body Hellish_Web.Database is
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
         Sql_Select(From => Posts, Fields => Apply(Func_Count, Posts.Id), Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query, 2 => +Flag);
+      Params : Sql_Parameters := (1 => +Query, 2 => +Flag, 3 => +Author);
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);

@@ -168,8 +168,8 @@ package body Hellish_Web.Routes is
 
       Reply : Orm.Post;
       Reply_Author : Detached_User'Class := No_Detached_User;
-      Reply_Ids, Replies_Authors, Replies_Author_Ids, Replies_Content,
-        Replies_Is_Author : Vector_Tag;
+      Reply_Ids, Replies_Authors, Replies_Content,
+        Replies_Is_Author, Replies_Profile_Picture : Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Replies.Has_row loop
@@ -178,18 +178,29 @@ package body Hellish_Web.Routes is
 
          Reply_Ids := @ & Reply.Id;
          Replies_Authors := @ & Reply_Author.Username;
-         Replies_Author_Ids := @ & Reply_Author.Id;
          Replies_Content := @ & Markdown.To_Html(Reply.Content, Default_Md_Flags);
          Replies_Is_Author := @ & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
+
+         declare
+            use Gnatcoll.Json;
+            Profile_Json : Json_Value := Read(Reply_Author.Profile);
+
+            Profile_Picture : String := (if Profile_Json.Has_Field("profile_picture")
+                                         then Profile_Json.Get("profile_picture")
+                                         else "");
+         begin
+            Replies_Profile_Picture := Replies_Profile_Picture & Templates_Parser.Utils.Web_Escape(Profile_Picture);
+         end;
 
          Replies.Next;
       end loop;
       Insert(Translations, Assoc("replies_total", Total_Count));
       Insert(Translations, Assoc("reply_id", Reply_Ids));
       Insert(Translations, Assoc("reply_author", Replies_Authors));
-      Insert(Translations, Assoc("reply_author_id", Replies_Author_Ids));
       Insert(Translations, Assoc("reply_content", Replies_Content));
       Insert(Translations, Assoc("reply_is_author", Replies_Is_Author));
+      Insert(Translations, Assoc("reply_profile_picture", Replies_Profile_Picture));
+
 
       if Page_Count > 1 then
          for P in 1..Page_Count loop
@@ -222,7 +233,7 @@ package body Hellish_Web.Routes is
    begin
       Match(Matcher, Uri, Matches);
 
-      return (if Matches(Group) = No_Match
+      return (if Matches(Group) /= No_Match
               then Uri(Matches(Group).First..Matches(Group).Last)
               else "");
    end Uri_Group_Match;
@@ -385,7 +396,6 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("downloaded", Bytes_To_printable(The_User.Downloaded)));
 
          Insert(Translations, Assoc("username", The_User.Username));
-         Insert(Translations, Assoc("user_id", The_User.Id));
       end;
 
       declare
@@ -398,7 +408,6 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("news_title", Templates_Parser.Utils.Web_Escape(Latest_news.Title)));
             Insert(Translations, Assoc("news_content", Markdown.To_Html(Latest_News.Content, Default_Md_Flags)));
             Insert(Translations, Assoc("news_author", News_Author.Username));
-            Insert(Translations, Assoc("news_author_id", News_author.Id));
          end if;
       end;
 
@@ -759,6 +768,103 @@ package body Hellish_Web.Routes is
 
       return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/confirm.html", Translations)));
+   end Dispatch;
+
+
+   Profile_Matcher : constant Pattern_Matcher := Compile("/profile/((\w|\d)+)");
+   overriding function Dispatch(Handler : in Profile_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+
+      use type Aws.Status.Request_Method;
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      if Status.Method(Request) = Status.Post then
+         declare
+            Current_User : Detached_User'Class := Database.Get_User(Username);
+            Profile_User : Detached_User'Class := Database.Get_User(Uri_Group_Match(Request, Profile_Matcher, 1));
+
+            use Gnatcoll.Json;
+
+            Params : constant Parameters.List := Status.Parameters(Request);
+
+            Profile_Json : Json_Value := Create_Object;
+            The_User : Detached_User'Class := Database.Get_User(Username);
+         begin
+            if Current_User /= Profile_User then
+               return Response.Acknowledge(Messages.S403, "Forbidden");
+            end if;
+
+            Profile_Json.Set_Field("profile_picture", Params.Get("profile_picture"));
+            Profile_Json.Set_Field("about", Params.Get("about"));
+
+            The_User.Set_Profile(Profile_Json.Write);
+            Database.Update_User(The_User);
+         end;
+
+         return Response.Url(Location => Status.Uri(Request));
+      end if;
+
+      declare
+         Current_User : Detached_User'Class := Database.Get_User(Username);
+         Profile_User : Detached_User'Class := Database.Get_User(Uri_Group_Match(Request, Profile_Matcher, 1));
+      begin
+         Insert(Translations, Assoc("username", Profile_User.Username));
+         Insert(Translations, Assoc("user_id", Profile_User.Id));
+         Insert(Translations, Assoc("uploaded", Bytes_To_Printable(Profile_User.Uploaded)));
+         Insert(Translations, Assoc("downloaded", Bytes_To_Printable(Profile_User.Downloaded)));
+
+         declare
+            Total_Uploads, Total_Posts, Total_Snatches : Natural;
+            Unused_Upload_List : Direct_Torrent_List := Database.Search_Torrents("",
+                                                                                 Uploader => Profile_User.Id,
+                                                                                 Category => -1,
+                                                                                 Snatched_By => -1,
+                                                                                 Offset => 0, Limit => 0,
+                                                                                 Total_Count => Total_Uploads);
+            Unsused_Post_List : Post_List := Database.Search_Posts("", -1, Profile_User.Id, 0, 0, Total_Posts);
+            Unused_Snatch_List : Direct_Torrent_List :=
+              Database.Search_Torrents("",
+                                       Uploader => 0,
+                                       Category => -1,
+                                       Snatched_By => Profile_User.Id,
+                                       Offset => 0, Limit => 0,
+                                       Total_Count => Total_Snatches);
+         begin
+            Insert(Translations, Assoc("upload_count", Total_Uploads));
+            Insert(Translations, Assoc("post_count", Total_Posts));
+            Insert(Translations, Assoc("snatch_count", Total_Snatches));
+         end;
+
+         declare
+            use Gnatcoll.Json;
+            Profile_Json : Json_Value := Read(Profile_User.Profile);
+
+            Profile_Picture : String := (if Profile_Json.Has_Field("profile_picture")
+                                         then Profile_Json.Get("profile_picture")
+                                         else "");
+            About_Text : String := (if Profile_Json.Has_Field("about")
+                                    then Profile_Json.Get("about")
+                                    else "");
+         begin
+            Insert(Translations, Assoc("profile_picture", Profile_Picture));
+            Insert(Translations, Assoc("encoded_profile_picture", Templates_Parser.Utils.Web_Escape(Profile_Picture)));
+
+            Insert(Translations, Assoc("profile_about", About_Text));
+            Insert(Translations, Assoc("rendered_about", Markdown.To_Html(About_Text, Default_Md_Flags)));
+         end;
+         Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
+      end;
+
+      return Response.Build(Mime.Text_Html,
+                               String'(Templates_Parser.Parse("assets/profile.html", Translations)));
    end Dispatch;
 
    -- API

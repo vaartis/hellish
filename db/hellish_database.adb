@@ -62,6 +62,7 @@ package body Hellish_Database is
          & "|uploaded|bigint||0|" & ASCII.LF
          & "|downloaded|bigint||0|" & ASCII.LF
          & "|role|Integer|NOT NULL|0|" & ASCII.LF
+         & "|profile|json|NOT NULL|'{}'|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| config" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF

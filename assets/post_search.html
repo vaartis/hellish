@@ -49,6 +49,12 @@
     @@INCLUDE@@ navbar.html
 
     <div class="page-container">
+        @@IF@@ @_EXIST:query_author_@
+        <div class="query-info">
+            Posted by <i>@_query_author_@</i>
+        </div>
+        @@END_IF@@
+
         <div class="search-bar-container">
             <form action="/post/search" id="search-form" method="GET">
                 <input class="search-input hellish-input-field" name="query" role="search"
@@ -99,7 +105,7 @@
                     @@END_IF@@
                 </td>
                 <td class="search-info-column">
-                    <a href="/search?uploader=@_post_author_id_@">@_post_author_@</i>
+                    <a href="/profile/@_post_author_@">@_post_author_@</i>
                 </td>
                 <td class="search-info-column">
                     @_post_replies_@

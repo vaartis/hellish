@@ -93,7 +93,7 @@ package Orm is
    No_User_Torrent_Stat : constant User_Torrent_Stat;
 
    type User is new Orm_Element with null record;
-   type User_DDR is new Detached_Data (7) with private;
+   type User_DDR is new Detached_Data (8) with private;
    type Detached_User is  --  Get() returns a User_DDR
    new Sessions.Detached_Element with private;
    type Detached_User_Access is access all Detached_User'Class;
@@ -174,6 +174,10 @@ package Orm is
    function Password (Self : User) return String;
    function Password (Self : Detached_User) return String;
    procedure Set_Password (Self : Detached_User; Value : String);
+
+   function Profile (Self : User) return String;
+   function Profile (Self : Detached_User) return String;
+   procedure Set_Profile (Self : Detached_User; Value : String);
 
    function Role (Self : User) return Integer;
    function Role (Self : Detached_User) return Integer;
@@ -705,7 +709,8 @@ package Orm is
       Passkey    : String := No_Update;
       Uploaded   : Long_Long_Integer := -1;
       Downloaded : Long_Long_Integer := -1;
-      Role       : Integer := -1)
+      Role       : Integer := -1;
+      Profile    : String := No_Update)
      return Users_Managers;
 
    function Get_User
@@ -1020,11 +1025,12 @@ private
     end record;
     type User_Torrent_Stat_Data is access all User_Torrent_Stat_DDR;
     
-    type User_DDR is new Detached_Data (7) with record
+    type User_DDR is new Detached_Data (8) with record
        ORM_Downloaded    : Long_Long_Integer := 0;
        ORM_Id            : Integer := -1;
        ORM_Passkey       : Unbounded_String := Null_Unbounded_String;
        ORM_Password      : Unbounded_String := Null_Unbounded_String;
+       ORM_Profile       : Unbounded_String := To_Unbounded_String ("{}");
        ORM_Role          : Integer := 0;
        ORM_Uploaded      : Long_Long_Integer := 0;
        ORM_Username      : Unbounded_String := Null_Unbounded_String;

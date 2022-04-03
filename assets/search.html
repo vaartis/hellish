@@ -50,6 +50,11 @@
             Uploaded by <i>@_query_uploader_@</i>
         </div>
         @@END_IF@@
+        @@IF@@ @_EXIST:query_snatched_@
+        <div class="query-info">
+            Snatched by <i>@_query_snatched_@</i>
+        </div>
+        @@END_IF@@
 
         <form action="/search" id="search-form" method="GET">
             <input class="search-input hellish-input-field" name="query" role="search"
@@ -95,7 +100,7 @@
                     <a href="/view/@_torrent_id_@">@_torrent_name_@</a>
                 </td>
                 <td>
-                    <a href="/search?uploader=@_torrent_uploader_id_@">@_torrent_uploader_@</i>
+                    <a href="/profile/@_torrent_uploader_@">@_torrent_uploader_@</i>
                 </td>
                 <td class="search-info-column">
                     @_torrent_comments_@

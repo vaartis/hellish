@@ -87,7 +87,6 @@ package body Posts is
             Insert(Translations, Assoc("title", Html_Title));
             Insert(Translations, Assoc("content", Post_Content));
             Insert(Translations, Assoc("author", Author.Username));
-            Insert(Translations, Assoc("author_id", Author.Id));
             Insert(Translations, Assoc("is_author", Author.Id = The_User.Id or The_User.Role = 1));
 
             Replies_Translations(Post.Id, The_User, Translations, Database.Post_Replies'Access, Request);
@@ -147,7 +146,7 @@ package body Posts is
 
       Params : Parameters.List := Status.Parameters(Request);
       Query : String := Params.Get("query");
-      Uploader : Natural := (if Params.Exist("uploader") then Natural'Value(Params.Get("uploader")) else 0);
+      Author : Natural := (if Params.Exist("author") then Natural'Value(Params.Get("author")) else 0);
       Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
       Flag : Integer := (if Params.Exist("flag") then Integer'Value(Params.Get("flag")) else -1);
 
@@ -166,13 +165,12 @@ package body Posts is
          Page_Size : constant Natural := 25;
          Page_Offset : constant Natural := (Page - 1) * Page_Size;
          Total_Count : Natural;
-         Found_Posts : Post_List := Database.Search_Posts(Query, Flag,
+         Found_Posts : Post_List := Database.Search_Posts(Query, Flag, Author,
                                                           Page_Offset, Page_Size, Total_Count);
          -- Round up
          Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
-         Post_Titles, Post_Ids,
-           Post_Authors, Post_Author_Ids,
+         Post_Titles, Post_Ids, Post_Authors,
            The_Post_Flags, Post_Replies : Vector_Tag;
          Pages, Page_Addresses : Vector_Tag;
       begin
@@ -180,7 +178,6 @@ package body Posts is
             Post_Ids := @ & Found_Posts.Element.Id;
             Post_Titles := @ & Found_Posts.Element.Title;
             Post_Authors := @ & Database.Get_User(Found_Posts.Element.By_User).Username;
-            Post_Author_Ids := @ & Integer'(Found_Posts.Element.By_User);
 
             The_Post_Flags := @ & (if Post_Flags.Contains(Found_Posts.Element.Flag)
                                    then Post_Flags(Found_Posts.Element.Flag)
@@ -199,7 +196,6 @@ package body Posts is
          Insert(Translations, Assoc("post_id", Post_Ids));
          Insert(Translations, Assoc("post_title", Post_Titles));
          Insert(Translations, Assoc("post_author", Post_Authors));
-         Insert(Translations, Assoc("post_author_id", Post_Author_Ids));
          Insert(Translations, Assoc("post_flag", The_Post_Flags));
          Insert(Translations, Assoc("post_replies", Post_Replies));
 
@@ -236,7 +232,17 @@ package body Posts is
             end loop;
             Insert(Translations, Assoc("flag_name", Flag_Names));
             Insert(Translations, Assoc("flag_value", Flag_Values));
-      end;
+         end;
+
+         if Author /= 0 then
+            declare
+               Author_User : Detached_User'Class := Database.Get_User(Author);
+            begin
+               if Author_User /= Detached_User'Class(No_Detached_User) then
+                  Insert(Translations, Assoc("query_author", Author_User.Username));
+               end if;
+            end;
+   end if;
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/post_search.html", Translations)));

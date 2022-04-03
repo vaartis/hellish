@@ -35,8 +35,8 @@
          padding-left: 1em;
      }
 
-     tr {
-         line-height: 4em;
+     td {
+         padding-bottom: 1em;
      }
 
      .profile-input {
@@ -91,7 +91,12 @@
             <table>
                 <tr>
                     <td>Profile picture</td>
-                    <td><input class="hellish-input-field profile-input" name="profile_picture" type="text" value="@_profile_picture_@"></td>
+                    <td>
+                        <input class="hellish-input-field profile-input" name="profile_picture" type="text" value="@_profile_picture_@">
+                        <p>
+                            You can upload a profile picture from the <a href="/images">Images</a> page.
+                        </p>
+                    </td>
                 </tr>
                 <tr>
                     <td>About</td>

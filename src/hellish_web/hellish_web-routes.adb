@@ -214,6 +214,19 @@ package body Hellish_Web.Routes is
       end if;
    end Replies_Translations;
 
+   function Uri_Group_Match(Request : in Status.Data;
+                            Matcher : Pattern_Matcher;
+                            Group : Natural) return String is
+      Matches : Match_Array (0..Group);
+      Uri : String := Status.Uri(Request);
+   begin
+      Match(Matcher, Uri, Matches);
+
+      return (if Matches(Group) = No_Match
+              then Uri(Matches(Group).First..Matches(Group).Last)
+              else "");
+   end Uri_Group_Match;
+
    package body Images is separate;
    package body Posts is separate;
 
@@ -225,23 +238,13 @@ package body Hellish_Web.Routes is
 
       Result : Bencoder.Bencode_Value_Holders.Holder;
 
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
-
-      User : Detached_User;
+      Passkey : String := Uri_Group_Match(Request, Announce_Passkey_Matcher, 1);
+      User : Detached_User'Class := Detached_User(Database.Get_User_By_Passkey(Passkey));
    begin
-      Match(Announce_Passkey_Matcher, Uri, Matches);
-      declare
-         Match : Match_Location := Matches(1);
-         Passkey : String := Uri(Match.First..Match.Last);
-      begin
-         User := Detached_User(Database.Get_User_By_Passkey(Passkey));
-
-         if User = No_Detached_User then
-            Result := Bencoder.With_Failure_Reason("Invalid passkey");
-            goto Finish;
-         end if;
-      end;
+      if User = Detached_User'Class(No_Detached_User) then
+         Result := Bencoder.With_Failure_Reason("Invalid passkey");
+         goto Finish;
+      end if;
 
       declare
          Required_Params : array (Natural range <>) of Unbounded_String :=
@@ -290,7 +293,7 @@ package body Hellish_Web.Routes is
                                   Left => Long_Long_Integer'Value(Params.Get("left")),
                                   Last_Seen => Clock,
                                   Last_Event => To_Unbounded_String(Params.Get("event")),
-                                  User => User));
+                                  User => Detached_User(User)));
          declare
             Compact : Boolean := not Params.Exist("compact") or Params.Get("compact") = "1";
             Num_Want : Natural := 50;
@@ -458,9 +461,6 @@ package body Hellish_Web.Routes is
       Params : constant Parameters.List := Status.Parameters(Request);
       Passkey : String := Params.Get("passkey");
 
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
-
       User : Detached_User'class := Database.Get_User_By_Passkey(Passkey);
    begin
       If User = Detached_User'Class(No_Detached_User) then
@@ -468,13 +468,11 @@ package body Hellish_Web.Routes is
          return Response.Url(Location => "/login");
       end if;
 
-      Match(Download_Id_Matcher, Uri, Matches);
       declare
          use Ada.Directories;
          use Bencoder;
 
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, Download_Id_Matcher, 1));
 
          Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
          File_Path : String := Compose(Containing_Directory => Uploads_Path,
@@ -577,9 +575,6 @@ package body Hellish_Web.Routes is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
 
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
-
       Params : constant Parameters.List := Status.Parameters(Request);
       Error : String := Params.Get("error");
    begin
@@ -588,12 +583,10 @@ package body Hellish_Web.Routes is
          return Response.Url(Location => "/login");
       end if;
 
-      Match(View_Id_Matcher, Uri, Matches);
-       declare
+      declare
          use Bencoder;
 
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, View_Id_Matcher, 1));
 
          The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
          Decoded : Bencode_Dict := Bencode_Dict(Decoded_Torrent(The_Torrent).Element);
@@ -782,22 +775,16 @@ package body Hellish_Web.Routes is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
       The_User : Detached_User'Class := No_Detached_User;
-
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
    begin
       if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
       end if;
       The_User := Database.Get_User(Username);
 
-      Match(Api_Delete_Matcher, Uri, Matches);
       declare
          use Ada.Directories;
 
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
-
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, Api_Delete_Matcher, 1));
          The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Id);
       begin
          if Natural'(The_Torrent.Created_By) /= The_User.Id and The_User.Role /= 1 then
@@ -814,6 +801,7 @@ package body Hellish_Web.Routes is
       end;
    end Dispatch;
 
+   Username_Matcher : constant Pattern_Matcher := Compile("(\w|\d)+");
    function Dispatch(Handler : in Api_User_Register_Handler;
                      Request : in Status.Data) return Response.Data is
       Params : constant Parameters.List := Status.Parameters(Request);
@@ -837,6 +825,13 @@ package body Hellish_Web.Routes is
 
          goto Finish;
       end if;
+
+      if not Match(Username_Matcher, Username) then
+         Error_String := To_Holder("Username must only contain alphanumeric characters or underscores");
+
+         goto Finish;
+      end if;
+
       if Password'Length < Min_Pwd_Length or Password'Length > Max_Pwd_Length then
          Error_String := To_Holder("Password must be at least" & Min_Pwd_Length'Image & " characters long and at most"
                                   & Max_Pwd_Length'Image & " characters long");
@@ -928,22 +923,14 @@ package body Hellish_Web.Routes is
                                 Request : in Status.Data) return Response.Data is
       use Ada.Directories;
 
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
+      Filename : String := Uri_Group_Match(Request, Uploads_Images_Matcher, 1);
+      Full_Path : String := Compose(Containing_Directory => Image_Uploads_Path, Name => Filename);
    begin
-      Match(Uploads_Images_Matcher, Uri, Matches);
-      declare
-         Match : Match_Location := Matches(1);
-         Filename : String := Uri(Match.First..Match.Last);
-
-         Full_Path : String := Compose(Containing_Directory => Image_Uploads_Path, Name => Filename);
-      begin
-         if Exists(Full_Path) then
-            return Response.File(Mime.Content_Type(Filename), Full_Path);
-         else
-            return Response.Acknowledge(Messages.S404, "Image not found");
-         end if;
-      end;
+      if Exists(Full_Path) then
+         return Response.File(Mime.Content_Type(Filename), Full_Path);
+      else
+         return Response.Acknowledge(Messages.S404, "Image not found");
+      end if;
    end Dispatch;
 
    -- Entrypoint
@@ -1002,6 +989,9 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Posts.Post);
       Services.Dispatchers.Uri.Register(Root, "/confirm", Confirm);
       Services.Dispatchers.Uri.Register(Root, "/images", Images.Images);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/profile/((\w|\d)+)", Profile);
+
+      -- API
 
       Services.Dispatchers.Uri.Register(Root, "/api/user/register", Api_User_Register);
       Services.Dispatchers.Uri.Register(Root, "/api/user/login", Api_User_Login);
@@ -1011,6 +1001,8 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/api/post/create", Posts.Api_Post_Create);
       Services.Dispatchers.Uri.Register(Root, "/api/upload/image", Images.Api_Image_Upload);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/image/(\d+)", Images.Api_Image_Delete);
+
+      -- Uploads
 
       Services.Dispatchers.Uri.Register_Regexp(Root, "/uploads/images/(\w+\.\w+)", Uploads_Images);
 

@@ -8,9 +8,6 @@ package body Posts is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
 
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
-
       Page_Size : constant Natural := 25;
    begin
       if not Database.User_Exists(Username) then
@@ -18,10 +15,8 @@ package body Posts is
          return Response.Url(Location => "/login");
       end if;
 
-      Match(Post_Id_Matcher, Uri, Matches);
       declare
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, Post_Id_Matcher, 1));
 
          Parent_Post : Detached_Post'Class := No_Detached_Post;
          Post : Detached_Post'Class := Database.Get_Post(Id, Parent_Post);

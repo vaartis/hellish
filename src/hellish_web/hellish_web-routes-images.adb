@@ -111,21 +111,15 @@ package body Images is
 
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
-
-      Matches : Match_Array (0..1);
-      Uri : String := Status.Uri(Request);
    begin
       if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
       end if;
 
-      Match(Api_Image_Delete_Matcher, Uri, Matches);
       declare
          use Ada.Directories;
 
-         Match : Match_Location := Matches(1);
-         Id : Natural := Natural'Value(Uri(Match.First..Match.Last));
-
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, Api_Image_Delete_Matcher, 1));
          The_Image : Detached_Image_Upload'Class := Database.Get_Image(Id);
          The_User : Detached_User'class := Database.Get_User(Username);
       begin

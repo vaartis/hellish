@@ -5,27 +5,8 @@
     <style>
      @@INCLUDE@@ shared.css
 
-     .user-info {
-         float: right;
-         margin-right: 1em;
-     }
-
      .content {
          padding-top: 30px;
-     }
-
-     .upload {
-         color: var(--upload-color);
-     }
-
-     .download {
-         color: var(--download-color);
-     }
-
-     .user-button {
-         display: block;
-         margin-top: 1em;
-         margin-bottom: 1em;
      }
 
      .news-box {
@@ -50,25 +31,6 @@
 </head>
 <body>
     @@INCLUDE@@ navbar.html
-
-    <aside class="user-info">
-        <a href="/profile/@_username_@">@_username_@</a>
-        <div>
-            <span class="upload">▲ @_uploaded_@</span>
-            <span class="download">▼ @_downloaded_@</span>
-        </div>
-        <hr>
-        <nav>
-            <a class="user-button" href="/upload">Upload</a>
-            <a class="user-button" href="/post/create">New post</a>
-            <a class="user-button" href="/images">Images</a>
-            <a class="user-button" href="/invite">Invite</a>
-        </nav>
-        <hr>
-        <div>
-            <a href="/api/user/logout">Log out</a>
-        </div>
-    </aside>
 
     <aside class="content">
         <p>

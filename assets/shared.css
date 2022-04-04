@@ -132,3 +132,23 @@ a:hover {
     left: 50%;
     transform: translate(-50%, 0);
 }
+
+@@-- Specifically for userinfo in navbar.html
+.user-info {
+    float: right;
+    margin-right: 1em;
+}
+
+.user-info-button {
+    display: block;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.upload {
+    color: var(--upload-color);
+}
+
+.download {
+    color: var(--download-color);
+}

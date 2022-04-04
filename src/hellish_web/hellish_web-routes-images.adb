@@ -34,6 +34,8 @@ package body Images is
          Insert(Translations, Assoc("error", Error));
       end if;
 
+      Userinfo_Translations(Database.Get_User(Username), Translations);
+
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/images.html", Translations)));
    end Dispatch;

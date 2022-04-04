@@ -226,6 +226,13 @@ package body Hellish_Web.Routes is
       end if;
    end Replies_Translations;
 
+   procedure Userinfo_Translations(The_User : Detached_User'Class; Translations : in out Translate_Set) is
+   begin
+      Insert(Translations, Assoc("userinfo_uploaded", Bytes_To_Printable(The_User.Uploaded)));
+      Insert(Translations, Assoc("userinfo_downloaded", Bytes_To_printable(The_User.Downloaded)));
+      Insert(Translations, Assoc("userinfo_username", The_User.Username));
+   end Userinfo_Translations;
+
    function Uri_Group_Match(Request : in Status.Data;
                             Matcher : Pattern_Matcher;
                             Group : Natural) return String is
@@ -390,14 +397,7 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("current_seeders", Total_Stats.Seeders));
       Insert(Translations, Assoc("current_leechers", Total_Stats.Leechers));
 
-      declare
-         The_User : Detached_User'Class := Database.Get_User(Username);
-      begin
-         Insert(Translations, Assoc("uploaded", Bytes_To_Printable(The_User.Uploaded)));
-         Insert(Translations, Assoc("downloaded", Bytes_To_printable(The_User.Downloaded)));
-
-         Insert(Translations, Assoc("username", The_User.Username));
-      end;
+      Userinfo_Translations(Database.Get_User(Username), Translations);
 
       declare
          Latest_News : Detached_Post'Class := Database.Get_Latest_News;
@@ -546,6 +546,7 @@ package body Hellish_Web.Routes is
          User : Detached_User'Class := Database.Get_User(Username);
       begin
          Insert(Translations, Assoc("announce", User_Announce_Url(User)));
+         Userinfo_Translations(User, Translations);
       end;
       if Update /= "" then
          declare
@@ -692,6 +693,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("urlencoded_name", Url.Encode(The_Torrent.Display_Name)));
 
          Replies_Translations(The_Torrent.Id, The_User, Translations, Database.Torrent_Comments'Access, Request);
+         Userinfo_Translations(The_User, Translations);
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/view.html", Translations)));
@@ -737,6 +739,8 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("invited_uploaded", Invited_User_Ul));
          Insert(Translations, Assoc("invited_downloaded", Invited_User_Dl));
 
+         Userinfo_Translations(The_User, Translations);
+
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/invite.html", Translations)));
       end;
@@ -766,6 +770,8 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("action", Action));
       Insert(Translations, Assoc("back", Status.Header(Request).Get_Values("Referer")));
       Insert(Translations, Assoc("ok", Ok));
+
+      Userinfo_Translations(Database.Get_User(Username), Translations);
 
       return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/confirm.html", Translations)));
@@ -862,6 +868,8 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("rendered_about", Markdown.To_Html(About_Text, Default_Md_Flags)));
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
+
+         Userinfo_Translations(Current_User, Translations);
       end;
 
       return Response.Build(Mime.Text_Html,

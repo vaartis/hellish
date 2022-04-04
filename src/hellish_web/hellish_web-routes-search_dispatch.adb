@@ -110,6 +110,8 @@ begin
          Insert(Translations, Assoc("category_value", Category_Values));
       end;
 
+      Userinfo_Translations(Database.Get_User(Username), Translations);
+
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/search.html", Translations)));
    end;

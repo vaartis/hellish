@@ -91,6 +91,8 @@ package body Posts is
 
             Replies_Translations(Post.Id, The_User, Translations, Database.Post_Replies'Access, Request);
 
+            Userinfo_Translations(The_User, Translations);
+
             return Response.Build(Mime.Text_Html,
                                   String'(Templates_Parser.Parse("assets/post.html", Translations)));
          end;
@@ -134,6 +136,8 @@ package body Posts is
             Insert(Translations, Assoc("flag", The_Post.Flag));
          end;
       end if;
+
+      Userinfo_Translations(The_User, Translations);
 
       return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/post_create.html", Translations)));
@@ -242,7 +246,9 @@ package body Posts is
                   Insert(Translations, Assoc("query_author", Author_User.Username));
                end if;
             end;
-   end if;
+         end if;
+
+         Userinfo_Translations(Database.Get_User(Username), Translations);
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/post_search.html", Translations)));

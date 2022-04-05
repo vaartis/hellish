@@ -97,12 +97,13 @@
             @@TABLE@@
             <tr class="search-line">
                 <td class="torrent-name">
-                    <a href="/view/@_torrent_id_@">@_torrent_name_@</a>
+                    @@-- new-replies-link and new-replies-count are for new_replies.js
+                    <a href="/view/@_torrent_id_@" class="new-replies-link">@_torrent_name_@</a>
                 </td>
                 <td>
                     <a href="/profile/@_torrent_uploader_@">@_torrent_uploader_@</i>
                 </td>
-                <td class="search-info-column">
+                <td class="search-info-column new-replies-count">
                     @_torrent_comments_@
                 </td>
                 <td class="search-info-column">
@@ -127,4 +128,8 @@
         </div>
         @@END_IF@@
     </div>
+
+    <script>
+     @@INCLUDE@@ new_replies.js
+    </script>
 </body>

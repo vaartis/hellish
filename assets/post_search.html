@@ -97,7 +97,7 @@
             @@TABLE@@
             <tr class="search-line">
                 <td class="post-title">
-                    <a href="/post/@_post_id_@">@_post_title_@</a>
+                    <a href="/post/@_post_id_@" class="new-replies-link">@_post_title_@</a>
                     @@IF@@ not @_IS_EMPTY:post_flag_@
                     <span class="post-flag">
                         <i>[ @_post_flag_@ ]</i>
@@ -107,7 +107,7 @@
                 <td class="search-info-column">
                     <a href="/profile/@_post_author_@">@_post_author_@</i>
                 </td>
-                <td class="search-info-column">
+                <td class="search-info-column new-replies-count">
                     @_post_replies_@
                 </td>
             </tr>
@@ -129,4 +129,8 @@
         </div>
         @@END_IF@@
     </div>
+
+    <script>
+     @@INCLUDE@@ new_replies.js
+    </script>
 </body>

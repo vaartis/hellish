@@ -50,7 +50,8 @@ begin
       Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
       Torrent_Names, Torrent_Ids,
-        Torrent_Uploaders, Torrent_Comments, The_Torrent_Categories: Vector_Tag;
+        Torrent_Uploaders, Torrent_Comments, The_Torrent_Categories,
+        The_Torrent_Stats: Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Found_Torrents.Has_Row loop
@@ -67,6 +68,13 @@ begin
 
          The_Torrent_Categories := @ & Torrent_Categories(Found_Torrents.Element.Category);
 
+         declare
+            Torrent_Stats : Peers.Scrape_Stat_Data := Peers.Protected_Map.Scrape_Stats(Found_Torrents.Element.Info_Hash);
+         begin
+            The_Torrent_Stats := @ & (Trim(Torrent_Stats.Complete'Image, Ada.Strings.Left) & " /" & Torrent_Stats.Incomplete'Image);
+         end;
+
+
          Found_Torrents.Next;
       end loop;
 
@@ -75,6 +83,7 @@ begin
       Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
       Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
       Insert(Translations, Assoc("torrent_category", The_Torrent_Categories));
+      Insert(Translations, Assoc("torrent_stats", The_Torrent_Stats));
 
       if Page_Count > 1 then
          for P in 1..Page_Count loop

@@ -117,12 +117,12 @@ a:hover {
     text-align: center;
 }
 
-.search-line td:first-child {
+.search-line td:first-child, .hellish-results-header th:first-child {
     padding: 0 10px 10px 0;
     text-align: left;
 }
 
-.search-line td:last-child {
+.search-line td:last-child, .hellish-results-header th:last-child {
     padding: 0 0 0 10px;
 }
 

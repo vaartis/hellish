@@ -38,6 +38,10 @@
      .search-info-column {
          padding-left: 1em;
      }
+
+     .sl-column {
+         white-space: nowrap;
+     }
     </style>
     <title>Torrents :: Hellish</title>
 </head>
@@ -93,7 +97,9 @@
                     <th>Uploader</th>
                     <th>Comments</th>
                     <th>Category</th>
-                    <th><abbr title="Seeding / Leeching">S / L</abbr></th>
+                    <th class="sl-column">
+                        <abbr title="Seeding / Leeching">S / L</abbr>
+                    </th>
                 </tr>
             </thead>
             @@TABLE@@

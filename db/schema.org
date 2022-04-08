@@ -1,10 +1,11 @@
-| TABLE        | torrents                   | torrent                 |   |                              |
-| id           | AUTOINCREMENT              | PK                      |   |                              |
-| info_hash    | TEXT                       | NOT NULL, UNIQUE, INDEX |   | The SHA1 hash of the torrent |
-| created_by   | FK users(created_torrents) | NOT NULL, INDEX         |   |                              |
-| display_name | TEXT                       | NOT NULL                |   |                              |
-| description  | TEXT                       | NOT NULL                |   |                              |
-| category     | INTEGER                    | NOT NULL, INDEX         | 0 | 0 = Other                    |
+| TABLE        | torrents                   | torrent                 |      |                              |
+| id           | AUTOINCREMENT              | PK                      |      |                              |
+| info_hash    | TEXT                       | NOT NULL, UNIQUE, INDEX |      | The SHA1 hash of the torrent |
+| created_by   | FK users(created_torrents) | NOT NULL, INDEX         |      |                              |
+| display_name | TEXT                       | NOT NULL                |      |                              |
+| description  | TEXT                       | NOT NULL                |      |                              |
+| category     | INTEGER                    | NOT NULL, INDEX         |    0 | 0 = Other                    |
+| meta         | JSON                       | NOT NULL                | '{}' | Additional data              |
 
 | TABLE      | users         | user                    |      |                     |
 | id         | AUTOINCREMENT | PK                      |      |                     |
@@ -36,14 +37,15 @@
 | by_user   | FK users(invites)    | NOT NULL                |   |   |
 | for_user  | FK users(invited_by) | UNIQUE                  |   |   |
 
-| TABLE          | posts                    | post     |   |                                               |
-| id             | AUTOINCREMENT            | PK       |   |                                               |
-| title          | TEXT                     |          |   | NULL for thread replies                       |
-| content        | TEXT                     | NOT NULL |   |                                               |
-| by_user        | FK users(created_posts)  | NOT NULL |   |                                               |
-| parent_post    | FK posts(children_posts) |          |   | The ID of the post that started the thread    |
-| flag           | INTEGER                  | NOT NULL | 0 | 0 = nothing, 1 = news, 2 = request/offer      |
-| parent_torrent | FK torrents(comments)    |          |   | The ID of the torrent that started the thread |
+| TABLE          | posts                    | post     |      |                                               |
+| id             | AUTOINCREMENT            | PK       |      |                                               |
+| title          | TEXT                     |          |      | NULL for thread replies                       |
+| content        | TEXT                     | NOT NULL |      |                                               |
+| by_user        | FK users(created_posts)  | NOT NULL |      |                                               |
+| parent_post    | FK posts(children_posts) |          |      | The ID of the post that started the thread    |
+| flag           | INTEGER                  | NOT NULL |    0 | 0 = nothing, 1 = news, 2 = request/offer      |
+| parent_torrent | FK torrents(comments)    |          |      | The ID of the torrent that started the thread |
+| meta           | JSON                     | NOT NULL | '{}' | Additional data                               |
 
 | TABLE      | peer_data                  |    |   |   |
 | torrent_id | FK torrents(torrent_peers) | PK |   |   |

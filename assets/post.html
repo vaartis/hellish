@@ -41,13 +41,18 @@
                 <div class="subtitle">
                     <a href="/profile/@_author_@">@_author_@</a>
 
-                    @@IF@@ @_is_author_@
                     <div class="post-actions">
                         [
-                        <a href="/post/create?update=@_id_@">Edit</a>
+                        @@IF@@ @_is_author_@
+                        <a href="/post/create?update=@_id_@">Edit</a> |
+                        @@END_IF@@
+                        @@IF@@ @_is_subscribed_@
+                        <a href="/api/subscribe?unsubscribe=1&type=post&id=@_id_@">Unsubscribe</a>
+                        @@ELSE@@
+                        <a href="/api/subscribe?type=post&id=@_id_@">Subscribe</a>
+                        @@END_IF@@
                         ]
                     </div>
-                    @@END_IF@@
                 </div>
             </header>
 

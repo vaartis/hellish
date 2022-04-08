@@ -49,6 +49,7 @@ package Hellish_Web.Database is
    procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class);
 
    procedure Create_Post(The_Post : in out Detached_Post'Class);
+   function Get_Post(Id : Natural) return Detached_Post'Class;
    function Get_Post(Id : Natural; Parent_Post : out Detached_Post'Class) return Detached_Post'Class;
    function Post_Replies(Parent_Post : Integer;
                          Offset : Natural;
@@ -70,4 +71,17 @@ package Hellish_Web.Database is
    function Delete_Uploaded_Image(Id : Integer) return Boolean;
    function User_Images(Username : String) return Image_Upload_List;
    function Get_Image(Id : Natural) return Detached_Image_Upload'Class;
+
+
+   generic
+      type T (<>) is new Detached_Element with private;
+      with function Meta(Element : T) return String;
+      with procedure Set_Meta(Element : T; Value : String);
+   package Subscriptions is
+      procedure Subscribe(User : Detached_User'Class; To : T);
+      procedure Unsubscribe(User : Detached_User'Class; From : T);
+      function Subscribed(User : Detached_User'Class; To : t) return Boolean;
+      function Explicitly_Unsubscribed(User : Detached_User'Class; From : T) return Boolean;
+      procedure Notify(Creator : Detached_User'Class; From : T; Text : String);
+   end Subscriptions;
 end Hellish_Web.Database;

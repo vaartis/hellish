@@ -4,6 +4,7 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Directories; use Ada.Directories;
 with Ada.Characters.Latin_1;
 
+with Gnatcoll.Json;
 with Gnatcoll.Traces; use Gnatcoll.Traces;
 with Gnatcoll.Tribooleans; use Gnatcoll.Tribooleans;
 with
@@ -26,7 +27,7 @@ with Hellish_Database;
 with Orm; use Orm;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 7;
+   Latest_Version : Natural := 8;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -364,11 +365,10 @@ package body Hellish_Web.Database is
       Search_Query : Sql_Query :=
         Sql_Select(From => Left_Join(Torrents, User_Torrent_Stats, Torrents.Id = User_Torrent_Stats.Of_Torrent),
                    -- This is idiotic, but the library doesn't generate the list of all fields
-                   Fields => From_String("torrents.*"),
+                   Fields => From_String("DISTINCT ON (torrents.id) torrents.*"),
                    Limit => Limit, Offset => Offset,
                    Order_By => Desc(Torrents.Id),
-                   Where => Search_Criteria,
-                   Distinct => True);
+                   Where => Search_Criteria);
 
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
@@ -509,6 +509,8 @@ package body Hellish_Web.Database is
       Session.Persist(The_Post);
       Session.Commit;
    end Create_Post;
+
+   function Get_Post(Id : Natural) return Detached_Post'Class is (Orm.Get_Post(Get_New_Session, Id));
 
    function Get_Post(Id : Natural; Parent_Post : out Detached_Post'Class) return Detached_Post'Class is
       Session : Session_Type := Get_New_Session;
@@ -672,4 +674,140 @@ package body Hellish_Web.Database is
    begin
       return Get_Image_Upload(Session, Id);
    end Get_Image;
+
+   package body Subscriptions is
+      procedure Subscribe(User : Detached_User'Class; To : T) is
+         use Gnatcoll.Json;
+
+         The_Meta : Json_Value := Read(Meta(To));
+         Subscriptions : Json_Array := (if Has_Field(The_Meta, "subscribed")
+                                        then Get(The_Meta, "subscribed")
+                                        else Empty_Array);
+         Unsubscribed : Json_Array := (if Has_Field(The_Meta, "unsubscribed")
+                                       then Get(The_Meta, "unsubscribed")
+                                       else Empty_Array);
+         New_Unsubscribed : Json_Array := Empty_Array;
+         User_Id : Natural := User.Id;
+
+         Session : Session_Type := Get_New_Session;
+      begin
+         for Subscriber of Subscriptions loop
+            if Get(Subscriber) = User_Id then return; end if;
+         end loop;
+         for Subscriber of Unsubscribed loop
+            -- Copy everything except the original ID, because this stupid API has no way
+            -- of deleting elements from arrays
+            if Get(Subscriber) /= User_Id then
+               Append(New_Unsubscribed, Subscriber);
+            end if;
+         end loop;
+
+        Append(Subscriptions, Create(User_Id));
+        Set_Field(The_Meta, "subscribed", Create(Subscriptions));
+        Set_Field(The_Meta, "unsubscribed", Create(New_Unsubscribed));
+        Set_Meta(To, The_Meta.Write);
+
+        Session.Persist(To);
+        Session.Commit;
+      end Subscribe;
+
+      function Subscribed(User : Detached_User'Class; To : T) return Boolean is
+         use Gnatcoll.Json;
+
+         The_Meta : Json_Value := Read(Meta(To));
+         Subscriptions : Json_Array := (if Has_Field(The_Meta, "subscribed")
+                                        then Get(The_Meta, "subscribed")
+                                        else Empty_Array);
+         User_Id : Natural := User.Id;
+      begin
+         for Subscriber of Subscriptions loop
+            if Get(Subscriber) = User_Id then return True; end if;
+         end loop;
+
+         return False;
+      end Subscribed;
+
+      procedure Unsubscribe(User : Detached_User'Class; From : T) is
+         use Gnatcoll.Json;
+
+         The_Meta : Json_Value := Read(Meta(From));
+         Subscriptions : Json_Array := (if Has_Field(The_Meta, "subscribed")
+                                        then Get(The_Meta, "subscribed")
+                                        else Empty_Array);
+         New_Subscriptions : Json_Array := Empty_Array;
+         Unsubscribed : Json_Array := (if Has_Field(The_Meta, "unsubscribed")
+                                       then Get(The_Meta, "unsubscribed")
+                                       else Empty_Array);
+
+         User_Id : Natural := User.Id;
+
+         Session : Session_Type := Get_New_Session;
+      begin
+         for Subscriber of Unsubscribed loop
+            if Get(Subscriber) = User_Id then return; end if;
+         end loop;
+
+         for Subscriber of Subscriptions loop
+            -- Copy everything except the original ID, because this stupid API has no way
+            -- of deleting elements from arrays
+            if Get(Subscriber) /= User_Id then
+               Append(New_Subscriptions, Subscriber);
+            end if;
+         end loop;
+
+         Append(Unsubscribed, Create(User_Id));
+         Set_Field(The_Meta, "subscribed", Create(New_Subscriptions));
+         Set_Field(The_Meta, "unsubscribed", Create(Unsubscribed));
+
+         Set_Meta(From, The_Meta.Write);
+
+         Session.Persist(From);
+         Session.Commit;
+      end Unsubscribe;
+
+      function Explicitly_Unsubscribed(User : Detached_User'Class; From : T) return Boolean is
+         use Gnatcoll.Json;
+
+         The_Meta : Json_Value := Read(Meta(From));
+         Unsubscribed : Json_Array := (if Has_Field(The_Meta, "unsubscribed")
+                                       then Get(The_Meta, "unsubscribed")
+                                       else Empty_Array);
+         User_Id : Natural := User.Id;
+      begin
+         for Subscriber of Unsubscribed loop
+            if Get(Subscriber) = User_Id then return True; end if;
+         end loop;
+
+         return False;
+      end Explicitly_Unsubscribed;
+
+      procedure Notify(Creator : Detached_User'Class; From : T; Text : String) is
+         use Gnatcoll.Json;
+
+         The_Meta : Json_Value := Read(Meta(From));
+         Subscriptions : Json_Array := (if Has_Field(The_Meta, "subscribed")
+                                        then Get(The_Meta, "subscribed")
+                                        else Empty_Array);
+
+         Session : Session_Type := Get_New_Session;
+      begin
+         for Subscriber of Subscriptions loop
+            if Get(Subscriber) /= Creator.Id then
+               declare
+                  Sub : Detached_User'Class := Database.Get_User(Integer'(Get(Subscriber)));
+                  Sub_Profile : Json_Value := Read(Sub.Profile);
+                  Sub_Notifications : Json_Array :=  (if Has_Field(Sub_Profile, "notifications")
+                                                      then Get(Sub_Profile, "notifications")
+                                                      else Empty_Array);
+               begin
+                  Append(Sub_Notifications, Create(Text));
+                  Sub_Profile.Set_Field("notifications", Sub_Notifications);
+                  Sub.Set_Profile(Sub_Profile.Write);
+                  Session.Persist(Sub);
+               end;
+            end if;
+         end loop;
+         Session.Commit;
+      end Notify;
+   end Subscriptions;
 end;

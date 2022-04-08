@@ -43,13 +43,28 @@
      .profile-picture {
          max-width: 20%;
      }
+
+     .notification-box {
+         margin-bottom: 1em;
+     }
     </style>
     <title>@_username_@ :: Hellish</title>
 </head>
 <body>
     @@INCLUDE@@ navbar.html
-
     <div class="page-container">
+        @@IF@@ not @_IS_EMPTY:notification_@
+        <h2>Notifications [ <a href="/api/notifications/clear">Clear</a> ]</h2>
+
+        @@TABLE@@
+        <div class="hellish-content-box notification-box">
+            @_notification_@
+        </div>
+        @@END_TABLE@@
+
+        <hr>
+        @@END_IF@@
+
         <h2>@_username_@</h2>
 
         <div class="stats-block">

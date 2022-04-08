@@ -7,7 +7,16 @@
 </nav>
 
 <aside class="user-info">
-    <a href="/profile/@_userinfo_username_@">@_userinfo_username_@</a>
+    <a href="/profile/@_userinfo_username_@"
+       @@IF@@ @_userinfo_has_notifications_@
+       title="New notifications!"
+       @@END_IF@@
+    >
+        @_userinfo_username_@
+        @@IF@@ @_userinfo_has_notifications_@
+        (@_userinfo_notifications_@)
+        @@END_IF@@
+    </a>
     <div>
         <span class="upload">▲ @_userinfo_uploaded_@</span>
         <span class="download">▼ @_userinfo_downloaded_@</span>

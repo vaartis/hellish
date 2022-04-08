@@ -231,6 +231,18 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("userinfo_uploaded", Bytes_To_Printable(The_User.Uploaded)));
       Insert(Translations, Assoc("userinfo_downloaded", Bytes_To_printable(The_User.Downloaded)));
       Insert(Translations, Assoc("userinfo_username", The_User.Username));
+
+      declare
+         use Gnatcoll.Json;
+         The_Profile : Json_Value := Read(The_User.Profile);
+         Notifications : Json_Array :=  (if Has_Field(The_Profile, "notifications")
+                                         then Get(The_Profile, "notifications")
+                                         else Empty_Array);
+         Count : Natural := Length(Notifications);
+      begin
+         Insert(Translations, Assoc("userinfo_has_notifications", Count > 0));
+         Insert(Translations, Assoc("userinfo_notifications", Count));
+      end;
    end Userinfo_Translations;
 
    function Uri_Group_Match(Request : in Status.Data;
@@ -686,6 +698,13 @@ package body Hellish_Web.Routes is
             end if;
          end;
 
+         declare
+            package Torrent_Subs is new Database.Subscriptions
+              (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
+         begin
+            Insert(Translations, Assoc("is_subscribed", Torrent_Subs.Subscribed(The_User, Detached_Torrent(The_Torrent))));
+         end;
+
          if Error /= "" then
             Insert(Translations, Assoc("error", Error));
          end if;
@@ -802,8 +821,8 @@ package body Hellish_Web.Routes is
 
             Params : constant Parameters.List := Status.Parameters(Request);
 
-            Profile_Json : Json_Value := Create_Object;
             The_User : Detached_User'Class := Database.Get_User(Username);
+            Profile_Json : Json_Value := Read(The_User.Profile);
          begin
             if Current_User /= Profile_User then
                return Response.Acknowledge(Messages.S403, "Forbidden");
@@ -860,12 +879,21 @@ package body Hellish_Web.Routes is
             About_Text : String := (if Profile_Json.Has_Field("about")
                                     then Profile_Json.Get("about")
                                     else "");
+            Notifications : Json_Array :=  (if Has_Field(Profile_Json, "notifications")
+                                            then Get(Profile_Json, "notifications")
+                                            else Empty_Array);
+            Html_Notifications : Vector_Tag;
          begin
             Insert(Translations, Assoc("profile_picture", Profile_Picture));
             Insert(Translations, Assoc("encoded_profile_picture", Templates_Parser.Utils.Web_Escape(Profile_Picture)));
 
             Insert(Translations, Assoc("profile_about", About_Text));
             Insert(Translations, Assoc("rendered_about", Markdown.To_Html(About_Text, Default_Md_Flags)));
+
+            for Notification of Notifications loop
+               Html_Notifications := @ & Markdown.To_Html(Get(Notification), Default_Md_Flags);
+            end loop;
+            Insert(Translations, Assoc("notification", Html_Notifications));
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
 
@@ -1031,6 +1059,68 @@ package body Hellish_Web.Routes is
       return Result;
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Api_Subscribe_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+      The_User : Detached_User'Class := No_Detached_User;
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Is_Unsub : Boolean := Params.Get("unsubscribe") /= "";
+      Parent_Type : String := Params.Get("type");
+      Parent_Id : Natural := Natural'Value(Params.Get("id"));
+
+      package Post_Subs is new Database.Subscriptions
+        (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
+      package Torrent_Subs is new Database.Subscriptions
+        (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+
+      The_User := Database.Get_User(Username);
+      if Parent_Type = "post" then
+         if Is_Unsub then
+            Post_Subs.Unsubscribe(The_User, Detached_Post(Database.Get_Post(Parent_Id)));
+         else
+            Post_Subs.Subscribe(The_User, Detached_Post(Database.Get_Post(Parent_Id)));
+         end if;
+      elsif Parent_Type = "torrent" then
+         if Is_unsub then
+            Torrent_Subs.Unsubscribe(The_User, Detached_Torrent(Database.Get_Torrent(Parent_Id)));
+         else
+            Torrent_Subs.Subscribe(The_User, Detached_Torrent(Database.Get_Torrent(Parent_Id)));
+         end if;
+      end if;
+
+      return Response.Url(Location => Status.Header(Request).Get_Values("Referer"));
+   end Dispatch;
+
+   overriding function Dispatch(Handler : in Api_Notifications_Clear_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+
+      declare
+         use Gnatcoll.Json;
+         The_User : Detached_User'Class := Database.Get_User(Username);
+         The_Profile : Json_Value := Read(The_User.Profile);
+      begin
+         Unset_Field(The_Profile, "notifications");
+         The_User.Set_Profile(The_Profile.Write);
+
+         Database.Update_User(The_User);
+      end;
+
+      return Response.Url(Location => Status.Header(Request).Get_Values("Referer"));
+   end Dispatch;
+
    -- Uploads
 
    Uploads_Images_Matcher : constant Pattern_Matcher := Compile("/uploads/images/(\w+\.\w+)");
@@ -1116,6 +1206,8 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/api/post/create", Posts.Api_Post_Create);
       Services.Dispatchers.Uri.Register(Root, "/api/upload/image", Images.Api_Image_Upload);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/image/(\d+)", Images.Api_Image_Delete);
+      Services.Dispatchers.Uri.Register(Root, "/api/subscribe", Api_Subscribe);
+      Services.Dispatchers.Uri.Register(Root, "/api/notifications/clear", Api_Notifications_Clear);
 
       -- Uploads
 

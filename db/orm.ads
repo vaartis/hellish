@@ -69,7 +69,7 @@ package Orm is
    No_Peer_Data : constant Peer_Data;
 
    type Post is new Orm_Element with null record;
-   type Post_DDR is new Detached_Data (10) with private;
+   type Post_DDR is new Detached_Data (11) with private;
    type Detached_Post is  --  Get() returns a Post_DDR
    new Sessions.Detached_Element with private;
    type Detached_Post_Access is access all Detached_Post'Class;
@@ -77,7 +77,7 @@ package Orm is
    No_Post : constant Post;
 
    type Torrent is new Orm_Element with null record;
-   type Torrent_DDR is new Detached_Data (7) with private;
+   type Torrent_DDR is new Detached_Data (8) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
    new Sessions.Detached_Element with private;
    type Detached_Torrent_Access is access all Detached_Torrent'Class;
@@ -139,6 +139,11 @@ package Orm is
    function Info_Hash (Self : Detached_Torrent) return String;
    procedure Set_Info_Hash (Self : Detached_Torrent; Value : String);
    --  The SHA1 hash of the torrent
+
+   function Meta (Self : Torrent) return String;
+   function Meta (Self : Detached_Torrent) return String;
+   procedure Set_Meta (Self : Detached_Torrent; Value : String);
+   --  Additional data
 
    function Detach (Self : Torrent'Class) return Detached_Torrent'Class;
 
@@ -354,6 +359,11 @@ package Orm is
 
    function Id (Self : Post) return Integer;
    function Id (Self : Detached_Post) return Integer;
+
+   function Meta (Self : Post) return String;
+   function Meta (Self : Detached_Post) return String;
+   procedure Set_Meta (Self : Detached_Post; Value : String);
+   --  Additional data
 
    function Parent_Post (Self : Post) return Integer;
    function Parent_Post (Self : Detached_Post) return Integer;
@@ -667,7 +677,8 @@ package Orm is
       Created_By   : Integer := -1;
       Display_Name : String := No_Update;
       Description  : String := No_Update;
-      Category     : Integer := -1)
+      Category     : Integer := -1;
+      Meta         : String := No_Update)
      return Torrents_Managers;
 
    function Get_Torrent
@@ -810,7 +821,8 @@ package Orm is
       By_User        : Integer := -1;
       Parent_Post    : Integer := -1;
       Flag           : Integer := -1;
-      Parent_Torrent : Integer := -1)
+      Parent_Torrent : Integer := -1;
+      Meta           : String := No_Update)
      return Posts_Managers;
 
    function Get_Post
@@ -989,7 +1001,7 @@ private
     end record;
     type Peer_Data_Data is access all Peer_Data_DDR;
     
-    type Post_DDR is new Detached_Data (10) with record
+    type Post_DDR is new Detached_Data (11) with record
        ORM_By_User           : Integer := -1;
        ORM_Content           : Unbounded_String := Null_Unbounded_String;
        ORM_FK_By_User        : Detached_User_Access := null;
@@ -997,13 +1009,14 @@ private
        ORM_FK_Parent_Torrent : Detached_Torrent_Access := null;
        ORM_Flag              : Integer := 0;
        ORM_Id                : Integer := -1;
+       ORM_Meta              : Unbounded_String := To_Unbounded_String ("{}");
        ORM_Parent_Post       : Integer := -1;
        ORM_Parent_Torrent    : Integer := -1;
        ORM_Title             : Unbounded_String := Null_Unbounded_String;
     end record;
     type Post_Data is access all Post_DDR;
     
-    type Torrent_DDR is new Detached_Data (7) with record
+    type Torrent_DDR is new Detached_Data (8) with record
        ORM_Category        : Integer := 0;
        ORM_Created_By      : Integer := -1;
        ORM_Description     : Unbounded_String := Null_Unbounded_String;
@@ -1011,6 +1024,7 @@ private
        ORM_FK_Created_By   : Detached_User_Access := null;
        ORM_Id              : Integer := -1;
        ORM_Info_Hash       : Unbounded_String := Null_Unbounded_String;
+       ORM_Meta            : Unbounded_String := To_Unbounded_String ("{}");
     end record;
     type Torrent_Data is access all Torrent_DDR;
     

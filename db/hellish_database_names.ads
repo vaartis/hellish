@@ -46,6 +46,8 @@ package Hellish_Database_Names is
    N_Id : constant Cst_String_Access := NC_id'Access;
    NC_Info_Hash : aliased constant String := "info_hash";
    N_Info_Hash : constant Cst_String_Access := NC_info_hash'Access;
+   NC_Meta : aliased constant String := "meta";
+   N_Meta : constant Cst_String_Access := NC_meta'Access;
    NC_Of_Torrent : aliased constant String := "of_torrent";
    N_Of_Torrent : constant Cst_String_Access := NC_of_torrent'Access;
    NC_Parent_Post : aliased constant String := "parent_post";

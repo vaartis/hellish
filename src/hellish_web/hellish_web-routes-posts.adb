@@ -82,12 +82,16 @@ package body Posts is
             Post_Content : String := Markdown.To_Html(Post.Content, Default_Md_Flags);
 
             The_User : Detached_User'Class := Database.Get_User(Username);
+
+            package Post_Subs is new Database.Subscriptions
+              (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
          begin
             Insert(Translations, Assoc("id", Post.Id));
             Insert(Translations, Assoc("title", Html_Title));
             Insert(Translations, Assoc("content", Post_Content));
             Insert(Translations, Assoc("author", Author.Username));
             Insert(Translations, Assoc("is_author", Author.Id = The_User.Id or The_User.Role = 1));
+            Insert(Translations, Assoc("is_subscribed", Post_Subs.Subscribed(The_User, Detached_Post(Post))));
 
             Replies_Translations(Post.Id, The_User, Translations, Database.Post_Replies'Access, Request);
 
@@ -277,6 +281,8 @@ package body Posts is
 
       Parent_Post : Detached_Post'Class := No_Detached_Post;
       Post : Detached_Post'Class := New_Post;
+
+      The_Parent_Torrent : Detached_Torrent'Class := No_Detached_Torrent;
    begin
       if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
@@ -298,10 +304,15 @@ package body Posts is
          Post.Set_Title(Title);
       end if;
       if Parent /= -1 then
-         Post.Set_Parent_Post(Parent);
-      elsif Parent_Torrent /= -1
-        and Database.Get_Torrent(Parent_Torrent) /= Detached_Torrent'Class(No_Detached_Torrent) then
-         Post.Set_Parent_Torrent(Parent_Torrent);
+         Parent_Post := Database.Get_Post(Parent);
+         if Parent_Post /= Detached_Post'Class(No_Detached_Post) then
+            Post.Set_Parent_Post(Parent);
+         end if;
+      elsif Parent_Torrent /= -1 then
+         The_Parent_Torrent := Database.Get_Torrent(Parent_Torrent);
+         if The_Parent_Torrent /= Detached_Torrent'Class(No_Detached_Torrent) then
+            Post.Set_Parent_Torrent(Parent_Torrent);
+         end if;
       end if;
       if Parent = -1 and Parent_Torrent = -1 then
          if (Flag = 1 and The_User.Role = 1) or Flag = 2 then
@@ -310,6 +321,36 @@ package body Posts is
       end if;
 
       Database.Create_Post(Post);
+
+      declare
+         package Post_Subs is new Database.Subscriptions
+           (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
+         package Torrent_Subs is new Database.Subscriptions
+           (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
+      begin
+         if Parent /= -1 then
+            if not Post_Subs.Explicitly_Unsubscribed(The_User, Detached_Post(Parent_Post)) then
+               Post_Subs.Subscribe(The_User, Detached_Post(Parent_Post));
+            end if;
+         elsif Parent_Torrent /= -1 then
+            if not Torrent_Subs.Explicitly_Unsubscribed(The_User, Detached_Torrent(The_Parent_Torrent)) then
+               Torrent_Subs.Subscribe(The_User, Detached_Torrent(The_Parent_Torrent));
+            end if;
+         else
+            Post_Subs.Subscribe(The_User, Detached_Post(Post));
+         end if;
+
+         if Parent /= -1 then
+            Post_Subs.Notify(The_User,
+                             Detached_Post(Parent_Post),
+                             "There's [a new reply to the post """ & Parent_Post.Title & """](/post/" & Trim(Post.Id'Image, Ada.Strings.Left) & ")");
+         elsif Parent_Torrent /= -1 then
+            Torrent_Subs.Notify(The_User,
+                                Detached_Torrent(The_Parent_Torrent),
+                                "There's [a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """](/post" &
+                                  Trim(Post.Id'Image, Ada.Strings.Left) & ")");
+         end if;
+      end;
 
       return Response.Url("/post/" & Trim(Post.Id'Image, Ada.Strings.Left));
    end Dispatch;

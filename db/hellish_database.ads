@@ -2,8 +2,6 @@ with GNATCOLL.SQL; use GNATCOLL.SQL;
 pragma Warnings (Off, "no entities of * are referenced");
 pragma Warnings (Off, "use clause for package * has no effect");
 with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
-with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
-with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
 pragma Warnings (On, "no entities of * are referenced");
 pragma Warnings (On, "use clause for package * has no effect");
 with GNATCOLL.SQL.Exec;
@@ -108,6 +106,9 @@ package Hellish_Database is
       Parent_Torrent : SQL_Field_Integer (Ta_Posts, Instance, N_Parent_Torrent, Index);
       --  The ID of the torrent that started the thread
 
+      Meta : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Posts, Instance, N_Meta, Index);
+      --  Additional data
+
    end record;
 
    type T_Posts (Instance : Cst_String_Access)
@@ -133,6 +134,9 @@ package Hellish_Database is
       Description : SQL_Field_Text (Ta_Torrents, Instance, N_Description, Index);
       Category : SQL_Field_Integer (Ta_Torrents, Instance, N_Category, Index);
       --  0 = Other
+
+      Meta : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Torrents, Instance, N_Meta, Index);
+      --  Additional data
 
    end record;
 

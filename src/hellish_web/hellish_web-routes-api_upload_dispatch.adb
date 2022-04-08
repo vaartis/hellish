@@ -103,6 +103,13 @@ begin
          The_Torrent.Set_Created_By(Created_By);
          Set_Updatable_Fields_And_Create(The_Torrent);
 
+         declare
+            package Torrent_Subs is new Database.Subscriptions
+              (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
+         begin
+            Torrent_Subs.Subscribe(Created_By, Detached_Torrent(The_Torrent));
+         end;
+
          if Error_String = "" then
             return Response.Url("/view/" & Trim(The_Torrent.Id'Image, Ada.Strings.Left));
          else

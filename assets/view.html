@@ -70,6 +70,12 @@
             | <a href="/upload?update=@_id_@">Edit</a>
             | <a href="/confirm?action=delete @_urlencoded_name_@&ok=/api/delete/@_id_@">Delete</a>
             @@END_IF@@
+            |
+            @@IF@@ @_is_subscribed_@
+            <a href="/api/subscribe?unsubscribe=1&type=torrent&id=@_id_@">Unsubscribe</a>
+            @@ELSE@@
+            <a href="/api/subscribe?type=torrent&id=@_id_@">Subscribe</a>
+            @@END_IF@@
             ]
         </div>
 

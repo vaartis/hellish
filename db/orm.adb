@@ -59,10 +59,11 @@ package body Orm is
    F_Posts_Parent_Post    : constant := 4;
    F_Posts_Flag           : constant := 5;
    F_Posts_Parent_Torrent : constant := 6;
-   Counts_Posts : constant Counts := ((7,7),(15,28),(15,57),(15,86));
-   Upto_Posts_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
-   Upto_Posts_1 : constant Counts := ((7,7),(15,15),(15,15),(15,15));
-   Upto_Posts_2 : constant Counts := ((7,7),(15,22),(15,43),(15,72));
+   F_Posts_Meta           : constant := 7;
+   Counts_Posts : constant Counts := ((8,8),(16,31),(16,62),(16,93));
+   Upto_Posts_0 : constant Counts := ((8,8),(8,8),(8,8),(8,8));
+   Upto_Posts_1 : constant Counts := ((8,8),(16,16),(16,16),(16,16));
+   Upto_Posts_2 : constant Counts := ((8,8),(16,24),(16,47),(16,78));
    Alias_Posts : constant Alias_Array := (-1,4,5,20,-1,0,9,10,17,1,2,14,15,16,4,5,6,3,19,7,-1,22,8);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
@@ -70,8 +71,9 @@ package body Orm is
    F_Torrents_Display_Name : constant := 3;
    F_Torrents_Description  : constant := 4;
    F_Torrents_Category     : constant := 5;
-   Counts_Torrents : constant Counts := ((6,6),(14,14),(14,14),(14,14));
-   Upto_Torrents_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
+   F_Torrents_Meta         : constant := 6;
+   Counts_Torrents : constant Counts := ((7,7),(15,15),(15,15),(15,15));
+   Upto_Torrents_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
    Alias_Torrents : constant Alias_Array := (-1,2,-1);
    F_User_Torrent_Stats_By_User    : constant := 0;
    F_User_Torrent_Stats_Of_Torrent : constant := 1;
@@ -1106,6 +1108,42 @@ package body Orm is
       return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Info_Hash);
    end Info_Hash;
 
+   ----------
+   -- Meta --
+   ----------
+
+   function Meta (Self : Torrent) return String is
+   begin
+      return String_Value (Self, F_Torrents_Meta);
+   end Meta;
+
+   ----------
+   -- Meta --
+   ----------
+
+   function Meta (Self : Detached_Torrent) return String is
+   begin
+      return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Meta);
+   end Meta;
+
+   ----------
+   -- Meta --
+   ----------
+
+   function Meta (Self : Post) return String is
+   begin
+      return String_Value (Self, F_Posts_Meta);
+   end Meta;
+
+   ----------
+   -- Meta --
+   ----------
+
+   function Meta (Self : Detached_Post) return String is
+   begin
+      return To_String (Post_Data (Self.Unchecked_Get).ORM_Meta);
+   end Meta;
+
    ----------------
    -- Of_Torrent --
    ----------------
@@ -2026,7 +2064,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Post_DDR'
-              (Detached_Data with Field_Count => 10, others => <>));
+              (Detached_Data with Field_Count => 11, others => <>));
       end if;
 
       Tmp := Post_Data (Result.Unchecked_Get);
@@ -2055,6 +2093,7 @@ package body Orm is
       Tmp.ORM_FK_Parent_Torrent := FK_Parent_Torrent;
       Tmp.ORM_Flag              := Integer_Value (Self, F_Posts_Flag);
       Tmp.ORM_Id                := Integer_Value (Self, F_Posts_Id);
+      Tmp.ORM_Meta              := To_Unbounded_String (String_Value (Self, F_Posts_Meta));
       Tmp.ORM_Parent_Post       := Integer_Value (Self, F_Posts_Parent_Post);
       Tmp.ORM_Parent_Torrent    := Integer_Value (Self, F_Posts_Parent_Torrent);
       Tmp.ORM_Title             := To_Unbounded_String (String_Value (Self, F_Posts_Title));
@@ -2079,7 +2118,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Torrent_DDR'
-              (Detached_Data with Field_Count => 7, others => <>));
+              (Detached_Data with Field_Count => 8, others => <>));
       end if;
 
       Tmp := Torrent_Data (Result.Unchecked_Get);
@@ -2096,6 +2135,7 @@ package body Orm is
       Tmp.ORM_FK_Created_By   := FK_Created_By;
       Tmp.ORM_Id              := Integer_Value (Self, F_Torrents_Id);
       Tmp.ORM_Info_Hash       := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
+      Tmp.ORM_Meta            := To_Unbounded_String (String_Value (Self, F_Torrents_Meta));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -2374,7 +2414,8 @@ package body Orm is
          & Table.By_User
          & Table.Parent_Post
          & Table.Flag
-         & Table.Parent_Torrent;
+         & Table.Parent_Torrent
+         & Table.Meta;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -2445,7 +2486,8 @@ package body Orm is
          & Table.Created_By
          & Table.Display_Name
          & Table.Description
-         & Table.Category;
+         & Table.Category
+         & Table.Meta;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -2559,7 +2601,8 @@ package body Orm is
       Created_By   : Integer := -1;
       Display_Name : String := No_Update;
       Description  : String := No_Update;
-      Category     : Integer := -1)
+      Category     : Integer := -1;
+      Meta         : String := No_Update)
      return Torrents_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2582,6 +2625,9 @@ package body Orm is
       end if;
       if Category /= -1 then
          C := C and DBA.Torrents.Category = Category;
+      end if;
+      if Meta /= No_Update then
+         C := C and DBA.Torrents.Meta = Meta;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -2739,7 +2785,8 @@ package body Orm is
       By_User        : Integer := -1;
       Parent_Post    : Integer := -1;
       Flag           : Integer := -1;
-      Parent_Torrent : Integer := -1)
+      Parent_Torrent : Integer := -1;
+      Meta           : String := No_Update)
      return Posts_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2765,6 +2812,9 @@ package body Orm is
       end if;
       if Parent_Torrent /= -1 then
          C := C and DBA.Posts.Parent_Torrent = Parent_Torrent;
+      end if;
+      if Meta /= No_Update then
+         C := C and DBA.Posts.Meta = Meta;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -3566,6 +3616,9 @@ package body Orm is
             end;
          end if;
       end if;
+      if Mask (8) then
+         A := A & (DBA.Posts.Meta = To_String (D.ORM_Meta));
+      end if;
       if Missing_PK then
          Q := SQL_Insert (A);
       else
@@ -3623,6 +3676,9 @@ package body Orm is
       end if;
       if Mask (6) then
          A := A & (DBA.Torrents.Category = D.ORM_Category);
+      end if;
+      if Mask (7) then
+         A := A & (DBA.Torrents.Meta = To_String (D.ORM_Meta));
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -4662,6 +4718,30 @@ package body Orm is
       D.ORM_Info_Hash := To_Unbounded_String (Value);
       Self.Set_Modified (2);
    end Set_Info_Hash;
+
+   --------------
+   -- Set_Meta --
+   --------------
+
+   procedure Set_Meta (Self : Detached_Torrent; Value : String)
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Meta := To_Unbounded_String (Value);
+      Self.Set_Modified (7);
+   end Set_Meta;
+
+   --------------
+   -- Set_Meta --
+   --------------
+
+   procedure Set_Meta (Self : Detached_Post; Value : String)
+   is
+      D : constant Post_Data := Post_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Meta := To_Unbounded_String (Value);
+      Self.Set_Modified (8);
+   end Set_Meta;
 
    --------------------
    -- Set_Of_Torrent --

@@ -53,6 +53,7 @@ package body Hellish_Database is
          & "|display_name|Text|NOT NULL||" & ASCII.LF
          & "|description|Text|NOT NULL||" & ASCII.LF
          & "|category|Integer|NOT NULL,INDEX|0|" & ASCII.LF
+         & "|meta|json|NOT NULL|'{}'|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| users" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
@@ -91,6 +92,7 @@ package body Hellish_Database is
          & "|parent_post|FK posts|||" & ASCII.LF
          & "|flag|Integer|NOT NULL|0|" & ASCII.LF
          & "|parent_torrent|FK torrents|||" & ASCII.LF
+         & "|meta|json|NOT NULL|'{}'|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| peer_data" & ASCII.LF
          & "|torrent_id|FK torrents|PK||" & ASCII.LF

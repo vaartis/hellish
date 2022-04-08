@@ -61,6 +61,7 @@ package Hellish_Web.Peers is
                                           Options : Response_Options) return Bencode_Value_Holders.Holder;
 
       function Scrape_Stats(Info_Hash : String) return Scrape_Stat_Data;
+      function Peer_Map_Data(Info_Hash : String) return Peer_Maps.Map;
 
       function Total_Stat_Data return Total_Stats;
 

@@ -174,6 +174,16 @@ package body Hellish_Web.Peers is
          return Result;
       end Scrape_Stats;
 
+      function Peer_Map_Data(Info_Hash : String) return Peer_Maps.Map is
+         Result : Peer_Maps.Map;
+      begin
+         if Torrent_Map.Contains(Info_Hash) then
+            Result := Torrent_Map(Info_Hash);
+         end if;
+
+         return Result;
+      end Peer_Map_Data;
+
       function Ip_Port_Bytes(From_Peer : Peer) return String is
          Ip_Numbers : array (1..4) of Natural;
          Last : Positive;

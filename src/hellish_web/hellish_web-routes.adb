@@ -705,6 +705,35 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("is_subscribed", Torrent_Subs.Subscribed(The_User, Detached_Torrent(The_Torrent))));
          end;
 
+         declare
+            use type Peers.Torrent_Maps.Map;
+
+            Peers_Users, Peers_Uploaded, Peers_Downloaded, Peers_Percent : Vector_Tag;
+            The_Peers : Peers.Peer_Maps.Map := Peers.Protected_Map.Peer_Map_Data(The_Torrent.Info_Hash);
+         begin
+            for Peer of The_Peers loop
+               Peers_Users := @ & Peer.User.Username;
+               Peers_Uploaded := @ & Bytes_To_Printable(Peer.Uploaded);
+               Peers_Downloaded := @ & Bytes_To_Printable(Peer.Downloaded);
+
+               declare
+                  Downloaded_Percent : Long_Long_Float := (Long_Long_Float(Total_Size - Peer.Left) / Long_Long_Float(Total_Size)) * Long_Long_Float(100.0);
+                  Formatted_Str : String (1 .. 16);
+
+                  package Long_Long_Float_Text_IO is
+                    new Ada.Text_IO.Float_IO (Long_Long_Float);
+                  use Long_Long_Float_Text_Io;
+               begin
+                  Put(Formatted_Str, Downloaded_Percent, Aft => 2, Exp => 0);
+                  Peers_Percent := @ & Trim(Formatted_Str, Ada.Strings.Both);
+               end;
+            end loop;
+            Insert(Translations, Assoc("peer_user", Peers_Users));
+            Insert(Translations, Assoc("peer_upload", Peers_Uploaded));
+            Insert(Translations, Assoc("peer_download", Peers_Downloaded));
+            Insert(Translations, Assoc("peer_percent", Peers_Percent));
+         end;
+
          if Error /= "" then
             Insert(Translations, Assoc("error", Error));
          end if;

@@ -18,7 +18,7 @@
          width: var(--page-width);
      }
 
-     .downloads-box {
+     .downloads-box, .peers-box {
          background: var(--panel-color);
          border: hidden;
          border-radius: 10px;
@@ -27,12 +27,24 @@
          padding: 10px;
      }
 
-     .downloads-box td:nth-child(odd) {
+     .downloads-box td:first-child {
          border-right: solid var(--input-color) 2px;
          padding-right: 2em;
      }
-     .downloads-box td:nth-child(even) {
+     .downloads-box td:not(td:first-child) {
          padding-left: 1em;
+     }
+
+     .peers-box {
+         margin-top: 1em;
+         margin-bottom: 1em;
+     }
+     .peers-box td:first-child {
+         border-right: solid var(--input-color) 2px;
+     }
+     .peers-box td, peers-box th {
+         text-align: center;
+         padding-top: 0.5em;
      }
 
      .your-stats {
@@ -93,6 +105,25 @@
             @@END_IF@@
 
             <b>Seeding</b> @_seeding_@ | <b>Leeching</b> @_leeching_@ | <b>Snatches</b> @_snatches_@
+
+            @@IF@@ not @_IS_EMPTY:peer_user_@
+            <table class="peers-box">
+                <tr>
+                    <th>User</th>
+                    <th>Uploaded</th>
+                    <th>Downloaded</th>
+                    <th>Complete</th>
+                </tr>
+                @@TABLE@@
+                <tr>
+                    <td><a href="/profile/@_peer_user_@">@_peer_user_@</a></td>
+                    <td>@_peer_upload_@</td>
+                    <td>@_peer_download_@</td>
+                    <td>@_peer_percent_@%</td>
+                </tr>
+                @@END_TABLE@@
+            </table>
+            @@END_IF@@
         </div>
         <div>
             <h2>Files</h2>

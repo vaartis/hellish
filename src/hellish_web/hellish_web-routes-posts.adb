@@ -322,35 +322,37 @@ package body Posts is
 
       Database.Create_Post(Post);
 
-      declare
-         package Post_Subs is new Database.Subscriptions
-           (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
-         package Torrent_Subs is new Database.Subscriptions
-           (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
-      begin
-         if Parent /= -1 then
-            if not Post_Subs.Explicitly_Unsubscribed(The_User, Detached_Post(Parent_Post)) then
-               Post_Subs.Subscribe(The_User, Detached_Post(Parent_Post));
+      if Update = -1 then
+         declare
+            package Post_Subs is new Database.Subscriptions
+              (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
+            package Torrent_Subs is new Database.Subscriptions
+              (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
+         begin
+            if Parent /= -1 then
+               if not Post_Subs.Explicitly_Unsubscribed(The_User, Detached_Post(Parent_Post)) then
+                  Post_Subs.Subscribe(The_User, Detached_Post(Parent_Post));
+               end if;
+            elsif Parent_Torrent /= -1 then
+               if not Torrent_Subs.Explicitly_Unsubscribed(The_User, Detached_Torrent(The_Parent_Torrent)) then
+                  Torrent_Subs.Subscribe(The_User, Detached_Torrent(The_Parent_Torrent));
+               end if;
+            else
+               Post_Subs.Subscribe(The_User, Detached_Post(Post));
             end if;
-         elsif Parent_Torrent /= -1 then
-            if not Torrent_Subs.Explicitly_Unsubscribed(The_User, Detached_Torrent(The_Parent_Torrent)) then
-               Torrent_Subs.Subscribe(The_User, Detached_Torrent(The_Parent_Torrent));
-            end if;
-         else
-            Post_Subs.Subscribe(The_User, Detached_Post(Post));
-         end if;
 
-         if Parent /= -1 then
-            Post_Subs.Notify(The_User,
-                             Detached_Post(Parent_Post),
-                             "There's [a new reply to the post """ & Parent_Post.Title & """](/post/" & Trim(Post.Id'Image, Ada.Strings.Left) & ")");
-         elsif Parent_Torrent /= -1 then
-            Torrent_Subs.Notify(The_User,
-                                Detached_Torrent(The_Parent_Torrent),
-                                "There's [a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """](/post" &
-                                  Trim(Post.Id'Image, Ada.Strings.Left) & ")");
-         end if;
-      end;
+            if Parent /= -1 then
+               Post_Subs.Notify(The_User,
+                                Detached_Post(Parent_Post),
+                                "There's [a new reply to the post """ & Parent_Post.Title & """](/post/" & Trim(Post.Id'Image, Ada.Strings.Left) & ")");
+            elsif Parent_Torrent /= -1 then
+               Torrent_Subs.Notify(The_User,
+                                   Detached_Torrent(The_Parent_Torrent),
+                                   "There's [a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """](/post" &
+                                     Trim(Post.Id'Image, Ada.Strings.Left) & ")");
+            end if;
+         end;
+      end if;
 
       return Response.Url("/post/" & Trim(Post.Id'Image, Ada.Strings.Left));
    end Dispatch;

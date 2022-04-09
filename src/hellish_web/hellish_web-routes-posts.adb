@@ -348,7 +348,7 @@ package body Posts is
             elsif Parent_Torrent /= -1 then
                Torrent_Subs.Notify(The_User,
                                    Detached_Torrent(The_Parent_Torrent),
-                                   "There's [a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """](/post" &
+                                   "There's [a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """](/post/" &
                                      Trim(Post.Id'Image, Ada.Strings.Left) & ")");
             end if;
          end;

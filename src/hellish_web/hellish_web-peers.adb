@@ -6,6 +6,9 @@ with System; use System;
 
 with Gnatcoll.Json;
 
+with Aws.Url;
+use Aws;
+
 with Hellish_Web.Database;
 
 package body Hellish_Web.Peers is
@@ -248,7 +251,7 @@ package body Hellish_Web.Peers is
                Peer_Json.Set_Field("downloaded", Create(Peer.Downloaded));
                Peer_Json.Set_Field("left", Create(Peer.Left));
 
-               Peers_Json.Set_Field(To_String(Peer.Peer_Id), Peer_Json);
+               Peers_Json.Set_Field(Url.Encode(To_String(Peer.Peer_Id)), Peer_Json);
             end;
          end loop;
 
@@ -272,7 +275,7 @@ package body Hellish_Web.Peers is
                begin
                   if The_Torrent /= Detached_Torrent'Class(No_Detached_Torrent) then
                      Add(The_Torrent.Info_Hash,
-                         (Peer_Id => To_Unbounded_String(Name),
+                         (Peer_Id => To_Unbounded_String(Url.Decode(Name)),
                           Ip => Get(Value, "ip"),
                           Port => Get(Value, "port"),
                           Uploaded => Get(Value, "uploaded").Get,

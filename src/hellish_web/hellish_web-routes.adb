@@ -53,6 +53,11 @@ package body Hellish_Web.Routes is
      or Md_Flag_Permissive_Url_Autolinks
      or Md_Flag_Strikethrough;
 
+   package Post_Subscriptions is new Database.Subscriptions
+     (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
+   package Torrent_Subscriptions is new Database.Subscriptions
+     (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
+
    function To_Hex_string(Input : String) return String is
       Result : Unbounded_String;
    begin
@@ -698,12 +703,7 @@ package body Hellish_Web.Routes is
             end if;
          end;
 
-         declare
-            package Torrent_Subs is new Database.Subscriptions
-              (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
-         begin
-            Insert(Translations, Assoc("is_subscribed", Torrent_Subs.Subscribed(The_User, Detached_Torrent(The_Torrent))));
-         end;
+         Insert(Translations, Assoc("is_subscribed", Torrent_Subscriptions.Subscribed(The_User, Detached_Torrent(The_Torrent))));
 
          declare
             use type Peers.Torrent_Maps.Map;
@@ -1098,11 +1098,6 @@ package body Hellish_Web.Routes is
       Is_Unsub : Boolean := Params.Get("unsubscribe") /= "";
       Parent_Type : String := Params.Get("type");
       Parent_Id : Natural := Natural'Value(Params.Get("id"));
-
-      package Post_Subs is new Database.Subscriptions
-        (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
-      package Torrent_Subs is new Database.Subscriptions
-        (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
    begin
       if not Database.User_Exists(Username) then
          return Response.Acknowledge(Messages.S403, "Forbidden");
@@ -1111,15 +1106,15 @@ package body Hellish_Web.Routes is
       The_User := Database.Get_User(Username);
       if Parent_Type = "post" then
          if Is_Unsub then
-            Post_Subs.Unsubscribe(The_User, Detached_Post(Database.Get_Post(Parent_Id)));
+            Post_Subscriptions.Unsubscribe(The_User, Detached_Post(Database.Get_Post(Parent_Id)));
          else
-            Post_Subs.Subscribe(The_User, Detached_Post(Database.Get_Post(Parent_Id)));
+            Post_Subscriptions.Subscribe(The_User, Detached_Post(Database.Get_Post(Parent_Id)));
          end if;
       elsif Parent_Type = "torrent" then
          if Is_unsub then
-            Torrent_Subs.Unsubscribe(The_User, Detached_Torrent(Database.Get_Torrent(Parent_Id)));
+            Torrent_Subscriptions.Unsubscribe(The_User, Detached_Torrent(Database.Get_Torrent(Parent_Id)));
          else
-            Torrent_Subs.Subscribe(The_User, Detached_Torrent(Database.Get_Torrent(Parent_Id)));
+            Torrent_Subscriptions.Subscribe(The_User, Detached_Torrent(Database.Get_Torrent(Parent_Id)));
          end if;
       end if;
 

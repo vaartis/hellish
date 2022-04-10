@@ -27,6 +27,10 @@
          float: right;
      }
 
+     .utc-date {
+         margin-left: 1em;
+     }
+
      @@INCLUDE@@ replies.css 10%
     </style>
     <title>@_title_@ :: Hellish</title>
@@ -40,6 +44,9 @@
                 <h1 class="title">@_title_@</h1>
                 <div class="subtitle">
                     <a href="/profile/@_author_@">@_author_@</a>
+                    @@IF@@ not @_IS_EMPTY:created_at_@
+                    <small class="utc-date">@_created_at_@</small>
+                    @@END_IF@@
 
                     <div class="post-actions">
                         [
@@ -64,4 +71,8 @@
         @@-- parent is the parameter for new post creation
         @@INCLUDE@@ replies.html parent reply replies
     </div>
+
+    <script>
+     @@INCLUDE@@ utc_date.js
+    </script>
 </body>

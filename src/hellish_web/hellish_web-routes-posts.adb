@@ -82,6 +82,12 @@ package body Posts is
             Post_Content : String := Markdown.To_Html(Post.Content, Default_Md_Flags);
 
             The_User : Detached_User'Class := Database.Get_User(Username);
+
+            use Gnatcoll.Json;
+            Post_Meta : Json_Value := Read(Post.Meta);
+            Created_At : String := (if Post_Meta.Has_Field("created_at")
+                                   then Post_Meta.Get("created_at")
+                                   else "");
          begin
             Insert(Translations, Assoc("id", Post.Id));
             Insert(Translations, Assoc("title", Html_Title));
@@ -89,6 +95,8 @@ package body Posts is
             Insert(Translations, Assoc("author", Author.Username));
             Insert(Translations, Assoc("is_author", Author.Id = The_User.Id or The_User.Role = 1));
             Insert(Translations, Assoc("is_subscribed", Post_Subscriptions.Subscribed(The_User, Detached_Post(Post))));
+
+            Insert(Translations, Assoc("created_at", Created_At));
 
             Replies_Translations(Post.Id, The_User, Translations, Database.Post_Replies'Access, Request);
 
@@ -292,6 +300,17 @@ package body Posts is
             return Response.Acknowledge(Messages.S403, "Forbidden");
          end if;
          Post := Updated_Post;
+      else
+         declare
+            use Gnatcoll.Json;
+            use Ada.Calendar, Ada.Calendar.Formatting;
+
+            Post_Meta : Json_Value := Read(Post.Meta);
+         begin
+            -- Set date to right now
+            Post_Meta.Set_Field("created_at", Image(Clock));
+            Post.Set_Meta(Write(Post_Meta));
+         end;
       end if;
 
       Post.Set_By_User(The_User.Id);

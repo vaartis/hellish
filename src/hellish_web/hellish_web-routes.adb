@@ -5,9 +5,14 @@ with Ada.Float_Text_Io; use Ada.Float_Text_Io;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Containers.Indefinite_Holders;
-with Ada.Calendar; use Ada.Calendar;
 with Ada.Directories;
 with Ada.Containers.Indefinite_Ordered_Maps;
+with
+  Ada.Calendar,
+  Ada.Calendar.Formatting;
+use
+  Ada.Calendar,
+  Ada.Calendar.Formatting;
 
 with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.SHA1;
@@ -175,7 +180,8 @@ package body Hellish_Web.Routes is
       Reply : Orm.Post;
       Reply_Author : Detached_User'Class := No_Detached_User;
       Reply_Ids, Replies_Authors, Replies_Content,
-        Replies_Is_Author, Replies_Profile_Picture : Vector_Tag;
+        Replies_Is_Author, Replies_Profile_Picture,
+        Replies_Created_At : Vector_Tag;
       Pages, Page_Addresses : Vector_Tag;
    begin
       while Replies.Has_row loop
@@ -194,8 +200,15 @@ package body Hellish_Web.Routes is
             Profile_Picture : String := (if Profile_Json.Has_Field("profile_picture")
                                          then Profile_Json.Get("profile_picture")
                                          else "");
+
+            Post_Meta : Json_Value := Read(Reply.Meta);
+            Created_At : String := (if Post_Meta.Has_Field("created_at")
+                                   then Post_Meta.Get("created_at")
+                                   else "");
          begin
-            Replies_Profile_Picture := Replies_Profile_Picture & Templates_Parser.Utils.Web_Escape(Profile_Picture);
+            Replies_Profile_Picture := @ & Templates_Parser.Utils.Web_Escape(Profile_Picture);
+
+            Replies_Created_At := @ & Created_At;
          end;
 
          Replies.Next;
@@ -206,7 +219,7 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("reply_content", Replies_Content));
       Insert(Translations, Assoc("reply_is_author", Replies_Is_Author));
       Insert(Translations, Assoc("reply_profile_picture", Replies_Profile_Picture));
-
+      Insert(Translations, Assoc("reply_created_at", Replies_Created_At));
 
       if Page_Count > 1 then
          for P in 1..Page_Count loop
@@ -739,6 +752,18 @@ package body Hellish_Web.Routes is
          end if;
 
          Insert(Translations, Assoc("urlencoded_name", Url.Encode(The_Torrent.Display_Name)));
+
+         declare
+            use Gnatcoll.Json;
+            use Ada.Calendar, Ada.Calendar.Formatting;
+
+            Torrent_Meta : Json_Value := Read(The_Torrent.Meta);
+            Created_At : String := (if Torrent_Meta.Has_Field("created_at")
+                                    then Torrent_Meta.Get("created_at")
+                                    else "");
+         begin
+            Insert(Translations, Assoc("created_at", Created_At));
+         end;
 
          Replies_Translations(The_Torrent.Id, The_User, Translations, Database.Torrent_Comments'Access, Request);
          Userinfo_Translations(The_User, Translations);

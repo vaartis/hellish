@@ -95,6 +95,16 @@ begin
          Put(Created_File, To_String(Decoded.Encoded));
          Close(Created_File);
 
+         declare
+            use Gnatcoll.Json;
+            use Ada.Calendar, Ada.Calendar.Formatting;
+
+            Torrent_Meta : Json_Value := Read(The_Torrent.Meta);
+         begin
+            -- Set date to right now
+            Torrent_Meta.Set_Field("created_at", Image(Clock));
+            The_Torrent.Set_Meta(Write(Torrent_Meta));
+         end;
 
          -- Only really need to save the hash, since it's the filename. Things like actual file name and such
          -- are encoded in the torrent file itself.

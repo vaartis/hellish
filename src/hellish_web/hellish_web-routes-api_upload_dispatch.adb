@@ -2,7 +2,6 @@ separate (Hellish_Web.Routes)
 function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
                              Request : in Status.Data) return Response.Data is
    use Ada.Directories;
-   use Orm;
 
    Params : constant Parameters.List := Status.Parameters(Request);
 

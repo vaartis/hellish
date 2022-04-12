@@ -378,14 +378,13 @@ package body Hellish_Web.Database is
       Params : Sql_Parameters := (1 => +Query, 2 => +Uploader, 3 => +Category, 4 => +Snatched_By);
 
       The_Query_Managers : Torrents_Managers := All_Torrents;
-      Result_List : Direct_Torrent_List;
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);
 
-      Result_List.Fetch(Session.Db, Search_Query, Params);
-
-      return Result_List;
+      return Result_List : Direct_Torrent_List do
+         Result_List.Fetch(Session.Db, Search_Query, Params);
+      end return;
    end Search_Torrents;
 
    procedure Delete_Torrent(Id : Natural) is
@@ -514,11 +513,10 @@ package body Hellish_Web.Database is
 
    function Get_Post(Id : Natural; Parent_Post : out Detached_Post'Class) return Detached_Post'Class is
       Session : Session_Type := Get_New_Session;
-
-      Result : Detached_Post'Class := Orm.Get_Post(Session, Id);
    begin
-      Parent_Post := Result.Parent_Post;
-      return Result;
+      return Result : Detached_Post'Class := Orm.Get_Post(Session, Id) do
+         Parent_Post := Result.Parent_Post;
+      end return;
    end Get_Post;
 
    function Post_Replies(Parent_Post : Integer;
@@ -551,18 +549,17 @@ package body Hellish_Web.Database is
 
       Session : Session_Type := Get_New_Session;
 
-      Result : Detached_Post'Class := No_Detached_Post;
       News_List : Post_List := All_Posts
         .Filter(Flag => 1)
         .Limit(1)
         .Order_By(Desc(Posts.Id))
         .Get(Session);
    begin
-      if News_List.Has_Row then
-         Result := News_List.Element.Detach;
-      end if;
-
-      return Result;
+      return Result : Detached_Post'Class := No_Detached_Post do
+         if News_List.Has_Row then
+            Result := News_List.Element.Detach;
+         end if;
+      end return;
    end Get_Latest_News;
 
    function Search_Posts(Query : String;
@@ -691,9 +688,11 @@ package body Hellish_Web.Database is
 
          Session : Session_Type := Get_New_Session;
       begin
-         for Subscriber of Subscriptions loop
-            if Get(Subscriber) = User_Id then return; end if;
-         end loop;
+         -- If already subscribed, don't do it again
+         if (for some Subscriber of Subscriptions => Get(Subscriber) = User_Id) then
+            return;
+         end if;
+
          for Subscriber of Unsubscribed loop
             -- Copy everything except the original ID, because this stupid API has no way
             -- of deleting elements from arrays
@@ -743,9 +742,10 @@ package body Hellish_Web.Database is
 
          Session : Session_Type := Get_New_Session;
       begin
-         for Subscriber of Unsubscribed loop
-            if Get(Subscriber) = User_Id then return; end if;
-         end loop;
+         -- If already unsubscribed, don't do it again
+         if (for some Subscriber of Unsubscribed => Get(Subscriber) = User_Id) then
+            return;
+         end if;
 
          for Subscriber of Subscriptions loop
             -- Copy everything except the original ID, because this stupid API has no way
@@ -774,11 +774,7 @@ package body Hellish_Web.Database is
                                        else Empty_Array);
          User_Id : Natural := User.Id;
       begin
-         for Subscriber of Unsubscribed loop
-            if Get(Subscriber) = User_Id then return True; end if;
-         end loop;
-
-         return False;
+         return (for some Subscriber of Unsubscribed => Get(Subscriber) = User_Id);
       end Explicitly_Unsubscribed;
 
       procedure Notify(Creator : Detached_User'Class; From : T; Text : String) is

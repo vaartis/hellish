@@ -10,9 +10,6 @@ with Ada.Containers.Indefinite_Ordered_Maps;
 with
   Ada.Calendar,
   Ada.Calendar.Formatting;
-use
-  Ada.Calendar,
-  Ada.Calendar.Formatting;
 
 with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.SHA1;
@@ -25,8 +22,6 @@ with
   Aws.Cookie,
   Aws.Session,
   Aws.Server.Log,
-  Aws.Config,
-  Aws.Services.Dispatchers.Uri,
   AWS.Mime,
   Aws.Parameters,
   Aws.Messages,
@@ -311,6 +306,8 @@ package body Hellish_Web.Routes is
       end;
 
       declare
+         use Ada.Calendar;
+
          Info_Hash : String := Params.Get("info_hash");
          Info_Hash_Hex : String := To_Hex_String(info_hash);
          Ip : Unbounded_String := To_Unbounded_String(if Params.Exist("ip")
@@ -775,9 +772,6 @@ package body Hellish_Web.Routes is
 
    overriding function Dispatch(Handler : in Invite_Handler;
                                 Request : in Status.Data) return Response.Data is
-      use Gnatcoll.Json;
-      Result : Json_Value := Create_Object;
-
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
    begin
@@ -1103,14 +1097,13 @@ package body Hellish_Web.Routes is
    overriding function Dispatch(Handler : in Api_User_Logout_Handler;
                                 Request : in Status.Data) return Response.Data is
       Session_Id : Session.Id := Request_Session(Request);
-      Result : Response.Data := Response.Url("/login");
    begin
       Session.Delete(Session_Id);
       Session.Save(Session_File_Name);
 
-      Response.Set.Add_Header(Result, "Set-Cookie", AWS.Server.Session_Name & "=; Path=/");
-
-      return Result;
+      return Result : Response.Data := Response.Url("/login") do
+         Response.Set.Add_Header(Result, "Set-Cookie", AWS.Server.Session_Name & "=; Path=/");
+      end return;
    end Dispatch;
 
    overriding function Dispatch(Handler : in Api_Subscribe_Handler;

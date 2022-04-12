@@ -1,5 +1,3 @@
-with Ada.Text_Io; use Ada.Text_Io;
-
 package body Markdown is
    procedure Html_Processor(Input : Chars_Ptr; Size : Unsigned; Userdata : in out Data) is
       Str : String := Value(Input);

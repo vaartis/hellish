@@ -77,6 +77,7 @@ private
    type Search_Handler is new Dispatchers.Handler with null record;
    type Confirm_Handler is new Dispatchers.Handler with null record;
    type Profile_Handler is new Dispatchers.Handler with null record;
+   type Admin_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -90,6 +91,7 @@ private
    overriding function Dispatch(Handler : in Search_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Confirm_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Profile_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Admin_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -103,6 +105,7 @@ private
    overriding function Clone(Element : in Search_Handler) return Search_Handler is (Element);
    overriding function Clone(Element : in Confirm_Handler) return Confirm_Handler is (Element);
    overriding function Clone(Element : in Profile_Handler) return Profile_Handler is (Element);
+   overriding function Clone(Element : in Admin_Handler) return Admin_Handler is (Element);
 
 
    Index : Index_Handler;
@@ -117,6 +120,7 @@ private
    Search : Search_Handler;
    Confirm : Confirm_Handler;
    Profile : Profile_Handler;
+   Admin : Admin_Handler;
 
    -- API
 

@@ -256,6 +256,7 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("userinfo_has_notifications", Count > 0));
          Insert(Translations, Assoc("userinfo_notifications", Count));
       end;
+      Insert(Translations, Assoc("userinfo_is_admin", The_User.Role = 1));
    end Userinfo_Translations;
 
    function Uri_Group_Match(Request : in Status.Data;
@@ -952,6 +953,46 @@ package body Hellish_Web.Routes is
                                String'(Templates_Parser.Parse("assets/profile.html", Translations)));
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Admin_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+
+      The_User : Detached_User'Class := No_Detached_User;
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      The_User := Database.Get_User(Username);
+      if The_User.Role /= 1 then
+         return Response.Url(Location => "/");
+      end if;
+
+      declare
+         Invited_List : Invite_List := Database.Admin_Recently_Invited(10);
+
+         Invited_Usernames, Inviter_Usernames : Vector_Tag;
+      begin
+         while Invited_List.Has_Row loop
+            Invited_Usernames := @ & Invited_List.Element.For_User.Username;
+            Inviter_Usernames := @ & Invited_List.Element.By_User.Username;
+
+            Invited_List.Next;
+         end loop;
+         Insert(Translations, Assoc("invited_username", Invited_Usernames));
+         Insert(Translations, Assoc("inviter_username", Inviter_Usernames));
+      end;
+
+      Userinfo_Translations(The_User, Translations);
+
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/admin.html", Translations)));
+   end Dispatch;
+
    -- API
 
    function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
@@ -1237,6 +1278,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/confirm", Confirm);
       Services.Dispatchers.Uri.Register(Root, "/images", Images.Images);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/profile/((\w|\d)+)", Profile);
+      Services.Dispatchers.Uri.Register(Root, "/admin", Admin);
 
       -- API
 

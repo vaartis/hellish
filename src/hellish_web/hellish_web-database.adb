@@ -672,6 +672,18 @@ package body Hellish_Web.Database is
       return Get_Image_Upload(Session, Id);
    end Get_Image;
 
+   function Admin_Recently_Invited(Limit : Natural) return Invite_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+   begin
+      return All_Invites.Filter(Activated => True)
+          .Limit(Limit)
+          .Select_Related(Depth => 1)
+          .Order_By(Desc(Hellish_Database.Invites.Id))
+          .Get(Session);
+   end;
+
    package body Subscriptions is
       procedure Subscribe(User : Detached_User'Class; To : T) is
          use Gnatcoll.Json;

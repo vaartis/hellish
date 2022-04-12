@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .container {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%);
+
+         margin-top: 5em;
+
+         width: 60%;
+     }
+
+     .inviter-table {
+         background: var(--panel-color);
+         border: hidden;
+         border-radius: 10px;
+
+         white-space: pre-line;
+     }
+
+     .inviter-table th, .inviter-table td {
+         padding-left: 0.5em;
+         padding-right: 0.5em;
+     }
+
+     .inviter-table td {
+         padding-bottom: 0.5em;
+     }
+    </style>
+    <title>Admin :: Hellish</title>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <main class="container">
+        <h2>Recently invited</h2>
+        <table class="inviter-table">
+            <tr>
+                <th>Inviter</th>
+                <th>Invited</th>
+            </tr>
+            @@TABLE@@
+            <tr>
+                <td><a href="/profile/@_inviter_username_@">@_inviter_username_@</a></td>
+                <td><a href="/profile/@_invited_username_@">@_invited_username_@</a></td>
+            </tr>
+            @@END_TABLE@@
+        </table>
+    </main>
+</body>
+</html>

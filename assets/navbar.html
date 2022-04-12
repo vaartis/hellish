@@ -23,6 +23,10 @@
     </div>
     <hr>
     <nav>
+        @@IF@@ @_userinfo_is_admin_@
+        <a class="user-info-button" href="/admin">Admin</a>
+        <hr>
+        @@END_IF@@
         <a class="user-info-button" href="/upload">Upload</a>
         <a class="user-info-button" href="/post/create">New post</a>
         <a class="user-info-button" href="/images">Images</a>

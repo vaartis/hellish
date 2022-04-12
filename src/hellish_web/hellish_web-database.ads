@@ -72,6 +72,7 @@ package Hellish_Web.Database is
    function User_Images(Username : String) return Image_Upload_List;
    function Get_Image(Id : Natural) return Detached_Image_Upload'Class;
 
+   function Admin_Recently_Invited(Limit : Natural) return Invite_List;
 
    generic
       type T (<>) is new Detached_Element with private;

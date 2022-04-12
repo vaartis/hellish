@@ -1,5 +1,4 @@
-with Ada.Integer_Text_Io;
-use Ada.Integer_Text_Io;
+with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 
 package body Hellish_Web.Bencoder is
    function Encode(Value : Long_Long_Integer) return Holder is
@@ -67,7 +66,7 @@ package body Hellish_Web.Bencoder is
       The_Map.Encoded := Encode_Map(The_Map.Value);
    end;
 
-   function With_Failure_Reason(reason : String) return Holder is
+   function With_Failure_Reason(Reason : String) return Holder is
       Result : Bencode_Maps.Map;
    begin
       Include(Result, To_Unbounded_String("failure reason"), Encode(Reason));
@@ -106,7 +105,6 @@ package body Hellish_Web.Bencoder is
                   raise Decode_Error with "Unknown character determining value type: " & Char & File_At(File);
             end case;
       end;
-
    end Decode;
 
    function Decode_String(File : File_Type) return Bencode_Value_Holders.Holder is
@@ -198,7 +196,7 @@ package body Hellish_Web.Bencoder is
       end if;
 
       return Encode(Result);
-   end Decode_list;
+   end Decode_List;
 
    function Decode_Dict(File : File_Type) return Bencode_Value_Holders.Holder is
       Char : Character;

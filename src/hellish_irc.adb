@@ -6,9 +6,13 @@ with Ada.Streams; use Ada.Streams;
 with Ada.Strings;
 
 with Gnat.String_Split; use Gnat.String_Split;
+with GNAT.Regpat; use GNAT.Regpat;
 with Gnat.Traceback.Symbolic;
+with Gnatcoll.Json;
 
 with Hellish_Web.Routes;
+with Hellish_Web.Database;
+use Hellish_Web;
 
 package body Hellish_Irc is
    protected body Protected_Clients is
@@ -165,9 +169,7 @@ package body Hellish_Irc is
                         Client.Caps_Negotiated := True;
                      end if;
                   elsif Message_Parts(0) = "PING" then
-                     if Message_Parts(1) = Irc_Host.Element then
-                        Send(Client, "PONG " & Irc_Host.Element & " :" & Irc_Host.Element);
-                     end if;
+                     Send(Client, "PONG " & Message_Parts(1));
                   elsif Message_Parts(0) = "QUIT" then
                      To_Remove.Include(Client.Id);
 
@@ -242,6 +244,55 @@ package body Hellish_Irc is
                            end if;
                         end loop;
                      end;
+                  elsif Message_Parts(0) = "MODE" then
+                     if Channels.Contains(Message_Parts(1)) then
+                        if Length(Message_Parts) >= 3 then
+                           if Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1 then
+                              Send(Client, Err_Chan_Op_Privs_Needed
+                                     & " " & Client.Nick.Element & " " & Message_Parts(1) & " :Only admins can channel set modes");
+                              goto After;
+                           end if;
+
+                           declare
+                              Mode_String : String := Message_Parts(2);
+                              I : Natural := Mode_String'First;
+
+                              Mode_Action : Character := ' ';
+                              Mode_Key : Character := ' ';
+                           begin
+                              while I <= Mode_String'Last loop
+                                 if Mode_String(I) = '+' or Mode_String(I) = '-' then
+                                    Mode_Action := Mode_String(I);
+                                    I := @ + 1;
+                                 end if;
+
+                                 if I <= Mode_String'Last then
+                                    Mode_Key := Mode_String(I);
+                                    I := @ + 1;
+
+                                    if Mode_Action = '+' then
+                                       Channels(Message_Parts(1)).Modes.Include((1 => Mode_Key));
+                                    elsif Mode_Action = '-' then
+                                       Channels(Message_Parts(1)).Modes.Exclude((1 => Mode_Key));
+                                    end if;
+                                 end if;
+                              end loop;
+                           end;
+                        end if;
+
+                        declare
+                           Mode_Str : Unbounded_String;
+                        begin
+                           for Mode of Channels(Message_Parts(1)).Modes loop
+                              Mode_Str := @ & "+" & Mode;
+                           end loop;
+
+                           for User_Id of Channels(Message_Parts(1)).Users loop
+                              Send(Client, Rpl_Channel_Mode_Is & " " & Clients(User_Id).Nick.Element & " "
+                                     & Channels(Message_Parts(1)).Name.Element & " " & To_String(Mode_Str));
+                           end loop;
+                        end;
+                     end if;
                   elsif Message_Parts(0) = "PRIVMSG" then
                      if Channels.Contains(Message_Parts(1)) then
                         declare
@@ -253,6 +304,8 @@ package body Hellish_Irc is
                               end if;
                            end loop;
                         end;
+                     elsif Message_Parts(1) = "hellish" then
+                        Special_Message(Client, Message_Parts(2));
                      elsif Users.Contains(Message_Parts(1)) then
                         Send(Clients(Users(Message_Parts(1))), Join_Parts(Message_Parts), From => Client.Nick.Element);
                      end if;
@@ -321,6 +374,14 @@ package body Hellish_Irc is
       procedure Join_Channel(The_Client : Client; Channel_Name : String) is
       begin
          if Channels.Contains(Channel_Name) then
+            if Channels(Channel_Name).Modes.Contains("i") then
+               if The_Client.Tracker_User = No_Detached_User then
+                  Send(The_Client, Err_Invite_Only_Chan & " " & The_Client.Nick.Element & " " &
+                         Channel_Name & " :You need to be logged in to join this channel");
+                  return;
+               end if;
+            end if;
+
             for User of Channels(Channel_Name).Users loop
                Send(Clients(User), "JOIN " & Channel_Name, From => The_Client.Nick.Element);
             end loop;
@@ -376,6 +437,49 @@ package body Hellish_Irc is
 
          Send(The_Client, Rpl_End_Of_Names & " " & The_Client.Nick.Element & " " & Channel.Name.Element & " :End of NAMES list");
       end Send_Names;
+
+
+      procedure Special_Message(The_Client : in out Client; Message : String) is
+         Login_Matcher : constant Pattern_Matcher := Compile(":login (.+)");
+
+         Matches : Match_Array (0..1);
+      begin
+         Match(Login_Matcher, Message, Matches);
+         if Matches(1) /= No_Match then
+            declare
+               Key : String := Message(Matches(1).First..Matches(1).Last);
+               The_User : Detached_User'Class := Database.Get_User(The_Client.Nick.Element);
+            begin
+               if The_User = Detached_User'Class(No_Detached_User) then
+                  Send(The_Client, "PRIVMSG " & The_Client.Nick.Element &
+                         " :Nickname " & The_Client.Nick.Element & " not registered on the tracker", From => "hellish");
+                  return;
+               end if;
+
+               declare
+                  use Gnatcoll.Json;
+
+                  Profile_Json : Json_Value := Read(The_User.Profile);
+                  Irc_Key : String := (if Has_Field(Profile_Json, "irc_key")
+                                       then Get(Profile_Json, "irc_key")
+                                       else "");
+               begin
+                  if Irc_Key = "" then
+                     Send(The_Client, "PRIVMSG " & The_Client.Nick.Element &
+                            " :IRC key for the user is unset", From => "hellish");
+                     return;
+                  end if;
+
+                  if Irc_Key = Key then
+                     Send(The_Client, "PRIVMSG " & The_Client.Nick.Element & " :Logged in!", From => "hellish");
+                     The_Client.Tracker_User := Detached_User(The_User);
+                  else
+                     Send(The_Client, "PRIVMSG " & The_Client.Nick.Element & " :Invalid login key", From => "hellish");
+                  end if;
+               end;
+            end;
+         end if;
+      end;
    end Protected_Clients;
 
    function Join_Parts(Parts : String_Vectors.Vector) return String is

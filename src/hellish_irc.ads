@@ -1,5 +1,6 @@
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Strings.Hash;
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Containers.Indefinite_Hashed_Sets;
@@ -8,6 +9,8 @@ with Ada.Containers.Indefinite_Holders;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers; use Ada.Containers;
 with Ada.Characters.Latin_1; use Ada.Characters;
+
+with Orm; use Orm;
 
 with Gnat.Sockets; use Gnat.Sockets;
 
@@ -36,6 +39,7 @@ private
    -- The message queue of the client
    package Message_Vectors is new Ada.Containers.Vectors(Index_Type => Natural, Element_Type => String_Vectors.Vector, 
                                                          "=" => String_Vectors."=");
+   use String_Vectors, Message_Vectors;
    
    function Join_Parts(Parts : String_Vectors.Vector) return String;
    
@@ -46,7 +50,10 @@ private
    use User_Hashed_Sets;
    -- Username to ID
    package User_Maps is new Ada.Containers.Indefinite_Ordered_Maps(Key_Type => String, Element_Type => Natural);
-   use User_Maps;  
+   use User_Maps;
+   
+   package String_Sets is new Ada.Containers.Indefinite_Hashed_Sets(Element_Type => String,
+                                                                    Hash => Ada.Strings.Hash, Equivalent_Elements => "=");   
    
    type Client is record
       Socket : Socket_Type;
@@ -58,6 +65,7 @@ private
       
       Nick : String_Holders.Holder;
       Username : String_Holders.Holder;
+      Tracker_User : Detached_User;
       
       Caps_Negotiated : Boolean := True;
       Motd_Sent : Boolean := False;
@@ -66,6 +74,8 @@ private
    type Channel is record
       Name : String_Holders.Holder;
       Topic : String_Holders.Holder;
+      
+      Modes : String_Sets.Set;
       
       Users : User_Hashed_Sets.Set;
    end record;   
@@ -100,7 +110,9 @@ private
    
       procedure Send_Topic(The_Client : Client; Channel_Name : String);
       procedure Send_Names(The_Client : Client; Channel_Name : String);
-      procedure Join_Channel(The_Client : Client; Channel_Name : String);      
+      procedure Join_Channel(The_Client : Client; Channel_Name : String);
+      
+      procedure Special_Message(The_Client : in out Client; Message : String);
       
       Next_Id : Natural := 0;
 
@@ -123,8 +135,12 @@ private
    Rpl_Topic : String := "332";
    Rpl_Name_Reply : String := "353";
    Rpl_End_Of_Names : String := "366";
+   Rpl_Channel_Mode_Is : String := "324";
    
    Err_No_Such_Nick : String := "401";
    Err_Nickname_In_Use : String := "433";
-   Err_No_Such_Channel : String := "403";  
+   Err_No_Such_Channel : String := "403";
+   Err_Chan_Op_Privs_Needed : String := "482";
+   
+   Err_Invite_Only_Chan : String := "473";
 end Hellish_Irc;

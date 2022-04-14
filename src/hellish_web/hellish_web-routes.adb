@@ -41,6 +41,8 @@ use Templates_Parser;
 
 with Gnatcoll.Json;
 
+with Sodium.Functions;
+
 with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
 with Hellish_Web.Database;
@@ -864,15 +866,18 @@ package body Hellish_Web.Routes is
 
       if Status.Method(Request) = Status.Post then
          declare
+            use Sodium.Functions;
+            use Gnatcoll.Json;
+
             Current_User : Detached_User'Class := Database.Get_User(Username);
             Profile_User : Detached_User'Class := Database.Get_User(Uri_Group_Match(Request, Profile_Matcher, 1));
-
-            use Gnatcoll.Json;
 
             Params : constant Parameters.List := Status.Parameters(Request);
 
             The_User : Detached_User'Class := Database.Get_User(Username);
             Profile_Json : Json_Value := Read(The_User.Profile);
+
+            Generate_Irc_Key : String := Params.Get("generate-irc-key");
          begin
             if Current_User /= Profile_User then
                return Response.Acknowledge(Messages.S403, "Forbidden");
@@ -880,6 +885,9 @@ package body Hellish_Web.Routes is
 
             Profile_Json.Set_Field("profile_picture", Params.Get("profile_picture"));
             Profile_Json.Set_Field("about", Params.Get("about"));
+            if Generate_Irc_Key /= "" then
+               Profile_Json.Set_Field("irc_key", As_Hexidecimal(Random_Hash_Key(16)));
+            end if;
 
             The_User.Set_Profile(Profile_Json.Write);
             Database.Update_User(The_User);
@@ -944,6 +952,10 @@ package body Hellish_Web.Routes is
                Html_Notifications := @ & Markdown.To_Html(Get(Notification), Default_Md_Flags);
             end loop;
             Insert(Translations, Assoc("notification", Html_Notifications));
+
+            if Has_Field(Profile_Json, "irc_key") then
+               Insert(Translations, Assoc("irc_key", String'(Get(Profile_Json, "irc_key"))));
+            end if;
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
 

@@ -47,6 +47,14 @@
      .notification-box {
          margin-bottom: 1em;
      }
+
+     .key-command {
+         border: hidden;
+         border-radius: 10px;
+
+         padding: 5px;
+         background: var(--panel-color);
+     }
     </style>
     <title>@_username_@ :: Hellish</title>
 </head>
@@ -94,6 +102,7 @@
 
         @@IF@@ @_is_owner_@
         <hr>
+
         <form action="/profile/@_username_@" id="profile-form" method="POST">
             <table>
                 <tr>
@@ -110,6 +119,17 @@
                     <td>
                         <textarea form="profile-form" class="hellish-input-field profile-input" type="textbox"
                                   name="about" rows="15">@_profile_about_@</textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <td>IRC Key</td>
+                    <td>
+                        @@IF@@ @_EXIST:irc_key_@
+                        Use the following command to login
+                        <p class="key-command">/msg hellish login @_irc_key_@</p>
+                        @@END_IF@@
+                        <input id="generate-irc-key" name="generate-irc-key" class="hellish-input-field" type="checkbox">
+                        <label for="generate-irc-key">Regenerate IRC key</label>
                     </td>
                 </tr>
             </table>

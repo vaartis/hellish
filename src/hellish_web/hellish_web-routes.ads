@@ -12,6 +12,8 @@ package Hellish_Web.Routes is
    use Aws;
 
    procedure Run_Server;
+
+   function Host_Name return String;
 private
    package Posts is
       type Post_Handler is new Dispatchers.Handler with null record;
@@ -182,4 +184,6 @@ private
 
    Uploads_Path : constant String := "uploads/torrents/";
    Image_Uploads_Path : constant String := "uploads/images/";
+
+   function Host_Name return String is (if Server_Host /= "" then To_String(Server_Host) else Aws.Config.Server_Host(Conf));
 end Hellish_Web.Routes;

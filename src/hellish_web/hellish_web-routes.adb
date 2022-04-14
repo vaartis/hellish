@@ -44,6 +44,7 @@ with Gnatcoll.Json;
 with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
 with Hellish_Web.Database;
+with Hellish_Irc;
 
 with Orm; use Orm;
 
@@ -1299,6 +1300,8 @@ package body Hellish_Web.Routes is
 
       Server.Start(Hellish_Web.Routes.Http, Root, Conf);
       Server.Log.Start(Http, Put_Line'Access, "hellish");
+
+      Hellish_Irc.Start;
 
       Put_Line("Started on http://" & Aws.Config.Server_Host(Conf)
                  -- Trim the number string on the left because it has a space for some reason

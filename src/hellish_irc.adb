@@ -522,19 +522,20 @@ package body Hellish_Irc is
 
 
       procedure Special_Message(The_Client : in out Client; Message : String) is
-         Login_Matcher : constant Pattern_Matcher := Compile(":login (.+)");
+         Login_Matcher : constant Pattern_Matcher := Compile(":login (\S+) (.+)");
 
-         Matches : Match_Array (0..1);
+         Matches : Match_Array (0..2);
       begin
          Match(Login_Matcher, Message, Matches);
-         if Matches(1) /= No_Match then
+         if Matches(1) /= No_Match and Matches(2) /= No_Match then
             declare
-               Key : String := Message(Matches(1).First..Matches(1).Last);
-               The_User : Detached_User'Class := Database.Get_User(The_Client.Nick.Element);
+               Name : String := Message(Matches(1).First..Matches(1).Last);
+               Key : String := Message(Matches(2).First..Matches(2).Last);
+               The_User : Detached_User'Class := Database.Get_User(Name);
             begin
                if The_User = Detached_User'Class(No_Detached_User) then
                   Send(The_Client, "NOTICE " & The_Client.Nick.Element &
-                         " :Nickname " & The_Client.Nick.Element & " not registered on the tracker", From => "hellish");
+                         " :Nickname " & Name & " not registered on the tracker", From => "hellish");
                   return;
                end if;
 
@@ -548,15 +549,15 @@ package body Hellish_Irc is
                begin
                   if Irc_Key = "" then
                      Send(The_Client, "NOTICE " & The_Client.Nick.Element &
-                            " :IRC key for the user is unset", From => "hellish");
+                            " :IRC key for the user " & Name & " is unset", From => "hellish");
                      return;
                   end if;
 
                   if Irc_Key = Key then
-                     Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Logged in!", From => "hellish");
+                     Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Logged in as " & Name & "!", From => "hellish");
                      The_Client.Tracker_User := Detached_User(The_User);
                   else
-                     Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Invalid login key", From => "hellish");
+                     Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Invalid login key for " & Name, From => "hellish");
                   end if;
                end;
             end;

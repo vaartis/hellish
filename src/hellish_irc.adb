@@ -405,6 +405,12 @@ package body Hellish_Irc is
 
             Channels(Channel_Name).Users.Include(The_Client.Id);
          else
+            if The_Client.Tracker_User = No_Detached_User or else The_Client.Tracker_User.Role /= 1 then
+               Send(The_Client, Err_No_Such_Channel & " " & The_Client.Nick.Element & " " &
+                      Channel_Name & " :The channel does not exist, only admins can create new channels");
+               return;
+            end if;
+
             declare
                New_Channel : Channel;
             begin

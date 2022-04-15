@@ -103,7 +103,7 @@ package body Hellish_Irc is
                            Col_Index : Natural := Index(Message, ":");
                         begin
                            if Col_Index /= 0 and Col_Index /= Message'First then
-                              Maybe_Trailing := To_Unbounded_String(Message(Col_Index..Message'Length));
+                              Maybe_Trailing := To_Unbounded_String(Message(Col_Index..Message'Last));
                               Unbounded_Message := To_Unbounded_String(Message(Message'First..Col_Index - 2));
                            else
                               Unbounded_Message := To_Unbounded_String(Message);

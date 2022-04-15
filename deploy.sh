@@ -1,4 +1,4 @@
-alr build
+HELLISH_BUILD_MODE=debug alr build
 
 rm -rf _deploy
 mkdir _deploy _deploy/db/

@@ -221,9 +221,7 @@ package body Hellish_Irc is
                            To_Send : String := Join_Parts(Message_Parts);
                         begin
                            for Channel_User of Channels(Message_Parts(1)).Users loop
-                              if Channel_User /= Client.Id then
-                                 Send(Clients(Channel_User), To_Send, From => Client.Nick.Element);
-                              end if;
+                              Send(Clients(Channel_User), To_Send, From => Client.Nick.Element);
                            end loop;
                         end;
                      end if;

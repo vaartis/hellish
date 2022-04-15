@@ -73,10 +73,13 @@ package body Hellish_Irc is
                end loop;
 
                -- Don't process messages unless the last message is fully received
-               -- TODO: maximum size for this?
                if Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages) - 1) /= Latin_1.Cr
                  or Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages)) /= Latin_1.Lf then
-                  return;
+                  if Length(Client.Unfinished_Messages) > 10_000 or Length(Client.Message_Queue) > 100 then
+                     -- That's way too much
+                     To_Remove.Include(Client.Id);
+                     goto After;
+                  end if;
                end if;
 
                declare
@@ -506,6 +509,9 @@ package body Hellish_Irc is
                Client : Client_Cref := Clients(User);
             begin
                if Length(User_Str) + Client.Nick.Element'Length < 400 then
+                  if Client.Tracker_User /= No_Detached_User and Client.Tracker_User.Role = 1 then
+                     User_Str := @ & "@";
+                  end if;
                   User_Str := @ & Clients(User).Nick.Element & " ";
                else
                   Send(The_Client, To_String(User_Str));

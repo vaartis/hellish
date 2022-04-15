@@ -114,7 +114,9 @@ package body Hellish_Irc is
 
                            Create(Part_Slices, To_String(Unbounded_Message), " ", Multiple);
                            for Part of Part_Slices loop
-                              Append(Message_Parts, Part);
+                              if Part /= "" then
+                                 Append(Message_Parts, Part);
+                              end if;
                            end loop;
                            if Maybe_Trailing /= "" then
                               Append(Message_Parts, To_String(Maybe_Trailing));
@@ -371,6 +373,26 @@ package body Hellish_Irc is
                            end if;
                         end loop;
                      end;
+                  elsif Message_Parts(0) = "LIST" then
+                     if Length(Message_Parts) < 2 then
+                        -- All
+                        for Channel of Channels loop
+                           Send_List(Client, Channel.Name.Element);
+                        end loop;
+                     else
+                        declare
+                           Channel_Slices : Slice_Set;
+                        begin
+                           Create(Channel_Slices, Message_Parts(1), ",");
+                           for The_Channel of Channel_Slices loop
+                              if Channels.Contains(The_Channel) then
+                                 Send_List(Client, The_Channel);
+                              end if;
+                           end loop;
+                        end;
+                     end if;
+
+                     Send(Client, Rpl_List_End & " " & Client.Nick.Element & " :End of LIST");
                   end if;
 
                <<After>>
@@ -542,6 +564,14 @@ package body Hellish_Irc is
          Send(The_Client, Rpl_End_Of_Names & " " & The_Client.Nick.Element & " " & Channel.Name.Element & " :End of NAMES list");
       end Send_Names;
 
+      procedure Send_List(The_Client : Client; Channel_Name : String) is
+         The_Channel : Channel := Channels(Channel_Name);
+      begin
+         Send(The_Client, Rpl_List & " " & The_Client.Nick.Element & " " & Channel_Name
+                & Length(The_Channel.Users)'Image & (if The_Channel.Modes.Contains("i") or The_Channel.Topic.Is_Empty
+                                                     then " :"
+                                                     else " :" & The_Channel.Topic.Element));
+      end;
 
       procedure Special_Message(The_Client : in out Client; Message : String) is
          Login_Matcher : constant Pattern_Matcher := Compile(":login (\S+) (.+)");

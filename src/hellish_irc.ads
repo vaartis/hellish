@@ -111,6 +111,8 @@ private
    
       procedure Send_Topic(The_Client : Client; Channel_Name : String; From : String := Irc_Host.Element);
       procedure Send_Names(The_Client : Client; Channel_Name : String);
+      procedure Send_List(The_Client : Client; Channel_Name : String);
+
       procedure Join_Channel(The_Client : Client; Channel_Name : String);
       
       procedure Special_Message(The_Client : in out Client; Message : String);
@@ -139,6 +141,8 @@ private
    Rpl_Name_Reply : String := "353";
    Rpl_End_Of_Names : String := "366";
    Rpl_Channel_Mode_Is : String := "324";
+   Rpl_List : String := "322";
+   Rpl_List_End : String := "323";
    
    Err_Unknown_Error : String := "400";
    Err_No_Such_Nick : String := "401";

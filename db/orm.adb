@@ -16,6 +16,8 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Invite_DDR, Invite_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( Irc_Channel_DDR, Irc_Channel_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Peer_Data_DDR, Peer_Data_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Post_DDR, Post_Data);
@@ -48,6 +50,10 @@ package body Orm is
    Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Upto_Invites_1 : constant Counts := ((5,5),(13,13),(13,13),(13,13));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
+   F_Irc_Channels_Id   : constant := 0;
+   F_Irc_Channels_Name : constant := 1;
+   F_Irc_Channels_Data : constant := 2;
+   Alias_Irc_Channels : constant Alias_Array := (0 => -1);
    F_Peer_Data_Torrent_Id : constant := 0;
    F_Peer_Data_Data       : constant := 1;
    Upto_Peer_Data_0 : constant Counts := ((2,2),(2,2),(2,2),(2,2));
@@ -108,6 +114,10 @@ package body Orm is
       Session : Session_Type)
      return Detached_Invite'Class;
    function Detach_No_Lookup
+     (Self    : Irc_Channel'Class;
+      Session : Session_Type)
+     return Detached_Irc_Channel'Class;
+   function Detach_No_Lookup
      (Self    : Peer_Data'Class;
       Session : Session_Type)
      return Detached_Peer_Data'Class;
@@ -132,7 +142,8 @@ package body Orm is
    --  the session cache Same as Detach, but does not check the session cache
    --  Same as Detach, but does not check the session cache Same as Detach, but
    --  does not check the session cache Same as Detach, but does not check the
-   --  session cache Same as Detach, but does not check the session cache
+   --  session cache Same as Detach, but does not check the session cache Same
+   --  as Detach, but does not check the session cache
 
    procedure Do_Query_Config
      (Fields    : in out SQL_Field_List;
@@ -155,6 +166,16 @@ package body Orm is
       Pk_Only   : Boolean := False);
 
    procedure Do_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Do_Query_Irc_Channels
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -379,6 +400,33 @@ package body Orm is
    function "="
      (Op1 : Detached_Image_Upload;
       Op2 : Detached_Image_Upload)
+     return Boolean is
+   begin
+      if Op1.Is_Null then
+         return Op2.Is_Null;
+      elsif Op2.Is_Null then
+         return False;
+      else
+         return Integer'(Op1.Id) = Op2.Id;
+      end if;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Irc_Channel; Op2 : Irc_Channel) return Boolean is
+   begin
+      return Integer'(Op1.Id) = Op2.Id;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "="
+     (Op1 : Detached_Irc_Channel;
+      Op2 : Detached_Irc_Channel)
      return Boolean is
    begin
       if Op1.Is_Null then
@@ -804,6 +852,24 @@ package body Orm is
       return To_String (Peer_Data_Data (Self.Unchecked_Get).ORM_Data);
    end Data;
 
+   ----------
+   -- Data --
+   ----------
+
+   function Data (Self : Irc_Channel) return String is
+   begin
+      return String_Value (Self, F_Irc_Channels_Data);
+   end Data;
+
+   ----------
+   -- Data --
+   ----------
+
+   function Data (Self : Detached_Irc_Channel) return String is
+   begin
+      return To_String (Irc_Channel_Data (Self.Unchecked_Get).ORM_Data);
+   end Data;
+
    -----------------
    -- Description --
    -----------------
@@ -1090,6 +1156,24 @@ package body Orm is
       return Image_Upload_Data (Self.Unchecked_Get).ORM_Id;
    end Id;
 
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Irc_Channel) return Integer is
+   begin
+      return Integer_Value (Self, F_Irc_Channels_Id);
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Detached_Irc_Channel) return Integer is
+   begin
+      return Irc_Channel_Data (Self.Unchecked_Get).ORM_Id;
+   end Id;
+
    ---------------
    -- Info_Hash --
    ---------------
@@ -1143,6 +1227,24 @@ package body Orm is
    begin
       return To_String (Post_Data (Self.Unchecked_Get).ORM_Meta);
    end Meta;
+
+   ----------
+   -- Name --
+   ----------
+
+   function Name (Self : Irc_Channel) return String is
+   begin
+      return String_Value (Self, F_Irc_Channels_Name);
+   end Name;
+
+   ----------
+   -- Name --
+   ----------
+
+   function Name (Self : Detached_Irc_Channel) return String is
+   begin
+      return To_String (Irc_Channel_Data (Self.Unchecked_Get).ORM_Name);
+   end Name;
 
    ----------------
    -- Of_Torrent --
@@ -1905,6 +2007,21 @@ package body Orm is
       end if;
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach (Self : Irc_Channel'Class) return Detached_Irc_Channel'Class
+   is
+      R : constant Detached_Irc_Channel'Class := From_Cache (Self.Data.Session, Self.Id);
+   begin
+      if R.Is_Null then
+         return Detach_No_Lookup (Self, Self.Data.Session);
+      else
+         return R;
+      end if;
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -2007,6 +2124,33 @@ package body Orm is
       Tmp.ORM_For_User     := Integer_Value (Self, F_Invites_For_User);
       Tmp.ORM_Id           := Integer_Value (Self, F_Invites_Id);
       Tmp.ORM_Value        := To_Unbounded_String (String_Value (Self, F_Invites_Value));
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
+     (Self    : Irc_Channel'Class;
+      Session : Session_Type)
+     return Detached_Irc_Channel'Class
+   is
+      Default : Detached_Irc_Channel;
+      Result  : Detached_Irc_Channel'Class := Detached_Irc_Channel'Class (Session.Factory (Self, Default));
+      Tmp     : Irc_Channel_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (Irc_Channel_DDR'
+              (Detached_Data with Field_Count => 3, others => <>));
+      end if;
+
+      Tmp := Irc_Channel_Data (Result.Unchecked_Get);
+
+      Tmp.ORM_Data    := To_Unbounded_String (String_Value (Self, F_Irc_Channels_Data));
+      Tmp.ORM_Id      := Integer_Value (Self, F_Irc_Channels_Id);
+      Tmp.ORM_Name    := To_Unbounded_String (String_Value (Self, F_Irc_Channels_Name));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -2343,6 +2487,33 @@ package body Orm is
       end;
    end if;
    end Do_Query_Invites;
+
+   ---------------------------
+   -- Do_Query_Irc_Channels --
+   ---------------------------
+
+   procedure Do_Query_Irc_Channels
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False)
+   is
+      pragma Unreferenced (Criteria, Depth, Follow_LJ);
+      Table : T_Numbered_Irc_Channels(Aliases(Base));
+   begin
+      if PK_Only then
+         Fields := Fields & Table.Id;
+      else
+         Fields := Fields & Table.Id
+         & Table.Name
+         & Table.Data;
+      end if;
+      From := Empty_Table_List;
+   end Do_Query_Irc_Channels;
 
    ------------------------
    -- Do_Query_Peer_Data --
@@ -2870,6 +3041,33 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self : Irc_Channels_Managers'Class;
+      Id   : Integer := -1;
+      Name : String := No_Update;
+      Data : String := No_Update)
+     return Irc_Channels_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : Irc_Channels_Managers;
+   begin
+      if Id /= -1 then
+         C := C and DBA.Irc_Channels.Id = Id;
+      end if;
+      if Name /= No_Update then
+         C := C and DBA.Irc_Channels.Name = Name;
+      end if;
+      if Data /= No_Update then
+         C := C and DBA.Irc_Channels.Data = Data;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
@@ -2899,6 +3097,15 @@ package body Orm is
       Unchecked_Free (Self.ORM_FK_By_User);
       Unchecked_Free (Self.ORM_FK_For_User);
 
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
+   overriding procedure Free (Self : in out Irc_Channel_Ddr) is
+   begin
       Free (Detached_Data (Self));
    end Free;
 
@@ -3043,6 +3250,18 @@ package body Orm is
    end From_Cache;
 
    ----------------
+   -- From_Cache --
+   ----------------
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Irc_Channel'Class is
+   begin
+      return Detached_Irc_Channel'Class (Session.From_Cache ((8000000, Id), No_Detached_Irc_Channel));
+   end From_Cache;
+
+   ----------------
    -- Get_Config --
    ----------------
 
@@ -3173,6 +3392,50 @@ package body Orm is
          end;
       end if;
    end Get_Invite;
+
+   ---------------------
+   -- Get_Irc_Channel --
+   ---------------------
+
+   function Get_Irc_Channel
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Irc_Channel'Class
+   is
+      R : constant Detached_Irc_Channel'Class := From_Cache (Session, Id);
+   begin
+      if not R.Is_Null then
+         return R;
+      else
+
+         declare
+            M : Irc_Channels_Managers := Filter
+              (All_Irc_Channels,
+               Id => Id);
+            L : I_Irc_Channels.List;
+         begin
+            M.Select_Related
+              (Depth, Follow_Left_Join => Follow_Left_Join);
+            M.Limit (1);
+            L := M.Get(Session);
+            if not L.Has_Row then
+               return No_Detached_Irc_Channel;
+            else
+
+               declare
+                  E : constant Irc_Channel := L.Element;
+               begin
+                  --  Workaround bug in gnat which is missing a call
+                  --  to Finalize if we do not reset the list (K321-012)
+                  L := I_Irc_Channels.Empty_List;
+                  return E.Detach_No_Lookup (Session);
+               end;
+            end if;
+         end;
+      end if;
+   end Get_Irc_Channel;
 
    -------------------
    -- Get_Peer_Data --
@@ -3497,6 +3760,40 @@ package body Orm is
       if Missing_PK and then Success (Self.Session.DB) then
          PK_Modified := True;
          D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Invites.Id);
+      end if;
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Irc_Channel;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      D          : constant Irc_Channel_Data := Irc_Channel_Data (Self.Unchecked_Get);
+      Q          : SQL_Query;
+      A          : Sql_Assignment := No_Assignment;
+      Missing_Pk : constant Boolean := D.ORM_Id = -1;
+      R          : Forward_Cursor;
+   begin
+      if Mask (2) then
+         A := A & (DBA.Irc_Channels.Name = To_String (D.ORM_Name));
+      end if;
+      if Mask (3) then
+         A := A & (DBA.Irc_Channels.Data = To_String (D.ORM_Data));
+      end if;
+      if Missing_PK then
+         Q := SQL_Insert (A);
+      else
+         Q := SQL_Update (DBA.Irc_Channels, A, DBA.Irc_Channels.Id = D.ORM_Id);
+      end if;
+      R.Fetch (Self.Session.DB, Q);
+
+      if Missing_PK and then Success (Self.Session.DB) then
+         PK_Modified := True;
+         D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Irc_Channels.Id);
       end if;
    end Insert_Or_Update;
 
@@ -3843,6 +4140,17 @@ package body Orm is
    -- Internal_Delete --
    ---------------------
 
+   overriding procedure Internal_Delete (Self : Detached_Irc_Channel)
+   is
+      D : constant Irc_Channel_Data := Irc_Channel_Data (Self.Unchecked_Get);
+   begin
+      Execute (Self.Session.DB, SQL_Delete (DBA.Irc_Channels, DBA.Irc_Channels.Id = D.ORM_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
    overriding procedure Internal_Delete (Self : Detached_Peer_Data)
    is
       D : constant Peer_Data_Data := Peer_Data_Data (Self.Unchecked_Get);
@@ -3940,6 +4248,22 @@ package body Orm is
       Do_Query_Invites(Fields, From, Criteria,
          0, Alias_Invites, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Invites;
+
+   ---------------------------------
+   -- Internal_Query_Irc_Channels --
+   ---------------------------------
+
+   procedure Internal_Query_Irc_Channels
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      Do_Query_Irc_Channels(Fields, From, Criteria,
+         0, Alias_Irc_Channels, Depth, Follow_LJ, PK_Only);
+   end Internal_Query_Irc_Channels;
 
    ------------------------------
    -- Internal_Query_Peer_Data --
@@ -4127,6 +4451,19 @@ package body Orm is
    -- Key --
    ---------
 
+   overriding function Key (Self : Irc_Channel_Ddr) return Element_Key is
+   begin
+      if Self.ORM_Id = -1 then
+         return (8000000, No_Primary_Key);
+      else
+         return (8000000, Self.ORM_Id);
+      end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
    overriding function Key (Self : Peer_Data_Ddr) return Element_Key is
    begin
       if Self.ORM_Torrent_Id = -1 then
@@ -4225,6 +4562,19 @@ package body Orm is
       Result.Set (Data);
       return Result;
    end New_Invite;
+
+   ---------------------
+   -- New_Irc_Channel --
+   ---------------------
+
+   function New_Irc_Channel return Detached_Irc_Channel'Class
+   is
+      Result : Detached_Irc_Channel;
+      Data   : Irc_Channel_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_Irc_Channel;
 
    -------------------
    -- New_Peer_Data --
@@ -4602,6 +4952,18 @@ package body Orm is
       Self.Set_Modified (2);
    end Set_Data;
 
+   --------------
+   -- Set_Data --
+   --------------
+
+   procedure Set_Data (Self : Detached_Irc_Channel; Value : String)
+   is
+      D : constant Irc_Channel_Data := Irc_Channel_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Data := To_Unbounded_String (Value);
+      Self.Set_Modified (3);
+   end Set_Data;
+
    ---------------------
    -- Set_Description --
    ---------------------
@@ -4742,6 +5104,18 @@ package body Orm is
       D.ORM_Meta := To_Unbounded_String (Value);
       Self.Set_Modified (8);
    end Set_Meta;
+
+   --------------
+   -- Set_Name --
+   --------------
+
+   procedure Set_Name (Self : Detached_Irc_Channel; Value : String)
+   is
+      D : constant Irc_Channel_Data := Irc_Channel_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Name := To_Unbounded_String (Value);
+      Self.Set_Modified (2);
+   end Set_Name;
 
    --------------------
    -- Set_Of_Torrent --

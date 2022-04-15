@@ -277,6 +277,7 @@ package body Hellish_Irc is
                                  end if;
                               end loop;
                            end;
+                           Persist_Channel(Channels(Message_Parts(1)));
                         end if;
 
                         declare
@@ -418,6 +419,8 @@ package body Hellish_Irc is
                New_Channel.Users.Include(The_Client.Id);
 
                Channels.Include(Channel_Name, New_Channel);
+
+               Persist_Channel(New_Channel);
             end;
          end if;
 
@@ -474,7 +477,7 @@ package body Hellish_Irc is
                The_User : Detached_User'Class := Database.Get_User(The_Client.Nick.Element);
             begin
                if The_User = Detached_User'Class(No_Detached_User) then
-                  Send(The_Client, "PRIVMSG " & The_Client.Nick.Element &
+                  Send(The_Client, "NOTICE " & The_Client.Nick.Element &
                          " :Nickname " & The_Client.Nick.Element & " not registered on the tracker", From => "hellish");
                   return;
                end if;
@@ -488,21 +491,61 @@ package body Hellish_Irc is
                                        else "");
                begin
                   if Irc_Key = "" then
-                     Send(The_Client, "PRIVMSG " & The_Client.Nick.Element &
+                     Send(The_Client, "NOTICE " & The_Client.Nick.Element &
                             " :IRC key for the user is unset", From => "hellish");
                      return;
                   end if;
 
                   if Irc_Key = Key then
-                     Send(The_Client, "PRIVMSG " & The_Client.Nick.Element & " :Logged in!", From => "hellish");
+                     Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Logged in!", From => "hellish");
                      The_Client.Tracker_User := Detached_User(The_User);
                   else
-                     Send(The_Client, "PRIVMSG " & The_Client.Nick.Element & " :Invalid login key", From => "hellish");
+                     Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Invalid login key", From => "hellish");
                   end if;
                end;
             end;
          end if;
       end;
+
+      procedure Persist_Channel(The_Channel : Channel) is
+         use Gnatcoll.Json;
+
+         Channel_Map : Json_Value := Create_Object;
+         Channel_Modes : Json_Array := Empty_Array;
+      begin
+         for Mode of The_Channel.Modes loop
+            Append(Channel_Modes, Create(Mode));
+         end loop;
+         Channel_Map.Set_Field("modes", Create(Channel_Modes));
+
+         Database.Persist_Channel(The_Channel.Name.Element, Channel_Map.Write);
+      end Persist_Channel;
+
+      procedure Load_Persisted_Channels is
+         Loaded_Channel : Irc_Channel;
+         Loaded_Channels : Irc_Channel_List := Database.Persisted_Channels;
+      begin
+         while Loaded_Channels.Has_Row loop
+            Loaded_Channel := Loaded_Channels.Element;
+
+            declare
+               use Gnatcoll.Json;
+               Channel_Data : Json_Value := Read(Orm.Data(Loaded_Channel));
+               Channel_Modes : Json_Array := Get(Channel_Data, "modes");
+
+               New_Channel : Channel;
+            begin
+               New_Channel.Name := To_Holder(Loaded_Channel.Name);
+               for Mode of Channel_Modes loop
+                  New_Channel.Modes.Include(Get(Mode));
+               end loop;
+
+               Channels.Include(Loaded_Channel.Name, New_Channel);
+            end;
+
+            Loaded_Channels.Next;
+         end loop;
+      end Load_Persisted_Channels;
    end Protected_Clients;
 
    function Join_Parts(Parts : String_Vectors.Vector) return String is
@@ -575,6 +618,7 @@ package body Hellish_Irc is
       Set_Specific_Handler(Accept_Connections'Identity, Termination_Handler.Handler'Access);
       Set_Specific_Handler(Process_Connections'Identity, Termination_Handler.Handler'Access);
 
+      Protected_Clients.Load_Persisted_Channels;
       Accept_Connections.Start;
       Process_Connections.Start;
    end Start;

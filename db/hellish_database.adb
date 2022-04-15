@@ -103,6 +103,11 @@ package body Hellish_Database is
          & "|by_user|FK users|NOT NULL||" & ASCII.LF
          & "|filename|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
          & "" & ASCII.LF
+         & "|TABLE| irc_channels" & ASCII.LF
+         & "|id|AUTOINCREMENT|PK||" & ASCII.LF
+         & "|name|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
+         & "|data|json|NOT NULL|'{}'|" & ASCII.LF
+         & "" & ASCII.LF
          & "";
       F : File_Schema_IO;
       D : DB_Schema_IO;

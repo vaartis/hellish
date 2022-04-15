@@ -60,6 +60,14 @@ package Orm is
    No_Detached_Invite : constant Detached_Invite;
    No_Invite : constant Invite;
 
+   type Irc_Channel is new Orm_Element with null record;
+   type Irc_Channel_DDR is new Detached_Data (3) with private;
+   type Detached_Irc_Channel is  --  Get() returns a Irc_Channel_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_Irc_Channel_Access is access all Detached_Irc_Channel'Class;
+   No_Detached_Irc_Channel : constant Detached_Irc_Channel;
+   No_Irc_Channel : constant Irc_Channel;
+
    type Peer_Data is new Orm_Element with null record;
    type Peer_Data_DDR is new Detached_Data (3) with private;
    type Detached_Peer_Data is  --  Get() returns a Peer_Data_DDR
@@ -475,6 +483,40 @@ package Orm is
 
    function New_Image_Upload return Detached_Image_Upload'Class;
 
+   ----------------------------
+   -- Elements: Irc_Channels --
+   ----------------------------
+
+   function "=" (Op1 : Irc_Channel; Op2 : Irc_Channel) return Boolean;
+   function "="
+     (Op1 : Detached_Irc_Channel;
+      Op2 : Detached_Irc_Channel)
+     return Boolean;
+   --  Compares two elements using only the primary keys. All other fields are
+   --  ignored
+
+   function Data (Self : Irc_Channel) return String;
+   function Data (Self : Detached_Irc_Channel) return String;
+   procedure Set_Data (Self : Detached_Irc_Channel; Value : String);
+
+   function Id (Self : Irc_Channel) return Integer;
+   function Id (Self : Detached_Irc_Channel) return Integer;
+
+   function Name (Self : Irc_Channel) return String;
+   function Name (Self : Detached_Irc_Channel) return String;
+   procedure Set_Name (Self : Detached_Irc_Channel; Value : String);
+
+   function Detach (Self : Irc_Channel'Class) return Detached_Irc_Channel'Class;
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Irc_Channel'Class;
+   --  Check whether there is already an element with this primary key. If
+   --  not, the returned value will be a null element (test with Is_Null)
+
+   function New_Irc_Channel return Detached_Irc_Channel'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
@@ -496,6 +538,14 @@ package Orm is
       Pk_Only   : Boolean := False);
 
    procedure Internal_Query_Invites
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_Irc_Channels
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -585,6 +635,19 @@ package Orm is
    Empty_Invite_List : constant Invite_List := I_Invites.Empty_List;
    Empty_Direct_Invite_List : constant Direct_Invite_List :=
    I_Invites.Empty_Direct_List;
+
+   type I_Irc_Channels_Managers is abstract new Manager with null record;
+   package I_Irc_Channels is new Generic_Managers
+     (I_Irc_Channels_Managers, Irc_Channel, Related_Depth, DBA.Irc_Channels,
+      Internal_Query_Irc_Channels);
+   type Irc_Channels_Managers is new I_Irc_Channels.Manager with null record;
+   subtype Irc_Channels_Stmt is I_Irc_Channels.ORM_Prepared_Statement;
+
+   subtype Irc_Channel_List is I_Irc_Channels.List;
+   subtype Direct_Irc_Channel_List is I_Irc_Channels.Direct_List;
+   Empty_Irc_Channel_List : constant Irc_Channel_List := I_Irc_Channels.Empty_List;
+   Empty_Direct_Irc_Channel_List : constant Direct_Irc_Channel_List :=
+   I_Irc_Channels.Empty_Direct_List;
 
    type I_Peer_Data_Managers is abstract new Manager with null record;
    package I_Peer_Data is new Generic_Managers
@@ -867,6 +930,24 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_Image_Upload'Class;
 
+   ---------------------------
+   -- Manager: Irc_Channels --
+   ---------------------------
+
+   function Filter
+     (Self : Irc_Channels_Managers'Class;
+      Id   : Integer := -1;
+      Name : String := No_Update;
+      Data : String := No_Update)
+     return Irc_Channels_Managers;
+
+   function Get_Irc_Channel
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Irc_Channel'Class;
+
    --------------
    -- Managers --
    --------------
@@ -879,6 +960,9 @@ package Orm is
 
    All_Invites : constant Invites_Managers :=
      (I_Invites.All_Managers with null record);
+
+   All_Irc_Channels : constant Irc_Channels_Managers :=
+     (I_Irc_Channels.All_Managers with null record);
 
    All_Peer_Data : constant Peer_Data_Managers :=
      (I_Peer_Data.All_Managers with null record);
@@ -903,6 +987,7 @@ package Orm is
    overriding procedure Free (Self : in out Config_Ddr);
    overriding procedure Free (Self : in out Image_Upload_Ddr);
    overriding procedure Free (Self : in out Invite_Ddr);
+   overriding procedure Free (Self : in out Irc_Channel_Ddr);
    overriding procedure Free (Self : in out Peer_Data_Ddr);
    overriding procedure Free (Self : in out Post_Ddr);
    overriding procedure Free (Self : in out Torrent_Ddr);
@@ -919,6 +1004,10 @@ package Orm is
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
      (Self        : in out Detached_Invite;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Irc_Channel;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
@@ -945,6 +1034,7 @@ package Orm is
    overriding procedure Internal_Delete (Self : Detached_Config);
    overriding procedure Internal_Delete (Self : Detached_Image_Upload);
    overriding procedure Internal_Delete (Self : Detached_Invite);
+   overriding procedure Internal_Delete (Self : Detached_Irc_Channel);
    overriding procedure Internal_Delete (Self : Detached_Peer_Data);
    overriding procedure Internal_Delete (Self : Detached_Post);
    overriding procedure Internal_Delete (Self : Detached_Torrent);
@@ -954,6 +1044,7 @@ package Orm is
    overriding function Key (Self : Config_Ddr) return Element_Key;
    overriding function Key (Self : Image_Upload_Ddr) return Element_Key;
    overriding function Key (Self : Invite_Ddr) return Element_Key;
+   overriding function Key (Self : Irc_Channel_Ddr) return Element_Key;
    overriding function Key (Self : Peer_Data_Ddr) return Element_Key;
    overriding function Key (Self : Post_Ddr) return Element_Key;
    overriding function Key (Self : Torrent_Ddr) return Element_Key;
@@ -993,6 +1084,13 @@ private
        ORM_Value        : Unbounded_String := Null_Unbounded_String;
     end record;
     type Invite_Data is access all Invite_DDR;
+    
+    type Irc_Channel_DDR is new Detached_Data (3) with record
+       ORM_Data    : Unbounded_String := To_Unbounded_String ("{}");
+       ORM_Id      : Integer := -1;
+       ORM_Name    : Unbounded_String := Null_Unbounded_String;
+    end record;
+    type Irc_Channel_Data is access all Irc_Channel_DDR;
     
     type Peer_Data_DDR is new Detached_Data (3) with record
        ORM_Data          : Unbounded_String := Null_Unbounded_String;
@@ -1068,6 +1166,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Invite : constant Invite :=(No_Orm_Element with null record);
     No_Detached_Invite : constant Detached_Invite :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_Irc_Channel
+       is new Sessions.Detached_Element with null record;
+    No_Irc_Channel : constant Irc_Channel :=(No_Orm_Element with null record);
+    No_Detached_Irc_Channel : constant Detached_Irc_Channel :=
       (Sessions.Detached_Element with null record);
  
     type Detached_Peer_Data

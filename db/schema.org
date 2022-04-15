@@ -55,3 +55,8 @@
 | id       | AUTOINCREMENT             | PK                      |   |
 | by_user  | FK users(uploaded_images) | NOT NULL                |   |
 | filename | TEXT                      | NOT NULL, UNIQUE, INDEX |   |
+
+| TABLE | irc_channels  | irc_channel             |      |   |
+| id    | AUTOINCREMENT | PK                      |      |   |
+| name  | TEXT          | NOT NULL, UNIQUE, INDEX |      |   |
+| data  | JSON          | NOT NULL                | '{}' |   |

@@ -74,6 +74,9 @@ package Hellish_Web.Database is
 
    function Admin_Recently_Invited(Limit : Natural) return Invite_List;
 
+   procedure Persist_Channel(Name, Data : String);
+   function Persisted_Channels return Irc_Channel_List;
+
    generic
       type T (<>) is new Detached_Element with private;
       with function Meta(Element : T) return String;

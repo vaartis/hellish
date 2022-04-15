@@ -606,8 +606,6 @@ package body Hellish_Web.Database is
    procedure Persist_Peers(Info_Hash : String; Data : String) is
       Session : Session_Type := Get_New_Session;
       The_Torrent : Detached_Torrent'Class := Get_Torrent_By_Hash(Info_Hash, Session);
-
-      Torrent_Peers : Detached_Peer_Data'Class := New_Peer_Data;
    begin
       Session.Db.Execute(Peers_Insert_Statement, Params => (1 => +The_Torrent.Id, 2 => +Data));
 
@@ -683,6 +681,17 @@ package body Hellish_Web.Database is
           .Order_By(Desc(Hellish_Database.Invites.Id))
           .Get(Session);
    end;
+
+   Channel_Insert_Statement : Prepared_Statement :=
+     Prepare("INSERT INTO irc_channels (name, data) VALUES ($1, $2) " &
+               "ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data;");
+   procedure Persist_Channel(Name, Data : String) is
+      Session : Session_Type := Get_New_Session;
+   begin
+      Session.Db.Execute(Channel_Insert_Statement, Params => (1 => +Name, 2 => +Data));
+      Session.Commit;
+   end Persist_Channel;
+   function Persisted_Channels return Irc_Channel_List is (All_Irc_Channels.Get(Get_New_Session));
 
    package body Subscriptions is
       procedure Subscribe(User : Detached_User'Class; To : T) is

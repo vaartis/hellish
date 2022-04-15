@@ -2,6 +2,11 @@ with GNATCOLL.SQL; use GNATCOLL.SQL;
 pragma Warnings (Off, "no entities of * are referenced");
 pragma Warnings (Off, "use clause for package * has no effect");
 with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
+with GNATCOLL.SQL_Fields; use GNATCOLL.SQL_Fields;
 pragma Warnings (On, "no entities of * are referenced");
 pragma Warnings (On, "use clause for package * has no effect");
 with GNATCOLL.SQL.Exec;
@@ -66,6 +71,25 @@ package Hellish_Database is
 
    type T_Numbered_Invites (Index : Integer)
       is new T_Abstract_Invites (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
+   type T_Abstract_Irc_Channels
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Irc_Channels, Instance, Index) with
+   record
+      Id : SQL_Field_Integer (Ta_Irc_Channels, Instance, N_Id, Index);
+      Name : SQL_Field_Text (Ta_Irc_Channels, Instance, N_Name, Index);
+      Data : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Irc_Channels, Instance, N_Data, Index);
+   end record;
+
+   type T_Irc_Channels (Instance : Cst_String_Access)
+      is new T_Abstract_Irc_Channels (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Irc_Channels (Index : Integer)
+      is new T_Abstract_Irc_Channels (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
    type T_Abstract_Peer_Data
@@ -207,6 +231,7 @@ package Hellish_Database is
    Config : T_Config (null);
    Image_Uploads : T_Image_Uploads (null);
    Invites : T_Invites (null);
+   Irc_Channels : T_Irc_Channels (null);
    Peer_Data : T_Peer_Data (null);
    Posts : T_Posts (null);
    Torrents : T_Torrents (null);

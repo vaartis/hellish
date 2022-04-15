@@ -100,6 +100,7 @@ private
       procedure Append(The_Client : in out Client);
       
       procedure Process_Clients;
+      procedure Load_Persisted_Channels;
    private
       procedure Process_Message_Queues;
       procedure Process_Select_Connections;
@@ -114,6 +115,8 @@ private
       
       procedure Special_Message(The_Client : in out Client; Message : String);
       
+      procedure Persist_Channel(The_Channel : Channel);
+
       Next_Id : Natural := 0;
 
       Clients : Client_Maps.Map;

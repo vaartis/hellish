@@ -137,6 +137,7 @@ private
    Rpl_End_Of_Names : String := "366";
    Rpl_Channel_Mode_Is : String := "324";
    
+   Err_Unknown_Error : String := "400";
    Err_No_Such_Nick : String := "401";
    Err_Nickname_In_Use : String := "433";
    Err_No_Such_Channel : String := "403";

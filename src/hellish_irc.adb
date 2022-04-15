@@ -7,7 +7,6 @@ with Ada.Strings;
 
 with Gnat.String_Split; use Gnat.String_Split;
 with GNAT.Regpat; use GNAT.Regpat;
-with Gnat.Traceback.Symbolic;
 with Gnatcoll.Json;
 
 with Hellish_Web.Routes;
@@ -323,6 +322,24 @@ package body Hellish_Irc is
                end if;
 
                Queue.Clear;
+            exception
+               when E : others =>
+                  Queue.Clear;
+
+                  declare
+                     E_Info : String := Exception_Information(E);
+                     Error_Slices : Slice_Set;
+                  begin
+                     Put_Line(E_Info);
+
+                     Create(Error_Slices, E_Info, Cr_Lf, Multiple);
+
+                     for Slice of Error_Slices loop
+                        if Slice /= "" then
+                           Send(Client, Err_Unknown_Error & " ERROR :!! " & Slice);
+                        end if;
+                     end loop;
+                  end;
             end;
          end loop;
 
@@ -532,9 +549,7 @@ package body Hellish_Irc is
                         Id : Task_Id;
                         E : Exception_Occurrence) is
       begin
-         Put_Line(Exception_Name(E));
          Put_Line(Exception_Information(E));
-         Put_Line(GNAT.Traceback.Symbolic.Symbolic_Traceback(E));
       end Handler;
    end Termination_Handler;
 

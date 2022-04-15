@@ -19,13 +19,13 @@ package Hellish_Irc is
    
    Port : Natural := 16697;
    Queue_Size : Positive := 10;
-private   
-   Socket : Socket_Type;
    
    package String_Holders is new Ada.Containers.Indefinite_Holders(String);
    use String_Holders;
    
    Irc_Host : String_Holders.Holder;
+private
+   Socket : Socket_Type;
    
    task Accept_Connections is 
       entry Start;

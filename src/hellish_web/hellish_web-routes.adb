@@ -955,6 +955,7 @@ package body Hellish_Web.Routes is
 
             if Has_Field(Profile_Json, "irc_key") then
                Insert(Translations, Assoc("irc_key", String'(Get(Profile_Json, "irc_key"))));
+               Insert(Translations, Assoc("irc_host", Hellish_Irc.Irc_Host.Element & ":" & Trim(Hellish_Irc.Port'Image, Ada.Strings.Left)));
             end if;
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));

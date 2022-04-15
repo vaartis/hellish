@@ -319,7 +319,7 @@ package body Hellish_Irc is
                               Send_Topic(Client, Message_Parts(1));
                            else
                               Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & Message_Parts(1) &
-                                     " :You're not on that channel");
+                                     " :You're not on the channel");
                               goto After;
                            end if;
                         end if;
@@ -355,6 +355,22 @@ package body Hellish_Irc is
                            end if;
                         end if;
                      end if;
+                  elsif Message_Parts(0) = "NAMES" then
+                     declare
+                        Channel_Slices : Slice_Set;
+                     begin
+                        Create(Channel_Slices, Message_Parts(1), ",");
+                        for The_Channel of Channel_Slices loop
+                           if Channels.Contains(The_Channel) then
+                              if Channels(The_Channel).Users.Contains(Client.Id) then
+                                 Send_Names(Client, The_Channel);
+                              else
+                                 Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & The_Channel &
+                                        " :You're not on channel");
+                              end if;
+                           end if;
+                        end loop;
+                     end;
                   end if;
 
                <<After>>
@@ -509,7 +525,7 @@ package body Hellish_Irc is
                Client : Client_Cref := Clients(User);
             begin
                if Length(User_Str) + Client.Nick.Element'Length < 400 then
-                  if Client.Tracker_User /= No_Detached_User and Client.Tracker_User.Role = 1 then
+                  if Client.Tracker_User /= No_Detached_User and then Client.Tracker_User.Role = 1 then
                      User_Str := @ & "@";
                   end if;
                   User_Str := @ & Clients(User).Nick.Element & " ";

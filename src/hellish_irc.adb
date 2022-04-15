@@ -309,6 +309,49 @@ package body Hellish_Irc is
                      elsif Users.Contains(Message_Parts(1)) then
                         Send(Clients(Users(Message_Parts(1))), Join_Parts(Message_Parts), From => Client.Nick.Element);
                      end if;
+                  elsif Message_Parts(0) = "TOPIC" then
+                     if Length(Message_Parts) = 2 then
+                        if Channels.Contains(Message_Parts(1)) then
+                           if Channels(Message_Parts(1)).Users.Contains(Client.Id) then
+                              Send_Topic(Client, Message_Parts(1));
+                           else
+                              Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & Message_Parts(1) &
+                                     " :You're not on that channel");
+                              goto After;
+                           end if;
+                        end if;
+                     elsif Length(Message_Parts) = 3 then
+                        if Channels.Contains(Message_Parts(1)) then
+                           if Channels(Message_Parts(1)).Users.Contains(Client.Id) then
+                              -- Protected topic
+                              if Channels(Message_Parts(1)).Modes.Contains("t")
+                                and then (Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1) then
+                                 Send(Client, Err_Chan_Op_Privs_Needed
+                                        & " " & Client.Nick.Element & " " & Message_Parts(1) & " :Only admins can change protected topic");
+                              else
+                                 if Trim(Message_Parts(2), Ada.Strings.Both) = "" then
+                                    Channels(Message_Parts(1)).Topic.Clear;
+                                 else
+                                    declare
+                                       Topic_Str : String := Message_Parts(2);
+                                    begin
+                                       Channels(Message_Parts(1)).Topic := To_Holder(Topic_Str(Topic_Str'First + 1..Topic_Str'Last));
+                                    end;
+                                 end if;
+                                 Persist_Channel(Channels(Message_Parts(1)));
+
+                                 -- Send new topic
+                                 for User of Channels(Message_Parts(1)).Users loop
+                                    Send_Topic(Clients(User), Message_Parts(1), From => Client.Nick.Element);
+                                 end loop;
+                              end if;
+                           else
+                              Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & Message_Parts(1) &
+                                     " :You're not on that channel");
+                              goto After;
+                           end if;
+                        end if;
+                     end if;
                   end if;
 
                <<After>>
@@ -400,6 +443,17 @@ package body Hellish_Irc is
                end if;
             end if;
 
+            declare
+               Mode_Str : Unbounded_String;
+            begin
+               for Mode of Channels(Channel_Name).Modes loop
+                  Mode_Str := @ & "+" & Mode;
+               end loop;
+
+               Send(The_Client, Rpl_Channel_Mode_Is & " " & The_Client.Nick.Element & " "
+                      & Channels(Channel_Name).Name.Element & " " & To_String(Mode_Str));
+            end;
+
             for User of Channels(Channel_Name).Users loop
                Send(Clients(User), "JOIN " & Channel_Name, From => The_Client.Nick.Element);
             end loop;
@@ -428,13 +482,15 @@ package body Hellish_Irc is
          Send_Names(The_Client, Channel_Name);
       end Join_Channel;
 
-      procedure Send_Topic(The_Client : Client; Channel_Name : String) is
+      procedure Send_Topic(The_Client : Client; Channel_Name : String; From : String := Irc_Host.Element) is
          Channel : Channel_Maps.Constant_Reference_Type := Channels(Channel_Name);
       begin
          if Channel.Topic.Is_Empty then
-            Send(The_Client, Rpl_Notopic & " " & Channel.Name.Element & " :No topic");
+            Send(The_Client, Rpl_Notopic & " " & The_Client.Nick.Element & " " & Channel.Name.Element & " :No topic",
+                 From => From);
          else
-            Send(The_Client, Rpl_Topic & " " & Channel.Name.Element & " :" & Channel.Topic.Element);
+            Send(The_Client, Rpl_Topic & " " & The_Client.Nick.Element & " " & Channel.Name.Element & " :" & Channel.Topic.Element,
+                 From => From);
          end if;
       end Send_Topic;
 
@@ -517,6 +573,9 @@ package body Hellish_Irc is
             Append(Channel_Modes, Create(Mode));
          end loop;
          Channel_Map.Set_Field("modes", Create(Channel_Modes));
+         if not The_Channel.Topic.Is_Empty then
+            Channel_Map.Set_Field("topic", Create(The_Channel.Topic.Element));
+         end if;
 
          Database.Persist_Channel(The_Channel.Name.Element, Channel_Map.Write);
       end Persist_Channel;
@@ -539,6 +598,9 @@ package body Hellish_Irc is
                for Mode of Channel_Modes loop
                   New_Channel.Modes.Include(Get(Mode));
                end loop;
+               if Channel_Data.Has_Field("topic") then
+                  New_Channel.Topic := To_Holder(Get(Channel_Data, "topic"));
+               end if;
 
                Channels.Include(Loaded_Channel.Name, New_Channel);
             end;

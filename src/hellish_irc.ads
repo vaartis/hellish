@@ -109,7 +109,7 @@ private
       
       procedure Send(The_Client : Client; Message : String; From : String := Irc_Host.Element);
    
-      procedure Send_Topic(The_Client : Client; Channel_Name : String);
+      procedure Send_Topic(The_Client : Client; Channel_Name : String; From : String := Irc_Host.Element);
       procedure Send_Names(The_Client : Client; Channel_Name : String);
       procedure Join_Channel(The_Client : Client; Channel_Name : String);
       
@@ -145,6 +145,7 @@ private
    Err_Nickname_In_Use : String := "433";
    Err_No_Such_Channel : String := "403";
    Err_Chan_Op_Privs_Needed : String := "482";
+   Err_Not_On_Channel : String := "442";
    
    Err_Invite_Only_Chan : String := "473";
 end Hellish_Irc;

@@ -244,7 +244,7 @@ package body Hellish_Irc is
                                  Send(Client, Rpl_End_Of_Whois & " :End of WHOIS");
                               end;
                            else
-                              Send(Client, Err_No_Such_Nick & " " & Whois_Username & " :No such nickname");
+                              Send(Client, Err_No_Such_Nick & " " & Client.Nick.Element & " " & Whois_Username & " :No such nickname");
                            end if;
                         end loop;
                      end;

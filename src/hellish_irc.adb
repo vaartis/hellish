@@ -223,6 +223,8 @@ package body Hellish_Irc is
                            for Channel_User of Channels(Message_Parts(1)).Users loop
                               Send(Clients(Channel_User), To_Send, From => Client.Nick.Element);
                            end loop;
+
+                           Channels(Message_Parts(1)).Users.Exclude(Client.Id);
                         end;
                      end if;
                   elsif Message_Parts(0) = "WHOIS" then
@@ -482,22 +484,11 @@ package body Hellish_Irc is
                end if;
             end if;
 
-            declare
-               Mode_Str : Unbounded_String;
-            begin
-               for Mode of Channels(Channel_Name).Modes loop
-                  Mode_Str := @ & "+" & Mode;
-               end loop;
-
-               Send(The_Client, Rpl_Channel_Mode_Is & " " & The_Client.Nick.Element & " "
-                      & Channels(Channel_Name).Name.Element & " " & To_String(Mode_Str));
-            end;
+            Channels(Channel_Name).Users.Include(The_Client.Id);
 
             for User of Channels(Channel_Name).Users loop
                Send(Clients(User), "JOIN " & Channel_Name, From => The_Client.Nick.Element);
             end loop;
-
-            Channels(Channel_Name).Users.Include(The_Client.Id);
          else
             if The_Client.Tracker_User = No_Detached_User or else The_Client.Tracker_User.Role /= 1 then
                Send(The_Client, Err_No_Such_Channel & " " & The_Client.Nick.Element & " " &

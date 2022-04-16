@@ -515,6 +515,11 @@ package body Hellish_Irc is
       procedure Join_Channel(The_Client : Client; Channel_Name : String) is
       begin
          if Channels.Contains(Channel_Name) then
+            -- Don't try to add the user again if they've already joined
+            if Channels(Channel_Name).Users.Contains(The_Client.Id) then
+               return;
+            end if;
+
             if Channels(Channel_Name).Modes.Contains("i") then
                if The_Client.Tracker_User = No_Detached_User then
                   Send(The_Client, Err_Invite_Only_Chan & " " & The_Client.Nick.Element & " " &

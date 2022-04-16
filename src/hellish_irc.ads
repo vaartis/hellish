@@ -69,6 +69,8 @@ private
       
       Caps_Negotiated : Boolean := True;
       Motd_Sent : Boolean := False;
+
+      Away_Message : String_Holders.Holder;
    end record;  
    
    type Channel is record
@@ -143,6 +145,9 @@ private
    Rpl_Channel_Mode_Is : String := "324";
    Rpl_List : String := "322";
    Rpl_List_End : String := "323";
+   Rpl_Now_Away : String := "306";
+   Rpl_Unaway : String := "305";
+   Rpl_Away : String := "301";
    
    Err_Unknown_Error : String := "400";
    Err_No_Such_Nick : String := "401";

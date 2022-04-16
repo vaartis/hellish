@@ -257,6 +257,12 @@ package body Hellish_Irc is
                                         & " " & The_User.Nick.Element
                                         & " " & The_User.Username.Element
                                         & " " & Irc_Host.Element & " * :unknown");
+
+                                 if not The_User.Away_Message.Is_Empty then
+                                    Send(Client, Rpl_Away & " " & Client.Nick.Element & " " & The_User.Nick.Element
+                                           & " " & The_User.Away_Message.Element);
+                                 end if;
+
                                  Send(Client, Rpl_End_Of_Whois & " :End of WHOIS");
                               end;
                            else
@@ -328,7 +334,16 @@ package body Hellish_Irc is
                      elsif Message_Parts(1) = "hellish" then
                         Special_Message(Client, Message_Parts(2));
                      elsif Users.Contains(Message_Parts(1)) then
-                        Send(Clients(Users(Message_Parts(1))), Join_Parts(Message_Parts), From => Client.Nick.Element);
+                        declare
+                           Sent_To : Hellish_Irc.Client := Clients(Users(Message_Parts(1)));
+                        begin
+                           if not Sent_To.Away_Message.Is_Empty then
+                              Send(Client, Rpl_Away & " " & Client.Nick.Element & " " & Sent_To.Nick.Element
+                                  & " " & Sent_To.Away_Message.Element);
+                           end if;
+
+                           Send(Sent_To, Join_Parts(Message_Parts), From => Client.Nick.Element);
+                        end;
                      end if;
                   elsif Message_Parts(0) = "TOPIC" then
                      if Length(Message_Parts) = 2 then
@@ -409,6 +424,14 @@ package body Hellish_Irc is
                      end if;
 
                      Send(Client, Rpl_List_End & " " & Client.Nick.Element & " :End of LIST");
+                  elsif Message_Parts(0) = "AWAY" then
+                     if Length(Message_Parts) = 2 then
+                        Client.Away_Message := To_Holder(Message_Parts(1));
+                        Send(Client, Rpl_Now_Away & " " & Client.Nick.Element & " :You have been marked as being away");
+                     elsif Length(Message_Parts) = 1 then
+                        Client.Away_Message.Clear;
+                        Send(Client, Rpl_Unaway & " " & Client.Nick.Element & " :You are no longer marked as being away");
+                     end if;
                   end if;
 
                <<After>>

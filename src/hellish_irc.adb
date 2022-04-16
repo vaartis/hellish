@@ -130,6 +130,22 @@ package body Hellish_Irc is
                      Messages := To_Unbounded_String("");
                   end loop;
                end;
+            exception
+               when E : others =>
+                  declare
+                     E_Info : String := Exception_Information(E);
+                     Error_Slices : Slice_Set;
+                  begin
+                     Put_Line(E_Info);
+
+                     Create(Error_Slices, E_Info, Cr_Lf, Multiple);
+
+                     for Slice of Error_Slices loop
+                        if Slice /= "" then
+                           Send(Client, Err_Unknown_Error & " ERROR :!! " & Slice);
+                        end if;
+                     end loop;
+                  end;
             end;
 
          <<After>>

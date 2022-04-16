@@ -86,6 +86,7 @@ project Hellish is
 
    package Linker is
       for Switches ("Ada") use ("-lsodium",
+                                "-lssl", "-lcrypto",
                                 "-Lobj/md4c/src/", "-lmd4c-html", "-lmd4c");
    end Linker;
 end Hellish;

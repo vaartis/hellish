@@ -955,7 +955,8 @@ package body Hellish_Web.Routes is
 
             if Has_Field(Profile_Json, "irc_key") then
                Insert(Translations, Assoc("irc_key", String'(Get(Profile_Json, "irc_key"))));
-               Insert(Translations, Assoc("irc_host", Hellish_Irc.Irc_Host.Element & ":" & Trim(Hellish_Irc.Port'Image, Ada.Strings.Left)));
+               Insert(Translations, Assoc("irc_host", Hellish_Irc.Irc_Host.Element & ":" & Trim(Hellish_Irc.Port'Image, Ada.Strings.Left) &
+                                            " (" & Trim(Hellish_Irc.Port_Ssl'Image, Ada.Strings.Left) & " for TLS)"));
             end if;
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
@@ -1255,7 +1256,7 @@ package body Hellish_Web.Routes is
       Server.Set_Unexpected_Exception_Handler(Http, Exception_Handler'Access);
 
       loop
-      case Getopt("-invite-not-required -https -server-host=") is
+      case Getopt("-invite-not-required -https -server-host= -ssl-cert= -ssl-privkey=") is
             when '-' =>
                if Full_Switch = "-invite-not-required" then
                   Invite_Required := False;
@@ -1263,6 +1264,10 @@ package body Hellish_Web.Routes is
                   Https := True;
                elsif Full_Switch = "-server-host" then
                   Server_Host := To_Unbounded_String(Parameter);
+               elsif Full_Switch = "-ssl-cert" then
+                  Hellish_Irc.Ssl_Cert_Path := Hellish_Irc.String_Holders.To_Holder(Parameter);
+               elsif Full_Switch = "-ssl-privkey" then
+                  Hellish_Irc.Ssl_Privkey_Path := Hellish_Irc.String_Holders.To_Holder(Parameter);
                end if;
             when others =>
                exit;

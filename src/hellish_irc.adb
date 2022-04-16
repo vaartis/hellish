@@ -14,6 +14,8 @@ with Hellish_Web.Database;
 use Hellish_Web;
 
 package body Hellish_Irc is
+   package body Ssl is separate;
+
    protected body Protected_Clients is
       procedure Append(The_Client : in out Client) is
       begin
@@ -51,7 +53,8 @@ package body Hellish_Irc is
             declare
                Client : Client_Maps.Reference_Type := Clients.Reference(Socket_To_Client(Curr_Sock));
 
-               Element_Array : Stream_Element_Array(0..1024);
+               Max_Read : constant := 1024;
+               Element_Array : Stream_Element_Array(0..Max_Read);
                Element_Last : Stream_Element_Offset;
             begin
                -- Peek to check if socket is closed
@@ -64,13 +67,22 @@ package body Hellish_Irc is
                   goto After;
                end if;
 
-               -- Actually read the data now
-               Receive_Socket(Client.Socket, Element_Array, Element_Last);
+               if Client.Is_Ssl then
+                  declare
+                     Unused_Amount : Integer;
+                     Read_String : String := Ssl.Receive_Ssl(Client.Socket_Ssl, Max_Read, Unused_Amount);
+                  begin
+                     Append(Client.Unfinished_Messages, Read_String);
+                  end;
+               else
+                  -- Actually read the data now
+                  Receive_Socket(Client.Socket, Element_Array, Element_Last);
 
-               -- Read all the content that arrived
-               for I in 0..Element_Last loop
-                  Append(Client.Unfinished_Messages, Character'Val(Element_Array(I)));
-               end loop;
+                  -- Read all the content that arrived
+                  for I in 0..Element_Last loop
+                     Append(Client.Unfinished_Messages, Character'Val(Element_Array(I)));
+                  end loop;
+               end if;
 
                -- Don't process messages unless the last message is fully received
                if Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages) - 1) /= Latin_1.Cr
@@ -484,6 +496,11 @@ package body Hellish_Irc is
                Channel.Users.Exclude(Removed);
             end loop;
 
+            if Clients(Removed).Is_Ssl then
+               Ssl.Free_Ssl(Clients(Removed).Socket_Ssl);
+            end if;
+            Close_Socket(Clients(Removed).Socket);
+
             Clients.Delete(Removed);
          end loop;
       end Remove;
@@ -502,13 +519,23 @@ package body Hellish_Irc is
       begin
          Put_Line("SENT: " & Message_Full);
 
-         for Char_I in 1..Message_Crlf'Length loop
-            Element_Array(Stream_Element_Offset(Char_I)) := Character'Pos(Message_Crlf(Char_I));
-         end loop;
+         if The_Client.Is_Ssl then
+            declare
+               Sent_Amount : Integer := Ssl.Send_Ssl(The_Client.Socket_Ssl, Message_Crlf);
+            begin
+               if Sent_Amount /= Message_Crlf'Length then
+                  Put_Line("Wanted to send" & Message_Crlf'Length'Image & " but sent" & Sent_Amount'Image);
+               end if;
+            end;
+         else
+            for Char_I in 1..Message_Crlf'Length loop
+               Element_Array(Stream_Element_Offset(Char_I)) := Character'Pos(Message_Crlf(Char_I));
+            end loop;
 
-         Send_Socket(The_Client.Socket, Element_Array, Element_Last);
-         if Element_Last /= Element_Array'Length then
-            Put_Line("Wanted to send" & Element_Array'Length'Image & " but sent" & Element_Last'Image);
+            Send_Socket(The_Client.Socket, Element_Array, Element_Last);
+            if Element_Last /= Element_Array'Length then
+               Put_Line("Wanted to send" & Element_Array'Length'Image & " but sent" & Element_Last'Image);
+            end if;
          end if;
       end Send;
 
@@ -726,6 +753,37 @@ package body Hellish_Irc is
       end loop;
    end Accept_Connections;
 
+   task body Accept_Connections_Ssl is
+   begin
+      -- Wait for socket open
+      accept Start;
+
+      loop
+         declare
+            use Ssl;
+
+            The_Client : Client (Is_Ssl => True);
+            Status : Selector_Status;
+         begin
+            Accept_Socket(Socket_Ssl, The_Client.Socket, The_Client.Address,
+                          Timeout => Forever, Status => Status);
+            if Status = Completed then
+               The_Client.Socket_Ssl := Create_Ssl;
+               Set_Ssl_Fd(The_Client.Socket_Ssl, The_Client.Socket);
+               Accept_Ssl(The_Client.Socket_Ssl);
+
+               Protected_Clients.Append(The_Client);
+            end if;
+         exception
+            when E : others =>
+               Put_Line(Exception_Information(E));
+
+               Ssl.Free_Ssl(The_Client.Socket_Ssl);
+               Close_Socket(The_Client.Socket);
+         end;
+      end loop;
+   end Accept_Connections_Ssl;
+
    task body Process_Connections is
    begin
       accept Start;
@@ -769,5 +827,29 @@ package body Hellish_Irc is
       Protected_Clients.Load_Persisted_Channels;
       Accept_Connections.Start;
       Process_Connections.Start;
+
+      Put_Line("Started IRC server on " & Irc_Host.Element & ":" & Trim(Port'Image, Ada.Strings.Left));
+
+      if not Ssl_Cert_Path.Is_Empty and not Ssl_Privkey_Path.Is_Empty then
+         -- SSL
+         declare
+            Addr_Ssl : Sock_Addr_Type;
+         begin
+            Ssl.Initialize(Ssl_Cert_Path.Element, Ssl_Privkey_Path.Element);
+
+            Addr_Ssl.Addr := (Family => Family_Inet, Sin_V4 => (others => 0));
+            Addr_Ssl.Port := Port_Type(Port_Ssl);
+
+            Create_Socket(Socket_Ssl);
+            Set_Socket_Option(Socket_Ssl, Socket_Level, (Reuse_Address, True));
+            Bind_Socket(Socket_Ssl, Addr_Ssl);
+            Listen_Socket(Socket_Ssl, Queue_Size);
+
+            Set_Specific_Handler(Accept_Connections_Ssl'Identity, Termination_Handler.Handler'Access);
+            Accept_Connections_Ssl.Start;
+
+            Put_Line("Started SSL IRC server on " & Irc_Host.Element & ":" & Trim(Port_Ssl'Image, Ada.Strings.Left));
+         end;
+      end if;
    end Start;
 end Hellish_Irc;

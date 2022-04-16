@@ -12,6 +12,8 @@ A torrent tracker.
   the full tracker url is `(http|https)://(ip+port|your server host)/(user passkey)/announce`.
   Once again, this is useful when you're running behind a reverse-proxy, so the actual program
   listens on localhost but people need to connect to the proxy.
+- `--ssl-cert` and `--ssl-privkey` set the SSL certificate and private key for the IRC server,
+  if you set these then the IRC will also run with TLS on a separate port.
 
 You will need [libsodium](https://doc.libsodium.org/) installed on your system for the program to run.
 The database used is PostgreSQL, it tries to connect to the database `hellish` as user `postgres`.

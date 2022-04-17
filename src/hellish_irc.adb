@@ -5,8 +5,9 @@ with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Streams; use Ada.Streams;
 with Ada.Strings;
 
+with Gnat.Regpat; use Gnat.Regpat;
 with Gnat.String_Split; use Gnat.String_Split;
-with GNAT.Regpat; use GNAT.Regpat;
+
 with Gnatcoll.Json;
 
 with Hellish_Web.Routes;
@@ -256,32 +257,7 @@ package body Hellish_Irc is
                         end;
                      end if;
                   elsif Message_Parts(0) = "WHOIS" then
-                     declare
-                        User_Slices : Slice_Set;
-                     begin
-                        Create(User_Slices, Message_Parts(1), ",");
-                        for Whois_Username of User_Slices loop
-                           if Users.Contains(Whois_Username) then
-                              declare
-                                 The_User : Client_Cref := Clients(Users(Whois_Username));
-                              begin
-                                 Send(Client, Rpl_Whois_User
-                                        & " " & The_User.Nick.Element
-                                        & " " & The_User.Username.Element
-                                        & " " & Irc_Host.Element & " * :unknown");
-
-                                 if not The_User.Away_Message.Is_Empty then
-                                    Send(Client, Rpl_Away & " " & Client.Nick.Element & " " & The_User.Nick.Element
-                                           & " " & The_User.Away_Message.Element);
-                                 end if;
-
-                                 Send(Client, Rpl_End_Of_Whois & " :End of WHOIS");
-                              end;
-                           else
-                              Send(Client, Err_No_Such_Nick & " " & Client.Nick.Element & " " & Whois_Username & " :No such nickname");
-                           end if;
-                        end loop;
-                     end;
+                     Send_Whois(Client, Message_Parts);
                   elsif Message_Parts(0) = "MODE" then
                      if Channels.Contains(Message_Parts(1)) then
                         if Length(Message_Parts) >= 3 then
@@ -582,6 +558,47 @@ package body Hellish_Irc is
          Send_Topic(The_Client, Channel_Name);
          Send_Names(The_Client, Channel_Name);
       end Join_Channel;
+
+      procedure Send_Whois(The_Client : Client; Message_Parts : String_Vectors.Vector) is
+         User_Slices : Slice_Set;
+      begin
+         Create(User_Slices, Message_Parts(1), ",");
+         for Whois_Username of User_Slices loop
+            if Users.Contains(Whois_Username) then
+               declare
+                  The_User : Client_Cref := Clients(Users(Whois_Username));
+               begin
+                  Send(The_Client, Rpl_Whois_User
+                         & " " & The_Client.Nick.Element
+                         & " " & The_User.Nick.Element
+                         & " " & The_User.Username.Element
+                         & " " & Irc_Host.Element & " * :unknown");
+
+                  if not The_User.Away_Message.Is_Empty then
+                     Send(The_Client, Rpl_Away & " " & The_Client.Nick.Element & " " & The_User.Nick.Element
+                            & " " & The_User.Away_Message.Element);
+                  end if;
+                  if The_User.Is_Ssl then
+                     Send(The_Client, Rpl_Whois_Secure & " " & The_Client.Nick.Element & " " &
+                            The_User.Nick.Element & " :is using a secure connection");
+                  end if;
+                  if The_User.Tracker_User /= No_Detached_User then
+                     Send(The_Client, Rpl_Whois_Account & " " & The_Client.Nick.Element & " " &
+                            The_User.Nick.Element & " " & The_User.Tracker_User.Username & " :is logged in as");
+
+                     if The_User.Tracker_User.Role = 1 then
+                        Send(The_Client, Rpl_Whois_Operator & " " & The_Client.Nick.Element & " " &
+                               The_User.Nick.Element & " :is an IRC operator");
+                     end if;
+                  end if;
+
+                  Send(The_Client, Rpl_End_Of_Whois & " :End of WHOIS");
+               end;
+            else
+               Send(The_Client, Err_No_Such_Nick & " " & The_Client.Nick.Element & " " & Whois_Username & " :No such nickname");
+            end if;
+         end loop;
+      end;
 
       procedure Send_Topic(The_Client : Client; Channel_Name : String; From : String := Irc_Host.Element) is
          Channel : Channel_Maps.Constant_Reference_Type := Channels(Channel_Name);

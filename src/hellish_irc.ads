@@ -142,6 +142,7 @@ private
 
       procedure Send(The_Client : Client; Message : String; From : String := Irc_Host.Element);
 
+      procedure Send_Whois(The_Client : Client; Message_Parts : String_Vectors.Vector);
       procedure Send_Topic(The_Client : Client; Channel_Name : String; From : String := Irc_Host.Element);
       procedure Send_Names(The_Client : Client; Channel_Name : String);
       procedure Send_List(The_Client : Client; Channel_Name : String);
@@ -179,6 +180,9 @@ private
    Rpl_Now_Away : String := "306";
    Rpl_Unaway : String := "305";
    Rpl_Away : String := "301";
+   Rpl_Whois_Secure : String := "671";
+   Rpl_Whois_Account : String := "330";
+   Rpl_Whois_Operator : String := "313";
 
    Err_Unknown_Error : String := "400";
    Err_No_Such_Nick : String := "401";

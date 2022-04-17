@@ -651,7 +651,9 @@ package body Hellish_Irc is
       end;
 
       procedure Special_Message(The_Client : in out Client; Message : String) is
-         Login_Matcher : constant Pattern_Matcher := Compile(":login (\S+) (.+)");
+         Login_Matcher : constant Pattern_Matcher := Compile(":login (\S+) (.+)", Case_Insensitive);
+         Memo_Matcher : constant Pattern_Matcher := Compile(":memo (\S+) (.+)", Case_Insensitive);
+         Help_Matcher : constant Pattern_Matcher := Compile(":help", Case_Insensitive);
 
          Matches : Match_Array (0..2);
       begin
@@ -690,7 +692,54 @@ package body Hellish_Irc is
                   end if;
                end;
             end;
+
+            return;
          end if;
+
+         Match(Memo_Matcher, Message, Matches);
+         if Matches(1) /= No_Match and Matches(2) /= No_Match then
+            if The_Client.Tracker_User = No_Detached_User then
+               Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Only logged in users can send memos", From => "hellish");
+               return;
+            end if;
+            declare
+               Name : String := Message(Matches(1).First..Matches(1).Last);
+               Memo : String := Message(Matches(2).First..Matches(2).Last);
+
+               The_User : Detached_User := Detached_User(Database.Get_User(Name));
+            begin
+               if The_User = No_Detached_User then
+                  Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :There is no user named " & Name, From => "hellish");
+                  return;
+               end if;
+
+               Database.Notify_User(The_User, "You have a new IRC memo from [" & The_Client.Tracker_User.Username & "](/profile/" &
+                                      The_Client.Tracker_User.Username & "): " & Memo);
+               Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Memo sent!", From => "hellish");
+            end;
+
+            return;
+         end if;
+
+         Match(Help_Matcher, Message, Matches);
+         if Matches(0) /= No_Match then
+            Send(The_Client, "NOTICE " & The_Client.Nick.Element & Text_Bold & " :Help for special commands" & Text_Bold,
+                 From => "hellish");
+            Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :"
+                   & Text_Bold & "login " & Text_Italic & "<username> <password>" & Text_Italic & Text_Bold
+                   & " Login with your tracker username and irc key",
+                 From => "hellish");
+            Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :"
+                   & Text_Bold & "memo " & Text_Italic & "<username> <memo>" & Text_Italic & Text_Bold
+                   & " Leave a memo for a tracker user, they will see it as a notification",
+                 From => "hellish");
+            return;
+         end if;
+
+         Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Unknown command or wrong arguments: "
+                & Text_Bold & Message(Message'First + 1..Message'Last) & Text_Bold
+                & ", use " & Text_Bold & "help" & Text_Bold & " to see available commands",
+              From => "hellish");
       end;
 
       procedure Persist_Channel(The_Channel : Channel) is

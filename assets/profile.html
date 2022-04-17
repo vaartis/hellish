@@ -127,6 +127,10 @@
                         @@IF@@ @_EXIST:irc_key_@
                         The server address is <i>@_irc_host_@</i>, use the following command to login:
                         <p class="key-command">/msg hellish login @_username_@ @_irc_key_@</p>
+                        <p>
+                            To see other available commands, use <span class="key-command">/msg hellish help</span>
+                        </p>
+
                         @@END_IF@@
                         <input id="generate-irc-key" name="generate-irc-key" class="hellish-input-field" type="checkbox">
                         <label for="generate-irc-key">Regenerate IRC key</label>

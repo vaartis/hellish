@@ -231,6 +231,23 @@ package body Hellish_Web.Database is
       Session.Commit;
    end;
 
+   procedure Notify_User(The_User : Detached_User'Class; Notification : String) is
+      use Gnatcoll.Json;
+
+      Session : Session_Type := Get_New_Session;
+      Sub_Profile : Json_Value := Read(The_User.Profile);
+      Sub_Notifications : Json_Array := (if Has_Field(Sub_Profile, "notifications")
+                                         then Get(Sub_Profile, "notifications")
+                                         else Empty_Array);
+   begin
+      Prepend(Sub_Notifications, Create(Notification));
+      Sub_Profile.Set_Field("notifications", Sub_Notifications);
+      The_User.Set_Profile(Sub_Profile.Write);
+
+      Session.Persist(The_User);
+      Session.Commit;
+   end;
+
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class) is
       Session : Session_Type := Get_New_Session;
    begin
@@ -810,21 +827,9 @@ package body Hellish_Web.Database is
       begin
          for Subscriber of Subscriptions loop
             if Get(Subscriber) /= Creator.Id then
-               declare
-                  Sub : Detached_User'Class := Database.Get_User(Integer'(Get(Subscriber)));
-                  Sub_Profile : Json_Value := Read(Sub.Profile);
-                  Sub_Notifications : Json_Array :=  (if Has_Field(Sub_Profile, "notifications")
-                                                      then Get(Sub_Profile, "notifications")
-                                                      else Empty_Array);
-               begin
-                  Append(Sub_Notifications, Create(Text));
-                  Sub_Profile.Set_Field("notifications", Sub_Notifications);
-                  Sub.Set_Profile(Sub_Profile.Write);
-                  Session.Persist(Sub);
-               end;
+               Notify_User(Database.Get_User(Integer'(Get(Subscriber))), Text);
             end if;
          end loop;
-         Session.Commit;
       end Notify;
    end Subscriptions;
 end;

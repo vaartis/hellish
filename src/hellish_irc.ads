@@ -192,4 +192,7 @@ private
    Err_Not_On_Channel : String := "442";
 
    Err_Invite_Only_Chan : String := "473";
+
+   Text_Bold : Character := Character'Val(16#02#);
+   Text_Italic : Character := Character'Val(16#1D#);
 end Hellish_Irc;

@@ -19,6 +19,7 @@ package Hellish_Web.Database is
    function Get_User_By_Passkey(Passkey : String) return Detached_User'Class;
    function Get_Invited_Users(By_User : Detached_User'Class) return Invite_List;
    procedure Update_User(The_User : Detached_User'Class);
+   procedure Notify_User(The_User : Detached_User'Class; Notification : String);
 
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class);
    procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;

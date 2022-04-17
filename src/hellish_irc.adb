@@ -3,6 +3,8 @@ with Ada.Task_Identification; use Ada.Task_Identification;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Streams; use Ada.Streams;
+with Ada.Calendar; use Ada.Calendar;
+with Ada.Calendar.Time_Zones; use Ada.Calendar.Time_Zones;
 with Ada.Strings;
 
 with Gnat.Regpat; use Gnat.Regpat;
@@ -261,6 +263,15 @@ package body Hellish_Irc is
                   elsif Message_Parts(0) = "MODE" then
                      if Channels.Contains(Message_Parts(1)) then
                         if Length(Message_Parts) >= 3 then
+                           declare
+                              Req_Str : String := Message_Parts(2);
+                           begin
+                              if Req_Str(Req_Str'First) /= '+' and Req_Str(Req_Str'First) /= '-' then
+                                 -- Request for user modes or something? Don't respond with anything (for now)
+                                 goto After;
+                              end if;
+                           end;
+
                            if Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1 then
                               Send(Client, Err_Chan_Op_Privs_Needed
                                      & " " & Client.Nick.Element & " " & Message_Parts(1) & " :Only admins can channel set modes");
@@ -358,8 +369,12 @@ package body Hellish_Irc is
                                  else
                                     declare
                                        Topic_Str : String := Message_Parts(2);
+
+                                       Epoch : constant Time := Time_Of(1970, 1, 1, 0.0);
                                     begin
                                        Channels(Message_Parts(1)).Topic := To_Holder(Topic_Str(Topic_Str'First + 1..Topic_Str'Last));
+                                       Channels(Message_Parts(1)).Topic_Set_By := Client.Nick;
+                                       Channels(Message_Parts(1)).Topic_Set_At := Positive(Clock - Epoch - Duration(60 * UTC_Time_Offset));
                                     end;
                                  end if;
                                  Persist_Channel(Channels(Message_Parts(1)));
@@ -392,6 +407,22 @@ package body Hellish_Irc is
                            end if;
                         end loop;
                      end;
+                  elsif Message_Parts(0) = "WHO" then
+                     if Channels.Contains(Message_Parts(1)) then
+                        for User of Channels(Message_Parts(1)).Users loop
+                           declare
+                              The_User : Client_Cref := Clients(User);
+                           begin
+                              Send(Client, Rpl_Who_Reply & " " & Client.Nick.Element & " " & Channels(Message_Parts(1)).Name.Element
+                                     & " " & The_User.Username.Element & " unknown " & Irc_Host.Element & " " & The_User.Nick.Element & " "
+                                     & (if The_User.Away_Message.Is_Empty then "H" else "G")
+                                     & (if The_User.Tracker_User /= No_Detached_User and then The_User.Tracker_User.Role = 1
+                                        then "*" else "")
+                                     & " :0 unknown");
+                           end;
+                        end loop;
+                        Send(Client, Rpl_End_Of_Who & " " & Client.Nick.Element & " " & Message_Parts(1) & " :End of WHO list");
+                     end if;
                   elsif Message_Parts(0) = "LIST" then
                      if Length(Message_Parts) < 2 then
                         -- All
@@ -609,6 +640,8 @@ package body Hellish_Irc is
          else
             Send(The_Client, Rpl_Topic & " " & The_Client.Nick.Element & " " & Channel.Name.Element & " :" & Channel.Topic.Element,
                  From => From);
+            Send(The_Client, Rpl_Topic_Who_Time & " " & The_Client.Nick.Element & " " & Channel.Name.Element & " " & Channel.Topic_Set_By.Element
+                   & Channel.Topic_Set_At'Image, From => From);
          end if;
       end Send_Topic;
 
@@ -747,13 +780,18 @@ package body Hellish_Irc is
 
          Channel_Map : Json_Value := Create_Object;
          Channel_Modes : Json_Array := Empty_Array;
+
+         Topic_Map : Json_Value := Create_Object;
       begin
          for Mode of The_Channel.Modes loop
             Append(Channel_Modes, Create(Mode));
          end loop;
          Channel_Map.Set_Field("modes", Create(Channel_Modes));
          if not The_Channel.Topic.Is_Empty then
-            Channel_Map.Set_Field("topic", Create(The_Channel.Topic.Element));
+            Topic_Map.Set_Field("topic", Create(The_Channel.Topic.Element));
+            Topic_Map.Set_Field("set_by", Create(The_Channel.Topic_Set_By.Element));
+            Topic_Map.Set_Field("set_at", Create(The_Channel.Topic_Set_At));
+            Channel_Map.Set_Field("topic", Topic_Map);
          end if;
 
          Database.Persist_Channel(The_Channel.Name.Element, Channel_Map.Write);
@@ -770,6 +808,7 @@ package body Hellish_Irc is
                use Gnatcoll.Json;
                Channel_Data : Json_Value := Read(Orm.Data(Loaded_Channel));
                Channel_Modes : Json_Array := Get(Channel_Data, "modes");
+               Topic_Data : Json_Value := Get(Channel_Data, "topic");
 
                New_Channel : Channel;
             begin
@@ -778,7 +817,9 @@ package body Hellish_Irc is
                   New_Channel.Modes.Include(Get(Mode));
                end loop;
                if Channel_Data.Has_Field("topic") then
-                  New_Channel.Topic := To_Holder(Get(Channel_Data, "topic"));
+                  New_Channel.Topic := To_Holder(Get(Topic_Data, "topic"));
+                  New_Channel.Topic_Set_By := To_Holder(Get(Topic_Data, "set_by"));
+                  New_Channel.Topic_Set_At := Get(Topic_Data, "set_at");
                end if;
 
                Channels.Include(Loaded_Channel.Name, New_Channel);

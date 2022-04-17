@@ -106,7 +106,10 @@ private
 
    type Channel is record
       Name : String_Holders.Holder;
+
       Topic : String_Holders.Holder;
+      Topic_Set_By : String_Holders.Holder;
+      Topic_Set_At : Positive;
 
       Modes : String_Sets.Set;
 
@@ -172,6 +175,7 @@ private
    Rpl_End_Of_Whois : String := "318";
    Rpl_Notopic : String := "331";
    Rpl_Topic : String := "332";
+   Rpl_Topic_Who_Time : String := "333";
    Rpl_Name_Reply : String := "353";
    Rpl_End_Of_Names : String := "366";
    Rpl_Channel_Mode_Is : String := "324";
@@ -183,6 +187,8 @@ private
    Rpl_Whois_Secure : String := "671";
    Rpl_Whois_Account : String := "330";
    Rpl_Whois_Operator : String := "313";
+   Rpl_Who_reply : String := "352";
+   Rpl_End_Of_Who : String := "315";
 
    Err_Unknown_Error : String := "400";
    Err_No_Such_Nick : String := "401";

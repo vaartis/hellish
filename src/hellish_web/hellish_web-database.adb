@@ -1,5 +1,4 @@
 with Ada.Text_Io; use Ada.Text_Io;
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Directories; use Ada.Directories;
 with Ada.Characters.Latin_1;
@@ -9,11 +8,9 @@ with Gnatcoll.Traces; use Gnatcoll.Traces;
 with Gnatcoll.Tribooleans; use Gnatcoll.Tribooleans;
 with
   Gnatcoll.Sql,
-  Gnatcoll.Sql.Sessions,
   Gnatcoll.Sql.Inspect;
 use
   Gnatcoll.Sql,
-  Gnatcoll.Sql.Sessions,
   Gnatcoll.Sql.Inspect;
 use type
   Gnatcoll.Sql.Text_Fields.Field,
@@ -24,7 +21,6 @@ with Gnatcoll.Vfs; use Gnatcoll.Vfs;
 with Sodium.Functions;
 
 with Hellish_Database;
-with Orm; use Orm;
 
 package body Hellish_Web.Database is
    Latest_Version : Natural := 9;
@@ -183,7 +179,7 @@ package body Hellish_Web.Database is
       end if;
    end Get_User;
 
-   function Get_User(Id : Natural) return Detached_User'Class is
+   function Get_User(Id : Integer) return Detached_User'Class is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -311,7 +307,7 @@ package body Hellish_Web.Database is
       end if;
    end Get_Torrent_By_Hash;
 
-   function Get_Torrent(Id : Natural) return Detached_Torrent'Class is
+   function Get_Torrent(Id : Integer) return Detached_Torrent'Class is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -353,13 +349,13 @@ package body Hellish_Web.Database is
    end Torrent_Snatches;
 
    function Search_Torrents(Query : String;
-                            Uploader : Natural;
+                            Uploader : Integer;
                             Category : Integer;
                             Snatched_By : Integer;
 
-                            Offset : Natural;
-                            Limit : Natural;
-                            Total_Count : out Natural) return Direct_Torrent_List is
+                            Offset : Integer;
+                            Limit : Integer;
+                            Total_Count : out Integer) return Direct_Torrent_List is
       use Hellish_Database;
 
       Search_Criteria : Sql_Criteria :=
@@ -404,7 +400,7 @@ package body Hellish_Web.Database is
       end return;
    end Search_Torrents;
 
-   procedure Delete_Torrent(Id : Natural) is
+   procedure Delete_Torrent(Id : Integer) is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -429,9 +425,9 @@ package body Hellish_Web.Database is
 
    function Torrent_Comments(Parent_Torrent : Integer;
 
-                             Offset : Natural;
+                             Offset : Integer;
                              Limit : Integer;
-                             Total_Count : out Natural) return Post_List is
+                             Total_Count : out Integer) return Post_List is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -526,9 +522,9 @@ package body Hellish_Web.Database is
       Session.Commit;
    end Create_Post;
 
-   function Get_Post(Id : Natural) return Detached_Post'Class is (Orm.Get_Post(Get_New_Session, Id));
+   function Get_Post(Id : Integer) return Detached_Post'Class is (Orm.Get_Post(Get_New_Session, Id));
 
-   function Get_Post(Id : Natural; Parent_Post : out Detached_Post'Class) return Detached_Post'Class is
+   function Get_Post(Id : Integer; Parent_Post : out Detached_Post'Class) return Detached_Post'Class is
       Session : Session_Type := Get_New_Session;
    begin
       return Result : Detached_Post'Class := Orm.Get_Post(Session, Id) do
@@ -538,9 +534,9 @@ package body Hellish_Web.Database is
 
    function Post_Replies(Parent_Post : Integer;
 
-                         Offset : Natural;
+                         Offset : Integer;
                          Limit : Integer;
-                         Total_Count : out Natural) return Post_List is
+                         Total_Count : out Integer) return Post_List is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -583,9 +579,9 @@ package body Hellish_Web.Database is
                          Flag : Integer;
                          Author : Integer;
 
-                         Offset : Natural;
-                         Limit : Natural;
-                         Total_Count : out Natural) return Post_List is
+                         Offset : Integer;
+                         Limit : Integer;
+                         Total_Count : out Integer) return Post_List is
       use Hellish_Database;
 
       Search_Criteria : Sql_Criteria :=
@@ -681,13 +677,13 @@ package body Hellish_Web.Database is
       return All_Image_Uploads.Filter(By_User => The_User.Id).Get(Session);
    end User_Images;
 
-   function Get_Image(Id : Natural) return Detached_Image_Upload'Class is
+   function Get_Image(Id : Integer) return Detached_Image_Upload'Class is
       Session : Session_Type := Get_New_Session;
    begin
       return Get_Image_Upload(Session, Id);
    end Get_Image;
 
-   function Admin_Recently_Invited(Limit : Natural) return Invite_List is
+   function Admin_Recently_Invited(Limit : Integer) return Invite_List is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
@@ -722,7 +718,7 @@ package body Hellish_Web.Database is
                                        then Get(The_Meta, "unsubscribed")
                                        else Empty_Array);
          New_Unsubscribed : Json_Array := Empty_Array;
-         User_Id : Natural := User.Id;
+         User_Id : Integer := User.Id;
 
          Session : Session_Type := Get_New_Session;
       begin
@@ -755,7 +751,7 @@ package body Hellish_Web.Database is
          Subscriptions : Json_Array := (if Has_Field(The_Meta, "subscribed")
                                         then Get(The_Meta, "subscribed")
                                         else Empty_Array);
-         User_Id : Natural := User.Id;
+         User_Id : Integer := User.Id;
       begin
          for Subscriber of Subscriptions loop
             if Get(Subscriber) = User_Id then return True; end if;
@@ -776,7 +772,7 @@ package body Hellish_Web.Database is
                                        then Get(The_Meta, "unsubscribed")
                                        else Empty_Array);
 
-         User_Id : Natural := User.Id;
+         User_Id : Integer := User.Id;
 
          Session : Session_Type := Get_New_Session;
       begin
@@ -810,7 +806,7 @@ package body Hellish_Web.Database is
          Unsubscribed : Json_Array := (if Has_Field(The_Meta, "unsubscribed")
                                        then Get(The_Meta, "unsubscribed")
                                        else Empty_Array);
-         User_Id : Natural := User.Id;
+         User_Id : Integer := User.Id;
       begin
          return (for some Subscriber of Unsubscribed => Get(Subscriber) = User_Id);
       end Explicitly_Unsubscribed;

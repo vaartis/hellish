@@ -159,9 +159,9 @@ package body Hellish_Web.Routes is
                                   The_User : Detached_User'Class;
                                   Translations : in out Translate_Set;
                                   Fetch_Function : access function(Parent : Integer;
-                                                                   Offset : Natural;
+                                                                   Offset : Integer;
                                                                    Limit : Integer;
-                                                                   Total_Count : out Natural) return Post_List;
+                                                                   Total_Count : out Integer) return Post_List;
                                   Request : Status.Data
                                  ) is
       Page_Size : constant Natural := 25;
@@ -541,6 +541,9 @@ package body Hellish_Web.Routes is
               := new Resources.Streams.Memory.Stream_Type;
 
             Sent_Name : String := Compose(Name => Base_Name(To_String(File_Name)), Extension => "torrent");
+
+            -- "Resources.Streams.Stream_Access" supposedly causes invalid access, but actually it works
+            pragma Suppress(Accessibility_Check);
          begin
             Append(Data.all,
                    Translator.To_Stream_Element_Array(To_String(Decoded.Encoded)),

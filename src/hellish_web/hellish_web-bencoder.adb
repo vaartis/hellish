@@ -86,9 +86,9 @@ package body Hellish_Web.Bencoder is
       Look_Ahead(File, Char, Eol);
 
       declare
-         Tmp: Integer;
+         Unused_Tmp: Integer;
       begin
-         Tmp := Integer'Value(( 1 => Char ));
+         Unused_Tmp := Integer'Value(( 1 => Char ));
          -- Confirmed that the appropriate type is a string
          return Decode_String(File);
       exception

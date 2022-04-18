@@ -1,3 +1,5 @@
+pragma Unsuppress(All_Checks);
+
 with Ada.Task_Termination; use Ada.Task_Termination;
 with Ada.Task_Identification; use Ada.Task_Identification;
 with Ada.Exceptions; use Ada.Exceptions;
@@ -100,8 +102,6 @@ package body Hellish_Irc is
                end if;
 
                declare
-                  use Message_Vectors;
-
                   Message_Slices : Slice_Set;
 
                   Message_Queue : Message_Vectors.Vector renames Client.Message_Queue;
@@ -113,8 +113,6 @@ package body Hellish_Irc is
                         Put_Line(Message);
 
                         declare
-                           use String_Vectors;
-
                            Part_Slices : Slice_Set;
                            Message_Parts : String_Vectors.Vector;
 
@@ -216,8 +214,9 @@ package body Hellish_Irc is
                               end loop;
                            end if;
                         end loop;
+
+                        Send(Client, "ERROR :" & Quit_Reason);
                      end;
-                     Send(Client, "ERROR :" & Quit_Reason);
 
                      goto After;
                   end if;

@@ -11,7 +11,7 @@ project Hellish is
    for Main use ("hellish.adb");
 
    type Enabled_Kind is ("enabled", "disabled");
-   Compile_Checks : Enabled_Kind := External ("HELLISH_COMPILE_CHECKS", "disabled");
+   Compile_Checks : Enabled_Kind := External ("HELLISH_COMPILE_CHECKS", "enabled");
    Runtime_Checks : Enabled_Kind := External ("HELLISH_RUNTIME_CHECKS", "disabled");
    Style_Checks : Enabled_Kind := External ("HELLISH_STYLE_CHECKS", "disabled");
    Contracts_Checks : Enabled_Kind := External ("HELLISH_CONTRACTS", "disabled");
@@ -25,7 +25,7 @@ project Hellish is
          Compile_Checks_Switches :=
            ("-gnatwa",  -- All warnings
             "-gnatVa",  -- All validity checks
-            "-gnatwe"); -- Warnings as errors
+            "-gnatwK"); -- No "could be constant" warnings
       when others => null;
    end case;
 

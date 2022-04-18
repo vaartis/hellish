@@ -226,7 +226,7 @@ package body Hellish_Irc is
                               end if;
 
                               for Channel_User of Channel.Users loop
-                                 Send(Clients(Channel_User), To_String(To_Send), From => Client.Nick.Element);
+                                 Send(Clients(Channel_User), To_String(To_Send), From => Client_From(Client));
                               end loop;
                            end;
                         end if;
@@ -259,7 +259,7 @@ package body Hellish_Irc is
                            To_Send : String := Join_Parts(Message_Parts);
                         begin
                            for Channel_User of Channels(Message_Parts(1)).Users loop
-                              Send(Clients(Channel_User), To_Send, From => Client.Nick.Element);
+                              Send(Clients(Channel_User), To_Send, From => Client_From(Client));
                            end loop;
 
                            Channels(Message_Parts(1)).Users.Exclude(Client.Id);
@@ -333,7 +333,7 @@ package body Hellish_Irc is
                         begin
                            for Channel_User of Channels(Message_Parts(1)).Users loop
                               if Channel_User /= Client.Id then
-                                 Send(Clients(Channel_User), To_Send, From => Client.Nick.Element);
+                                 Send(Clients(Channel_User), To_Send, From => Client_From(Client));
                               end if;
                            end loop;
                         end;
@@ -348,7 +348,7 @@ package body Hellish_Irc is
                                   & " " & Sent_To.Away_Message.Element);
                            end if;
 
-                           Send(Sent_To, Join_Parts(Message_Parts), From => Client.Nick.Element);
+                           Send(Sent_To, Join_Parts(Message_Parts), From => Client_From(Client));
                         end;
                      end if;
                   elsif Message_Parts(0) = "TOPIC" then
@@ -388,7 +388,7 @@ package body Hellish_Irc is
 
                                  -- Send new topic
                                  for User of Channels(Message_Parts(1)).Users loop
-                                    Send_Topic(Clients(User), Message_Parts(1), From => Client.Nick.Element);
+                                    Send_Topic(Clients(User), Message_Parts(1), From => Client_From(Client));
                                  end loop;
                               end if;
                            else
@@ -421,7 +421,10 @@ package body Hellish_Irc is
                               The_User : Client_Cref := Clients(User);
                            begin
                               Send(Client, Rpl_Who_Reply & " " & Client.Nick.Element & " " & Channels(Message_Parts(1)).Name.Element
-                                     & " " & The_User.Username.Element & " unknown " & Irc_Host.Element & " " & The_User.Nick.Element & " "
+                                     & " " & The_User.Username.Element & " "
+                                     & (if The_User.Id = Client.Id or (Client.Tracker_User /= No_Detached_User and then Client.Tracker_User.Role = 1)
+                                        then Image(The_User.Address) else "unknown")
+                                     & " " & Irc_Host.Element & " " & The_User.Nick.Element & " "
                                      & (if The_User.Away_Message.Is_Empty then "H" else "G")
                                      & (if The_User.Tracker_User /= No_Detached_User and then The_User.Tracker_User.Role = 1
                                         then "*" else "")
@@ -590,7 +593,7 @@ package body Hellish_Irc is
             Channels(Channel_Name).Users.Include(The_Client.Id);
 
             for User of Channels(Channel_Name).Users loop
-               Send(Clients(User), "JOIN " & Channel_Name, From => The_Client.Nick.Element);
+               Send(Clients(User), "JOIN " & Channel_Name, From => Client_From(The_Client));
             end loop;
          else
             if The_Client.Tracker_User = No_Detached_User or else The_Client.Tracker_User.Role /= 1 then

@@ -163,6 +163,8 @@ private
       Socket_To_Client : Socket_Client_Maps.Map;
    end Protected_Clients;
 
+   function Client_From(C : Client) return String is (C.Nick.Element & "!" & C.Username.Element & "@" & "unknown.host");
+
    Channels : Channel_Maps.Map;
    Users : User_Maps.Map;
 

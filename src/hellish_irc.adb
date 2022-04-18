@@ -149,20 +149,7 @@ package body Hellish_Irc is
                end;
             exception
                when E : others =>
-                  declare
-                     E_Info : String := Exception_Information(E);
-                     Error_Slices : Slice_Set;
-                  begin
-                     Put_Line(E_Info);
-
-                     Create(Error_Slices, E_Info, Cr_Lf, Multiple);
-
-                     for Slice of Error_Slices loop
-                        if Slice /= "" then
-                           Send(Client, Err_Unknown_Error & " ERROR :!! " & Slice);
-                        end if;
-                     end loop;
-                  end;
+                  Put_Line(Exception_Information(E));
             end;
 
          <<After>>
@@ -213,24 +200,24 @@ package body Hellish_Irc is
                   elsif Message_Parts(0) = "PING" then
                      Send(Client, "PONG " & Message_Parts(1));
                   elsif Message_Parts(0) = "QUIT" then
-                     To_Remove.Include(Client.Id);
+                     declare
+                        Quit_Reason : String := "Quit: " &
+                          (if Length(Message_Parts) > 1
+                           then Message_Parts(1)(String'(Message_Parts(1))'First + 1..String'(Message_Parts(1))'Last)
+                           else "");
 
-                     for Channel of Channels loop
-                        if Channel.Users.Contains(Client.Id) then
-                           declare
-                              To_Send : Unbounded_String;
-                           begin
-                              To_Send := @ & "PART " & Channel.Name.Element;
-                              if Message_Parts.Length > 1 then
-                                 To_Send := @ & " " & Message_Parts(1);
-                              end if;
+                     begin
+                        To_Remove.Include(Client.Id);
 
+                        for Channel of Channels loop
+                           if Channel.Users.Contains(Client.Id) then
                               for Channel_User of Channel.Users loop
-                                 Send(Clients(Channel_User), To_String(To_Send), From => Client_From(Client));
+                                 Send(Clients(Channel_User), "QUIT :" & Quit_Reason, From => Client_From(Client));
                               end loop;
-                           end;
-                        end if;
-                     end loop;
+                           end if;
+                        end loop;
+                     end;
+                     Send(Client, "ERROR :" & Quit_Reason);
 
                      goto After;
                   end if;
@@ -466,7 +453,7 @@ package body Hellish_Irc is
                <<After>>
                end loop;
 
-               if Client.Caps_Negotiated and not Client.Nick.Is_Empty and not Client.Motd_Sent then
+               if Client.Caps_Negotiated and not Client.Nick.Is_Empty and not Client.Username.Is_Empty and not Client.Motd_Sent then
                   Send(Client, "001 " & Client.Nick.Element & " :Welcome to Hellish IRC!");
                   Send(Client, Rpl_Motd_Start & " : ** Message of the day:");
 
@@ -497,20 +484,7 @@ package body Hellish_Irc is
                when E : others =>
                   Queue.Clear;
 
-                  declare
-                     E_Info : String := Exception_Information(E);
-                     Error_Slices : Slice_Set;
-                  begin
-                     Put_Line(E_Info);
-
-                     Create(Error_Slices, E_Info, Cr_Lf, Multiple);
-
-                     for Slice of Error_Slices loop
-                        if Slice /= "" then
-                           Send(Client, Err_Unknown_Error & " ERROR :!! " & Slice);
-                        end if;
-                     end loop;
-                  end;
+                  Put_Line(Exception_Information(E));
             end;
          end loop;
 

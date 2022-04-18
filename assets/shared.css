@@ -137,6 +137,7 @@ a:hover {
 .user-info {
     float: right;
     margin-right: 1em;
+    max-width: 10%;
 }
 
 .user-info-button {
@@ -146,9 +147,11 @@ a:hover {
 }
 
 .upload {
+    white-space: nowrap;
     color: var(--upload-color);
 }
 
 .download {
+    white-space: nowrap;
     color: var(--download-color);
 }

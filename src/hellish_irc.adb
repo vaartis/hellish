@@ -2,9 +2,11 @@ with Ada.Task_Termination; use Ada.Task_Termination;
 with Ada.Task_Identification; use Ada.Task_Identification;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Text_Io; use Ada.Text_Io;
+with Ada.Text_Io.Unbounded_Io; use Ada.Text_Io.Unbounded_Io;
 with Ada.Streams; use Ada.Streams;
 with Ada.Calendar; use Ada.Calendar;
 with Ada.Calendar.Time_Zones; use Ada.Calendar.Time_Zones;
+with Ada.Directories;
 with Ada.Strings;
 
 with Gnat.Regpat; use Gnat.Regpat;
@@ -464,7 +466,25 @@ package body Hellish_Irc is
                if Client.Caps_Negotiated and not Client.Nick.Is_Empty and not Client.Motd_Sent then
                   Send(Client, "001 " & Client.Nick.Element & " :Welcome to Hellish IRC!");
                   Send(Client, Rpl_Motd_Start & " : ** Message of the day:");
-                  Send(Client, Rpl_Motd & " : **   Nothing in particular..");
+
+                  declare
+                     use Ada.Directories;
+
+                     Motd_File : File_Type;
+                     Motd_Line : Unbounded_String;
+                  begin
+                     if Exists("motd.txt") then
+                        Open(Motd_File, Mode => In_File, Name => "motd.txt");
+                        while not End_Of_File(Motd_File) loop
+                           Get_Line(Motd_File, Motd_Line);
+                           Send(Client, Rpl_Motd & " : **   " & To_String(Motd_Line));
+                        end loop;
+                        Close(Motd_File);
+                     else
+                        Send(Client, Rpl_Motd & " : **   Nothing in particular..");
+                     end if;
+                  end;
+
                   Send(Client, Rpl_End_Of_Motd & " : ** End of MOTD");
                   Client.Motd_Sent := True;
                end if;

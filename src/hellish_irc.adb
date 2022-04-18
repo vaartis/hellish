@@ -678,7 +678,7 @@ package body Hellish_Irc is
          The_Channel : Channel := Channels(Channel_Name);
       begin
          Send(The_Client, Rpl_List & " " & The_Client.Nick.Element & " " & Channel_Name
-                & Length(The_Channel.Users)'Image & (if The_Channel.Modes.Contains("i") or The_Channel.Topic.Is_Empty
+                & Length(The_Channel.Users)'Image & (if The_Channel.Topic.Is_Empty
                                                      then " :"
                                                      else " :" & The_Channel.Topic.Element));
       end;

@@ -207,12 +207,10 @@ package body Hellish_Irc is
                      begin
                         To_Remove.Include(Client.Id);
 
-                        for Channel of Channels loop
-                           if Channel.Users.Contains(Client.Id) then
-                              for Channel_User of Channel.Users loop
-                                 Send(Clients(Channel_User), "QUIT :" & Quit_Reason, From => Client_From(Client));
-                              end loop;
-                           end if;
+                        for Channel_Name of Client.Joined_Channels loop
+                           for Channel_User of Channels(Channel_Name).Users loop
+                              Send(Clients(Channel_User), "QUIT :" & Quit_Reason, From => Client_From(Client));
+                           end loop;
                         end loop;
 
                         Send(Client, "ERROR :" & Quit_Reason);
@@ -235,7 +233,7 @@ package body Hellish_Irc is
                            if The_Channel(The_Channel'First) /= '#' then
                               Send(Client, Err_No_Such_Channel & " " & The_Channel(1) & " :Channel name must start with #");
                            else
-                              Join_Channel(Client, The_Channel);
+                              Join_Channel(Clients.Reference(Client.Id), The_Channel);
                            end if;
                         end loop;
                      end;
@@ -248,7 +246,7 @@ package body Hellish_Irc is
                               Send(Clients(Channel_User), To_Send, From => Client_From(Client));
                            end loop;
 
-                           Channels(Message_Parts(1)).Users.Exclude(Client.Id);
+                           Leave_Channel(Client, Channels(Message_Parts(1)));
                         end;
                      end if;
                   elsif Message_Parts(0) = "WHOIS" then
@@ -500,8 +498,8 @@ package body Hellish_Irc is
 
             Socket_To_Client.Delete(Clients(Removed).Socket);
 
-            for Channel of Channels loop
-               Channel.Users.Exclude(Removed);
+            for Channel_Name of Clients(Removed).Joined_Channels loop
+               Leave_Channel(Clients(Removed), Channels(Channel_Name));
             end loop;
 
             if Clients(Removed).Is_Ssl then
@@ -547,7 +545,7 @@ package body Hellish_Irc is
          end if;
       end Send;
 
-      procedure Join_Channel(The_Client : Client; Channel_Name : String) is
+      procedure Join_Channel(The_Client : in out Client; Channel_Name : String) is
       begin
          if Channels.Contains(Channel_Name) then
             -- Don't try to add the user again if they've already joined
@@ -564,6 +562,7 @@ package body Hellish_Irc is
             end if;
 
             Channels(Channel_Name).Users.Include(The_Client.Id);
+            The_Client.Joined_Channels.Include(Channel_Name);
 
             for User of Channels(Channel_Name).Users loop
                Send(Clients(User), "JOIN " & Channel_Name, From => Client_From(The_Client));
@@ -590,6 +589,12 @@ package body Hellish_Irc is
          Send_Topic(The_Client, Channel_Name);
          Send_Names(The_Client, Channel_Name);
       end Join_Channel;
+
+      procedure Leave_Channel(The_Client : in out Client; The_Channel : in out Channel) is
+      begin
+         The_Channel.Users.Exclude(The_Client.Id);
+         The_Client.Joined_Channels.Exclude(The_Channel.Name.Element);
+      end Leave_Channel;
 
       procedure Send_Whois(The_Client : Client; Message_Parts : String_Vectors.Vector) is
          User_Slices : Slice_Set;
@@ -627,6 +632,22 @@ package body Hellish_Irc is
                      Send(The_Client, Rpl_Whois_Actually & " " & The_Client.Nick.Element & " " &
                             The_User.Nick.Element & " " & Image(The_User.Address) & " :is actually using host");
                   end if;
+                  declare
+                     Reply_Base : String := Rpl_Whois_Channels & " " & The_Client.Nick.Element & " "
+                       & The_User.Nick.Element & " :";
+                     Reply_Str : Unbounded_String := To_Unbounded_String(Reply_Base);
+                  begin
+                     for Channel_Name of The_User.Joined_Channels loop
+                        Reply_Str := @ & Channel_Name & " ";
+                        if Length(Reply_Str) >= 400 then
+                           Send(The_Client, To_String(Reply_Str));
+                           Reply_Str := To_Unbounded_String(Reply_Base);
+                        end if;
+                     end loop;
+                     if Reply_Str /= Reply_Base then
+                        Send(The_Client, To_String(Reply_Str));
+                     end if;
+                  end;
 
                   Send(The_Client, Rpl_End_Of_Whois & " :End of WHOIS");
                end;

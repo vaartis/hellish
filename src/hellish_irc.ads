@@ -100,6 +100,8 @@ private
 
       Away_Message : String_Holders.Holder;
 
+      Joined_Channels : String_Sets.Set;
+
       case Is_Ssl is
          when True =>
             Socket_Ssl : Ssl.Ssl;
@@ -153,7 +155,8 @@ private
       procedure Send_Names(The_Client : Client; Channel_Name : String);
       procedure Send_List(The_Client : Client; Channel_Name : String);
 
-      procedure Join_Channel(The_Client : Client; Channel_Name : String);
+      procedure Join_Channel(The_Client : in out Client; Channel_Name : String);
+      procedure Leave_Channel(The_Client : in out Client; The_Channel : in out Channel);
 
       procedure Special_Message(The_Client : in out Client; Message : String);
 
@@ -193,7 +196,8 @@ private
    Rpl_Whois_Account : String := "330";
    Rpl_Whois_Operator : String := "313";
    Rpl_Whois_Actually : String := "338";
-   Rpl_Who_reply : String := "352";
+   Rpl_Whois_Channels : String := "319";
+   Rpl_Who_Reply : String := "352";
    Rpl_End_Of_Who : String := "315";
 
    Err_Unknown_Error : String := "400";

@@ -180,7 +180,7 @@ package body Hellish_Irc is
                   if Message_Parts(0) = "NICK" then
                      if Users.Contains(Message_Parts(1)) then
                         -- Nick already known
-                        Send(Client, Err_Nickname_In_Use & " " & Message_Parts(1) & " :" & Message_Parts(1) & " already taken");
+                        Send(Client, Err_Nickname_In_Use & " " & Message_Parts(1) & " " & Message_Parts(1) & " :" & Message_Parts(1) & " already taken");
                      else
                         if not Client.Nick.Is_Empty then
                            -- Remove old nickname binding
@@ -195,6 +195,11 @@ package body Hellish_Irc is
                      end if;
                   elsif Message_Parts(0) = "USER" then
                      Client.Username := To_Holder(Message_Parts(1));
+                     declare
+                        Real_Name : String := Message_Parts(4);
+                     begin
+                        Client.Real_Name := To_Holder(Real_Name(Real_Name'First + 1..Real_Name'Last));
+                     end;
                      Put_Line("Username set to " & Client.Username.Element);
                   elsif Message_Parts(0) = "CAP" then
                      if Message_Parts(1) = "LS" then
@@ -364,7 +369,7 @@ package body Hellish_Irc is
                                  Send(Client, Err_Chan_Op_Privs_Needed
                                         & " " & Client.Nick.Element & " " & Message_Parts(1) & " :Only admins can change protected topic");
                               else
-                                 if Trim(Message_Parts(2), Ada.Strings.Both) = "" then
+                                 if Trim(Message_Parts(2), Ada.Strings.Both) = ":" then
                                     Channels(Message_Parts(1)).Topic.Clear;
                                  else
                                     declare
@@ -418,7 +423,7 @@ package body Hellish_Irc is
                                      & (if The_User.Away_Message.Is_Empty then "H" else "G")
                                      & (if The_User.Tracker_User /= No_Detached_User and then The_User.Tracker_User.Role = 1
                                         then "*" else "")
-                                     & " :0 unknown");
+                                     & " :0 " & The_User.Real_Name.Element);
                            end;
                         end loop;
                         Send(Client, Rpl_End_Of_Who & " " & Client.Nick.Element & " " & Message_Parts(1) & " :End of WHO list");
@@ -603,7 +608,7 @@ package body Hellish_Irc is
                          & " " & The_Client.Nick.Element
                          & " " & The_User.Nick.Element
                          & " " & The_User.Username.Element
-                         & " " & Irc_Host.Element & " * :unknown");
+                         & " " & Irc_Host.Element & " * :" & The_User.Real_Name.Element);
 
                   if not The_User.Away_Message.Is_Empty then
                      Send(The_Client, Rpl_Away & " " & The_Client.Nick.Element & " " & The_User.Nick.Element
@@ -621,6 +626,10 @@ package body Hellish_Irc is
                         Send(The_Client, Rpl_Whois_Operator & " " & The_Client.Nick.Element & " " &
                                The_User.Nick.Element & " :is an IRC operator");
                      end if;
+                  end if;
+                  if The_Client.Id = The_User.Id or (The_Client.Tracker_User /= No_Detached_User and then The_Client.Tracker_User.Role = 1) then
+                     Send(The_Client, Rpl_Whois_Actually & " " & The_Client.Nick.Element & " " &
+                            The_User.Nick.Element & " " & Image(The_User.Address) & " :is actually using host");
                   end if;
 
                   Send(The_Client, Rpl_End_Of_Whois & " :End of WHOIS");

@@ -90,6 +90,7 @@ private
 
       Nick : String_Holders.Holder;
       Username : String_Holders.Holder;
+      Real_Name : String_Holders.Holder;
       Tracker_User : Detached_User;
 
       Caps_Negotiated : Boolean := True;
@@ -187,6 +188,7 @@ private
    Rpl_Whois_Secure : String := "671";
    Rpl_Whois_Account : String := "330";
    Rpl_Whois_Operator : String := "313";
+   Rpl_Whois_Actually : String := "338";
    Rpl_Who_reply : String := "352";
    Rpl_End_Of_Who : String := "315";
 

@@ -187,6 +187,7 @@ private
    Rpl_Name_Reply : String := "353";
    Rpl_End_Of_Names : String := "366";
    Rpl_Channel_Mode_Is : String := "324";
+   Rpl_List_Start : String := "321";
    Rpl_List : String := "322";
    Rpl_List_End : String := "323";
    Rpl_Now_Away : String := "306";

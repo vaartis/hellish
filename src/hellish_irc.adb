@@ -418,6 +418,8 @@ package body Hellish_Irc is
                         Send(Client, Rpl_End_Of_Who & " " & Client.Nick.Element & " " & Message_Parts(1) & " :End of WHO list");
                      end if;
                   elsif Message_Parts(0) = "LIST" then
+                     Send(Client, Rpl_List_Start & " " & Client.Nick.Element & " Channel :Users Name");
+
                      if Length(Message_Parts) < 2 then
                         -- All
                         for Channel of Channels loop

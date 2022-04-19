@@ -10,6 +10,7 @@ with Ada.Calendar; use Ada.Calendar;
 with Ada.Calendar.Time_Zones; use Ada.Calendar.Time_Zones;
 with Ada.Directories;
 with Ada.Strings;
+with Ada.Strings.Equal_Case_Insensitive;
 
 with Gnat.Regpat; use Gnat.Regpat;
 with Gnat.String_Split; use Gnat.String_Split;
@@ -162,9 +163,11 @@ package body Hellish_Irc is
          for Client of Clients loop
             declare
                Queue : Message_Vectors.Vector renames Client.Message_Queue;
+
+               function "*"(Left, Right : String) return Boolean renames Ada.Strings.Equal_Case_Insensitive;
             begin
                for Message_Parts of Queue loop
-                  if Message_Parts(0) = "NICK" then
+                  if Message_Parts(0) * "NICK" then
                      if Users.Contains(Message_Parts(1)) then
                         -- Nick already known
                         Send(Client, Err_Nickname_In_Use & " " & Message_Parts(1) & " " & Message_Parts(1) & " :" & Message_Parts(1) & " already taken");
@@ -180,7 +183,7 @@ package body Hellish_Irc is
                         Client.Nick := To_Holder(Message_Parts(1));
                         Put_Line("Nickname set to " & Client.Nick.Element);
                      end if;
-                  elsif Message_Parts(0) = "USER" then
+                  elsif Message_Parts(0) * "USER" then
                      Client.Username := To_Holder(Message_Parts(1));
                      declare
                         Real_Name : String := Message_Parts(4);
@@ -188,16 +191,16 @@ package body Hellish_Irc is
                         Client.Real_Name := To_Holder(Real_Name(Real_Name'First + 1..Real_Name'Last));
                      end;
                      Put_Line("Username set to " & Client.Username.Element);
-                  elsif Message_Parts(0) = "CAP" then
-                     if Message_Parts(1) = "LS" then
+                  elsif Message_Parts(0) * "CAP" then
+                     if Message_Parts(1) * "LS" then
                         Client.Caps_Negotiated := False;
                         Send(Client, "CAP * LS :");
-                     elsif Message_Parts(1) = "END" then
+                     elsif Message_Parts(1) * "END" then
                         Client.Caps_Negotiated := True;
                      end if;
-                  elsif Message_Parts(0) = "PING" then
+                  elsif Message_Parts(0) * "PING" then
                      Send(Client, "PONG " & Message_Parts(1));
-                  elsif Message_Parts(0) = "QUIT" then
+                  elsif Message_Parts(0) * "QUIT" then
                      declare
                         Quit_Reason : String := "Quit: " &
                           (if Length(Message_Parts) > 1
@@ -223,7 +226,7 @@ package body Hellish_Irc is
                      goto After;
                   end if;
 
-                  if Message_Parts(0) = "JOIN" then
+                  if Message_Parts(0) * "JOIN" then
                      declare
                         Channel_Slices : Slice_Set;
                      begin
@@ -237,7 +240,7 @@ package body Hellish_Irc is
                            end if;
                         end loop;
                      end;
-                  elsif Message_Parts(0) = "PART" then
+                  elsif Message_Parts(0) * "PART" then
                      if Channels.Contains(Message_Parts(1)) then
                         declare
                            To_Send : String := Join_Parts(Message_Parts);
@@ -249,9 +252,9 @@ package body Hellish_Irc is
                            Leave_Channel(Client, Channels(Message_Parts(1)));
                         end;
                      end if;
-                  elsif Message_Parts(0) = "WHOIS" then
+                  elsif Message_Parts(0) * "WHOIS" then
                      Send_Whois(Client, Message_Parts);
-                  elsif Message_Parts(0) = "MODE" then
+                  elsif Message_Parts(0) * "MODE" then
                      if Channels.Contains(Message_Parts(1)) then
                         if Length(Message_Parts) >= 3 then
                            declare
@@ -310,7 +313,7 @@ package body Hellish_Irc is
                            end loop;
                         end;
                      end if;
-                  elsif Message_Parts(0) = "PRIVMSG" then
+                  elsif Message_Parts(0) * "PRIVMSG" then
                      if Channels.Contains(Message_Parts(1)) then
                         declare
                            To_Send : String := Join_Parts(Message_Parts);
@@ -321,7 +324,7 @@ package body Hellish_Irc is
                               end if;
                            end loop;
                         end;
-                     elsif Message_Parts(1) = "hellish" then
+                     elsif Message_Parts(1) * "hellish" then
                         Special_Message(Client, Message_Parts(2));
                      elsif Users.Contains(Message_Parts(1)) then
                         declare
@@ -335,7 +338,7 @@ package body Hellish_Irc is
                            Send(Sent_To, Join_Parts(Message_Parts), From => Client_From(Client));
                         end;
                      end if;
-                  elsif Message_Parts(0) = "TOPIC" then
+                  elsif Message_Parts(0) * "TOPIC" then
                      if Length(Message_Parts) = 2 then
                         if Channels.Contains(Message_Parts(1)) then
                            if Channels(Message_Parts(1)).Users.Contains(Client.Id) then
@@ -387,7 +390,7 @@ package body Hellish_Irc is
                            end;
                         end if;
                      end if;
-                  elsif Message_Parts(0) = "NAMES" then
+                  elsif Message_Parts(0) * "NAMES" then
                      declare
                         Channel_Slices : Slice_Set;
                      begin
@@ -403,7 +406,7 @@ package body Hellish_Irc is
                            end if;
                         end loop;
                      end;
-                  elsif Message_Parts(0) = "WHO" then
+                  elsif Message_Parts(0) * "WHO" then
                      if Channels.Contains(Message_Parts(1)) then
                         for User of Channels(Message_Parts(1)).Users loop
                            declare
@@ -422,7 +425,7 @@ package body Hellish_Irc is
                         end loop;
                         Send(Client, Rpl_End_Of_Who & " " & Client.Nick.Element & " " & Message_Parts(1) & " :End of WHO list");
                      end if;
-                  elsif Message_Parts(0) = "LIST" then
+                  elsif Message_Parts(0) * "LIST" then
                      Send(Client, Rpl_List_Start & " " & Client.Nick.Element & " Channel :Users Name");
 
                      if Length(Message_Parts) < 2 then
@@ -444,7 +447,7 @@ package body Hellish_Irc is
                      end if;
 
                      Send(Client, Rpl_List_End & " " & Client.Nick.Element & " :End of LIST");
-                  elsif Message_Parts(0) = "AWAY" then
+                  elsif Message_Parts(0) * "AWAY" then
                      if Length(Message_Parts) = 2 then
                         Client.Away_Message := To_Holder(Message_Parts(1));
                         Send(Client, Rpl_Now_Away & " " & Client.Nick.Element & " :You have been marked as being away");
@@ -506,7 +509,9 @@ package body Hellish_Irc is
             Socket_To_Client.Delete(Clients(Removed).Socket);
 
             for Channel_Name of Clients(Removed).Joined_Channels loop
-               Leave_Channel(Clients(Removed), Channels(Channel_Name));
+               -- Just remove the user from the channel, since they're leaving
+               -- there's no need to modify The_User
+               Channels(Channel_Name).Users.Exclude(Removed);
             end loop;
 
             if Clients(Removed).Is_Ssl then

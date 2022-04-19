@@ -219,7 +219,7 @@ package body Hellish_Irc is
                      goto After;
                   end if;
 
-                  if Client.Username.Is_Empty or Client.Username.Is_Empty or not Client.Caps_Negotiated then
+                  if Client.Username.Is_Empty or Client.Username.Is_Empty or not Client.Caps_Negotiated or not Client.Motd_Sent then
                      goto After;
                   end if;
 
@@ -348,38 +348,43 @@ package body Hellish_Irc is
                         end if;
                      elsif Length(Message_Parts) = 3 then
                         if Channels.Contains(Message_Parts(1)) then
-                           if Channels(Message_Parts(1)).Users.Contains(Client.Id) then
-                              -- Protected topic
-                              if Channels(Message_Parts(1)).Modes.Contains("t")
-                                and then (Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1) then
-                                 Send(Client, Err_Chan_Op_Privs_Needed
-                                        & " " & Client.Nick.Element & " " & Message_Parts(1) & " :Only admins can change protected topic");
-                              else
-                                 if Trim(Message_Parts(2), Ada.Strings.Both) = ":" then
-                                    Channels(Message_Parts(1)).Topic.Clear;
+                           declare
+                              The_Channel : Channel_Maps.Reference_Type := Channels.Reference(Message_Parts(1));
+                           begin
+                              if The_Channel.Users.Contains(Client.Id) then
+                                 -- Protected topic
+                                 if The_Channel.Modes.Contains("t")
+                                   and then (Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1) then
+                                    Send(Client, Err_Chan_Op_Privs_Needed
+                                           & " " & Client.Nick.Element & " " & The_Channel.Name.Element
+                                           & " :Only admins can change protected topic");
                                  else
-                                    declare
-                                       Topic_Str : String := Message_Parts(2);
+                                    if Trim(Message_Parts(2), Ada.Strings.Both) = ":" then
+                                       The_Channel.Topic.Clear;
+                                    else
+                                       declare
+                                          Topic_Str : String := Message_Parts(2);
 
-                                       Epoch : constant Time := Time_Of(1970, 1, 1, 0.0);
-                                    begin
-                                       Channels(Message_Parts(1)).Topic := To_Holder(Topic_Str(Topic_Str'First + 1..Topic_Str'Last));
-                                       Channels(Message_Parts(1)).Topic_Set_By := Client.Nick;
-                                       Channels(Message_Parts(1)).Topic_Set_At := Positive(Clock - Epoch - Duration(60 * UTC_Time_Offset));
-                                    end;
+                                          Epoch : constant Time := Time_Of(1970, 1, 1, 0.0);
+                                       begin
+                                          The_Channel.Topic := To_Holder(Topic_Str(Topic_Str'First + 1..Topic_Str'Last));
+                                          The_Channel.Topic_Set_By := Client.Nick;
+                                          The_Channel.Topic_Set_At := Positive(Clock - Epoch - Duration(60 * UTC_Time_Offset));
+                                       end;
+                                    end if;
+                                    Persist_Channel(The_Channel);
+
+                                    -- Send new topic
+                                    for User of The_Channel.Users loop
+                                       Send_Topic(Clients(User), The_Channel.Name.Element, From => Client_From(Client));
+                                    end loop;
                                  end if;
-                                 Persist_Channel(Channels(Message_Parts(1)));
-
-                                 -- Send new topic
-                                 for User of Channels(Message_Parts(1)).Users loop
-                                    Send_Topic(Clients(User), Message_Parts(1), From => Client_From(Client));
-                                 end loop;
+                              else
+                                 Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & The_Channel.Name.Element &
+                                        " :You're not on that channel");
+                                 goto After;
                               end if;
-                           else
-                              Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & Message_Parts(1) &
-                                     " :You're not on that channel");
-                              goto After;
-                           end if;
+                           end;
                         end if;
                      end if;
                   elsif Message_Parts(0) = "NAMES" then
@@ -392,8 +397,8 @@ package body Hellish_Irc is
                               if Channels(The_Channel).Users.Contains(Client.Id) then
                                  Send_Names(Client, The_Channel);
                               else
-                                 Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " & The_Channel &
-                                        " :You're not on channel");
+                                 Send(Client, Err_Not_On_Channel & " " & Client.Nick.Element & " " &
+                                        Channels(The_Channel).Name.Element & " :You're not on channel");
                               end if;
                            end if;
                         end loop;
@@ -555,20 +560,24 @@ package body Hellish_Irc is
                return;
             end if;
 
-            if Channels(Channel_Name).Modes.Contains("i") then
-               if The_Client.Tracker_User = No_Detached_User then
-                  Send(The_Client, Err_Invite_Only_Chan & " " & The_Client.Nick.Element & " " &
-                         Channel_Name & " :You need to be logged in to join this channel");
-                  return;
+            declare
+               The_Channel : Channel_Maps.Reference_Type := Channels.Reference(Channel_Name);
+            begin
+               if The_Channel.Modes.Contains("i") then
+                  if The_Client.Tracker_User = No_Detached_User then
+                     Send(The_Client, Err_Invite_Only_Chan & " " & The_Client.Nick.Element & " " &
+                            The_Channel.Name.Element & " :You need to be logged in to join this channel");
+                     return;
+                  end if;
                end if;
-            end if;
 
-            Channels(Channel_Name).Users.Include(The_Client.Id);
-            The_Client.Joined_Channels.Include(Channel_Name);
+               The_Channel.Users.Include(The_Client.Id);
+               The_Client.Joined_Channels.Include(The_Channel.Name.Element);
 
-            for User of Channels(Channel_Name).Users loop
-               Send(Clients(User), "JOIN " & Channel_Name, From => Client_From(The_Client));
-            end loop;
+               for User of The_Channel.Users loop
+                  Send(Clients(User), "JOIN " & The_Channel.Name.Element, From => Client_From(The_Client));
+               end loop;
+            end;
          else
             if The_Client.Tracker_User = No_Detached_User or else The_Client.Tracker_User.Role /= 1 then
                Send(The_Client, Err_No_Such_Channel & " " & The_Client.Nick.Element & " " &
@@ -705,7 +714,7 @@ package body Hellish_Irc is
       procedure Send_List(The_Client : Client; Channel_Name : String) is
          The_Channel : Channel := Channels(Channel_Name);
       begin
-         Send(The_Client, Rpl_List & " " & The_Client.Nick.Element & " " & Channel_Name
+         Send(The_Client, Rpl_List & " " & The_Client.Nick.Element & " " & The_Channel.Name.Element
                 & Length(The_Channel.Users)'Image & (if The_Channel.Topic.Is_Empty
                                                      then " :"
                                                      else " :" & The_Channel.Topic.Element));

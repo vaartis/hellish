@@ -2,7 +2,9 @@ pragma Unsuppress(All_Checks);
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
-with Ada.Strings.Hash;
+with
+  Ada.Strings.Hash,
+  Ada.Strings.Less_Case_Insensitive;
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Containers.Indefinite_Hashed_Sets;
@@ -75,7 +77,8 @@ private
                                                                          Hash => Hash, Equivalent_Elements => "=");
    use User_Hashed_Sets;
    -- Username to ID
-   package User_Maps is new Ada.Containers.Indefinite_Ordered_Maps(Key_Type => String, Element_Type => Natural);
+   package User_Maps is new Ada.Containers.Indefinite_Ordered_Maps(Key_Type => String, Element_Type => Natural,
+                                                                   "<" => Ada.Strings.Less_Case_Insensitive);
    use User_Maps;
 
    package String_Sets is new Ada.Containers.Indefinite_Hashed_Sets(Element_Type => String,
@@ -122,7 +125,8 @@ private
    end record;
 
    -- Channel name to channel
-   package Channel_Maps is new Ada.Containers.Indefinite_Ordered_Maps(Key_Type => String, Element_Type => Channel);
+   package Channel_Maps is new Ada.Containers.Indefinite_Ordered_Maps(Key_Type => String, Element_Type => Channel,
+                                                                      "<" => Ada.Strings.Less_Case_Insensitive);
    use Channel_Maps;
 
    -- Client ID to client

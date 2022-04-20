@@ -1,5 +1,6 @@
 -- Submodules
 with "deps/libsodium-ada/default.gpr";
+with "obj/aws/share/gpr/aws.gpr";
 
 with "config/hellish_config.gpr";
 project Hellish is

@@ -4,3 +4,6 @@
 [submodule "deps/md4c"]
 	path = deps/md4c
 	url = https://github.com/mity/md4c
+[submodule "deps/aws"]
+	path = deps/aws
+	url = https://github.com/AdaCore/aws

@@ -12,17 +12,7 @@ project-files = ["hellish_aggregate.gpr"]
 
 [[actions]]
 type = "pre-build"
-command = ["mkdir", "-p", "obj/md4c/"]
+command = [ "sh", "pre-build.sh" ]
 
-[[actions]]
-type = "pre-build"
-command = ["cmake", "-B", "obj/md4c/", "deps/md4c", "-DCMAKE_BUILD_TYPE=Debug", "-DBUILD_SHARED_LIBS=OFF"]
-
-[[actions]]
-type = "pre-build"
-command = ["make", "-Cobj/md4c/", "md4c", "md4c-html"]
-
-[[depends-on]]  # Added by alr
-aws = "^21.0.0"  # Added by alr
 [[depends-on]]  # Added by alr
 gnatcoll_postgres = "^22.0.0"  # Added by alr

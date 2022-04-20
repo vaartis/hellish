@@ -61,6 +61,13 @@ private
    task Process_Connections is
       entry Start;
    end Process_Connections;
+   task Link_Preview;
+
+   type Link_Preview_Request is record
+      Channel, Link : String_Holders.Holder;
+   end record;
+   package Link_Preview_Vectors is new Ada.Containers.Vectors (Index_Type => Natural, Element_Type => Link_Preview_Request);
+   use Link_Preview_Vectors;
 
    -- The parts that make up the message
    package String_Vectors is new Ada.Containers.Indefinite_Vectors(Index_Type => Natural, Element_Type => String);
@@ -146,6 +153,7 @@ private
 
       procedure Process_Clients;
       procedure Load_Persisted_Channels;
+      procedure Send_Special_Message(To, Message : String);
    private
       procedure Process_Message_Queues;
       procedure Process_Select_Connections;
@@ -176,6 +184,8 @@ private
 
    Channels : Channel_Maps.Map;
    Users : User_Maps.Map;
+
+   Link_Preview_Queue : Link_Preview_Vectors.Vector;
 
    Cr_Lf : constant String := Latin_1.Cr & Latin_1.Lf;
 

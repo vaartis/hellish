@@ -17,12 +17,21 @@ with Gnat.String_Split; use Gnat.String_Split;
 
 with Gnatcoll.Json;
 
+with
+  Aws.Client,
+  Aws.Response,
+  Aws.Mime;
+
 with Hellish_Web.Routes;
 with Hellish_Web.Database;
 use Hellish_Web;
 
+with Lexbor;
+
 package body Hellish_Irc is
    package body Ssl is separate;
+
+   Link_Preview_Matcher : constant Pattern_Matcher := Compile("https?://[\S]+", Case_Insensitive);
 
    protected body Protected_Clients is
       procedure Append(The_Client : in out Client) is
@@ -317,12 +326,24 @@ package body Hellish_Irc is
                      if Channels.Contains(Message_Parts(1)) then
                         declare
                            To_Send : String := Join_Parts(Message_Parts);
+                           The_Channel : Channel := Channels(Message_Parts(1));
                         begin
-                           for Channel_User of Channels(Message_Parts(1)).Users loop
+                           for Channel_User of The_Channel.Users loop
                               if Channel_User /= Client.Id then
                                  Send(Clients(Channel_User), To_Send, From => Client_From(Client));
                               end if;
                            end loop;
+
+                           declare
+                              Msg_Text : String := Message_Parts(2);
+                              Matches : Match_Array (0..0);
+                           begin
+                              Match(Link_Preview_Matcher, Msg_Text, Matches);
+                              if Matches(0) /= No_Match then
+                                 Link_Preview_Queue.Append(Link_Preview_Request'(Channel => To_Holder(The_Channel.Name.Element),
+                                                                                 Link => To_Holder(Msg_Text(Matches(0).First..Matches(0).Last))));
+                              end if;
+                           end;
                         end;
                      elsif Message_Parts(1) * "hellish" then
                         Special_Message(Client, Message_Parts(2));
@@ -870,6 +891,14 @@ package body Hellish_Irc is
             Loaded_Channels.Next;
          end loop;
       end Load_Persisted_Channels;
+
+      procedure Send_Special_Message(To, Message : String) is
+         The_Channel : Channel := Channels(To);
+      begin
+         for User of The_Channel.Users loop
+            Send(Clients(User), "NOTICE " & The_Channel.Name.Element & " :" & Message, From => "hellish");
+         end loop;
+      end;
    end Protected_Clients;
 
    function Join_Parts(Parts : String_Vectors.Vector) return String is
@@ -943,6 +972,62 @@ package body Hellish_Irc is
       end loop;
    end Process_Connections;
 
+   task body Link_Preview is
+      use Aws, Aws.Response;
+      use Lexbor;
+
+      Preview_Data : Response.Data;
+      Max_Preview_Size : constant := 1024 * 1024;
+
+      Timeouts : Aws.Client.Timeouts_Values :=
+        Aws.Client.Timeouts(Connect => 5.0,
+                            Send => 5.0,
+                            Receive => 5.0,
+                            Response => 5.0);
+
+      Latest_Preview : Link_Preview_Request;
+   begin
+      loop
+         begin
+            if Length(Link_Preview_Queue) > 0 then
+               Latest_Preview := Link_Preview_Queue(Link_Preview_Queue.First);
+            else
+               goto Next;
+            end if;
+
+            Preview_Data := Aws.Client.Get(Latest_Preview.Link.Element, Timeouts => Timeouts,
+                                           Follow_Redirection => True);
+            if Content_Length(Preview_Data) <= Max_Preview_Size and Index(Content_Type(Preview_Data), Mime.Text_Html) = 1 then
+               declare
+                  Doc : Html_Document;
+               begin
+                  Parse(Doc, Message_Body(Preview_Data));
+
+                  declare
+                     Title_Str : String := Title(Doc);
+                  begin
+                     if Title_Str /= "" then
+                        Protected_Clients.Send_Special_Message(Latest_Preview.Channel.Element,
+                                                               "Link title: " & Title_Str);
+                     end if;
+                  end;
+               end;
+            end if;
+            Link_Preview_Queue.Delete_First;
+
+            <<Next>>
+         exception
+            when E : others =>
+               Put_Line(Exception_Information(E));
+
+               -- Drop the offending preview
+               if Length(Link_Preview_Queue) > 0 then
+                  Link_Preview_Queue.Delete_First;
+               end if;
+         end;
+      end loop;
+   end;
+
    protected Termination_Handler is
       procedure Handler(Cause : Cause_Of_Termination;
                         Id : Task_Id;
@@ -972,6 +1057,7 @@ package body Hellish_Irc is
 
       Set_Specific_Handler(Accept_Connections'Identity, Termination_Handler.Handler'Access);
       Set_Specific_Handler(Process_Connections'Identity, Termination_Handler.Handler'Access);
+      Set_Specific_Handler(Link_Preview'Identity, Termination_Handler.Handler'Access);
 
       Protected_Clients.Load_Persisted_Channels;
       Accept_Connections.Start;

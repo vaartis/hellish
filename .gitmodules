@@ -7,3 +7,6 @@
 [submodule "deps/aws"]
 	path = deps/aws
 	url = https://github.com/AdaCore/aws
+[submodule "deps/lexbor"]
+	path = deps/lexbor
+	url = https://github.com/lexbor/lexbor

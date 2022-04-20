@@ -15,3 +15,9 @@ if [[ ! -d "${BASE}/obj/aws" ]]; then
          SOCKET="openssl" PRJ_TARGET="UNIX" TARGET=$(gcc -dumpmachine)
     popd
 fi
+
+if [[ ! -d obj/lexbor/ ]]; then
+    mkdir -p ${BASE}/obj/lexbor
+    cmake -B obj/lexbor/ deps/lexbor -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF
+    make -Cobj/lexbor/
+fi

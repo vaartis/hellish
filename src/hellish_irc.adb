@@ -11,9 +11,11 @@ with Ada.Calendar.Time_Zones; use Ada.Calendar.Time_Zones;
 with Ada.Directories;
 with Ada.Strings;
 with Ada.Strings.Equal_Case_Insensitive;
+with Ada.Command_Line;
 
 with Gnat.Regpat; use Gnat.Regpat;
 with Gnat.String_Split; use Gnat.String_Split;
+with Gnat.Os_Lib;
 
 with Gnatcoll.Json;
 
@@ -27,6 +29,9 @@ with Hellish_Web.Database;
 use Hellish_Web;
 
 with Lexbor;
+
+with Interfaces.C; use Interfaces.C;
+with Interfaces.C.Strings; use Interfaces.C.Strings;
 
 package body Hellish_Irc is
    package body Ssl is separate;
@@ -476,6 +481,52 @@ package body Hellish_Irc is
                         Client.Away_Message.Clear;
                         Send(Client, Rpl_Unaway & " " & Client.Nick.Element & " :You are no longer marked as being away");
                      end if;
+                  elsif Message_Parts(0) * "RESTART" then
+                     if Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1 then
+                        Send(Client, Err_No_Op_Rivileges & " " & Client.Nick.Element & " :Only admins can restart");
+                        goto After;
+                     end if;
+                     for Channel of Channels loop
+                        for User of Channel.Users loop
+                           Send(Clients(User), "NOTICE " & Channel.Name.Element &
+                                  " :Going down for a restart!", From => "hellish");
+                        end loop;
+                     end loop;
+
+                     -- Shut everything down
+                     Hellish_Web.Routes.Shutdown_Server;
+                     Close_Socket(Socket);
+                     if not Ssl_Cert_Path.Is_Empty and not Ssl_Privkey_Path.Is_Empty then
+                        Close_Socket(Socket_Ssl);
+                     end if;
+
+                     -- Horrible hack, call execv on the process to restart it from scratch
+                     declare
+                        use Ada.Command_Line;
+                        use Ada.Directories;
+
+                        function Execv(Program_Name : Chars_Ptr; Args : Chars_Ptr_Array) return Integer
+                        with
+                          Import => True,
+                          Convention => C,
+                          External_Name => "execv";
+
+                        Args : Chars_Ptr_Array (0..Size_T(Argument_Count + 1));
+                     begin
+                        Args(Size_T(0)) := New_String(Command_Name);
+
+                        -- TODO: check op
+                        for I in 1..Argument_Count loop
+                           Args(Size_T(I)) := New_String(Argument(I));
+                        end loop;
+                        Args(Size_T(Argument_Count + 1)) := Null_Ptr;
+
+                        declare
+                           Result : Integer := Execv(New_String(Command_Name), Args);
+                        begin
+                              Put_Line("!! Restart failed: " & String'(Gnat.Os_Lib.Errno_Message(Gnat.Os_Lib.Errno)));
+                        end;
+                     end;
                   end if;
 
                <<After>>
@@ -1045,6 +1096,8 @@ package body Hellish_Irc is
    procedure Start is
       Addr : Sock_Addr_Type;
    begin
+      Put_Line(Ada.Command_Line.Command_Name);
+
       Irc_Host := To_Holder(Hellish_Web.Routes.Host_Name);
 
       Addr.Addr := (Family => Family_Inet, Sin_V4 => (others => 0));

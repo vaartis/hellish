@@ -221,6 +221,7 @@ private
    Err_No_Such_Channel : String := "403";
    Err_Chan_Op_Privs_Needed : String := "482";
    Err_Not_On_Channel : String := "442";
+   Err_No_Op_Rivileges : String := "481";
 
    Err_Invite_Only_Chan : String := "473";
 

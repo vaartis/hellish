@@ -1331,4 +1331,9 @@ package body Hellish_Web.Routes is
 
       Server.Shutdown(Http);
    end Run_Server;
+
+   procedure Shutdown_Server is
+   begin
+      Server.Shutdown(Http);
+   end Shutdown_Server;
 end Hellish_Web.Routes;

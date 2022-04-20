@@ -12,6 +12,7 @@ package Hellish_Web.Routes is
    use Aws;
 
    procedure Run_Server;
+   procedure Shutdown_Server;
 
    function Host_Name return String;
 private

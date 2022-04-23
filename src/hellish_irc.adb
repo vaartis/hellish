@@ -107,8 +107,9 @@ package body Hellish_Irc is
                end if;
 
                -- Don't process messages unless the last message is fully received
-               if Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages) - 1) /= Latin_1.Cr
-                 or Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages)) /= Latin_1.Lf then
+               if Length(Client.Unfinished_Messages) > 1 and then
+                 (Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages) - 1) /= Latin_1.Cr
+                    or Element(Client.Unfinished_Messages, Length(Client.Unfinished_Messages)) /= Latin_1.Lf) then
                   if Length(Client.Unfinished_Messages) > 10_000 or Length(Client.Message_Queue) > 100 then
                      -- That's way too much
                      To_Remove.Include(Client.Id);
@@ -163,6 +164,8 @@ package body Hellish_Irc is
             exception
                when E : others =>
                   Put_Line(Exception_Information(E));
+                  -- Remove the offending client
+                  To_Remove.Include(Client.Id);
             end;
 
          <<After>>
@@ -491,6 +494,9 @@ package body Hellish_Irc is
                            Send(Clients(User), "NOTICE " & Channel.Name.Element &
                                   " :Going down for a restart!", From => "hellish");
                         end loop;
+                     end loop;
+                     for Client of Clients loop
+                        Send(Client, "ERROR :Restarting!");
                      end loop;
 
                      -- Shut everything down

@@ -984,6 +984,11 @@ package body Hellish_Irc is
             if Status = Completed then
                Protected_Clients.Append(The_Client);
             end if;
+         exception
+            when E : others =>
+               Put_Line(Exception_Information(E));
+
+               Close_Socket(The_Client.Socket);
          end;
       end loop;
    end Accept_Connections;

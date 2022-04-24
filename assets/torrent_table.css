@@ -1,0 +1,12 @@
+.search-info-column {
+    padding-left: 1em;
+}
+
+.sl-column {
+    white-space: nowrap;
+}
+
+.torrent-name {
+    width: 500px;
+    height: 30px;
+}

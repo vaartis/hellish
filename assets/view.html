@@ -70,9 +70,13 @@
             <h2 class="title">@_display_name_@</h2>
             <div>Uploader: <a href="/profile/@_uploader_@">@_uploader_@</a></div>
             <div>Category: @_category_@</div>
+            @@IF@@ @_EXIST:group_name_@
+            <div>Group: <a href="/group/@_group_id_@">@_group_name_@</a></div>
+            @@END_IF@@
             @@IF@@ not @_IS_EMPTY:created_at_@
             <div>Uploaded at <i class="utc-date">@_created_at_@</i> </div>
             @@END_IF@@
+
             <p>
                 <h3>Description</h3>
                 <div class="hellish-content-box">@_description_@</div>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     :root {
+         --page-width: 900px;
+     }
+
+     .page-container {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%, 0);
+
+         margin-top: 3em;
+
+         width: var(--page-width);
+         max-width: 70%;
+     }
+
+     .text-centered {
+         text-align: center;
+     }
+
+     .group-desc {
+         margin-top: 1em;
+         margin-bottom: 1em;
+     }
+
+     @@INCLUDE@@ torrent_table.css
+    </style>
+    <title>@_name_@ :: Hellish</title>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="page-container">
+        <div>
+            @@IF@@ @_EXIST:error_@
+            <div class="hellish-error">
+                Error: @_error_@
+            </div>
+            @@END_IF@@
+
+            <h2 class="text-centered">
+                @_name_@
+            </h2>
+
+            <div class="hellish-content-box group-desc">
+                @_description_@
+            </div>
+        </div>
+
+        <div>
+            [
+            <a href="/group/create?update=@_id_@">Edit</a>
+            ]
+        </div>
+
+        @@INCLUDE@@ torrent_table.html
+    </div>
+
+    <script>
+     @@INCLUDE@@ new_replies.js
+    </script>
+</body>

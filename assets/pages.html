@@ -1,0 +1,18 @@
+@@IF@@ @_EXIST:page_@
+<div class="pages-center">
+    @@TABLE@@
+
+    @@IF@@ @_page_@ = "..."
+    @@-- Some way to select an inbetween page?
+    @_page_@
+    @@ELSE@@
+    <a href="@_page_address_@"
+       @@IF@@ @_page_@ = @_current_page_@
+       class="current-page"
+       @@END_IF@@
+    >@_page_@</a>
+    @@END_IF@@
+
+    @@END_TABLE@@
+</div>
+@@END_IF@@

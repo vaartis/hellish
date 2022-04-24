@@ -41,71 +41,16 @@ begin
    end if;
 
    declare
-      Page_Size : constant Natural := 25;
-      Page_Offset : constant Natural := (Page - 1) * Page_Size;
+      Page_Size, Page_Offset : Natural;
+      Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+
       Total_Count : Natural;
       Found_Torrents : Direct_Torrent_List := Database.Search_Torrents(Query, Uploader, Category, Snatched_By,
                                                                        Page_Offset, Page_Size, Total_Count);
-      -- Round up
-      Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
-
-      Torrent_Names, Torrent_Ids,
-        Torrent_Uploaders, Torrent_Comments, The_Torrent_Categories,
-        The_Torrent_Stats: Vector_Tag;
-      Pages, Page_Addresses : Vector_Tag;
    begin
-      while Found_Torrents.Has_Row loop
-         Torrent_Ids := @ & Found_Torrents.Element.Id;
-         Torrent_Names := @ & Found_Torrents.Element.Display_Name;
-         Torrent_Uploaders := @ & Database.Get_User(Found_Torrents.Element.Created_By).Username;
-
-         declare
-            Total_Comments : Integer;
-            Searched_Replies : Post_List := Database.Torrent_Comments(Found_Torrents.Element.Id, 0, 0, Total_Comments);
-         begin
-            Torrent_Comments := @ & Total_Comments;
-         end;
-
-         The_Torrent_Categories := @ & Torrent_Categories(Found_Torrents.Element.Category);
-
-         declare
-            Torrent_Stats : Peers.Scrape_Stat_Data := Peers.Protected_Map.Scrape_Stats(Found_Torrents.Element.Info_Hash);
-         begin
-            The_Torrent_Stats := @ & (Trim(Torrent_Stats.Complete'Image, Ada.Strings.Left) & " /" & Torrent_Stats.Incomplete'Image);
-         end;
-
-
-         Found_Torrents.Next;
-      end loop;
-
-      Insert(Translations, Assoc("torrent_id", Torrent_Ids));
-      Insert(Translations, Assoc("torrent_name", Torrent_Names));
-      Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
-      Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
-      Insert(Translations, Assoc("torrent_category", The_Torrent_Categories));
-      Insert(Translations, Assoc("torrent_stats", The_Torrent_Stats));
-
-      if Page_Count > 1 then
-         for P in 1..Page_Count loop
-            if P <= 10 or P = Page_Count then
-               if P = Page_Count and Page_Count > 11 then
-                  -- Insert a ... before the last page
-                  Pages := @ & "...";
-                  Page_Addresses := @ & "";
-               end if;
-
-               Pages := @ & P;
-
-               Params.Update(To_Unbounded_String("page"),
-                             To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
-                             Decode => False);
-               Page_Addresses := @ & String'("/search" & Params.Uri_Format);
-            end if;
-         end loop;
-
-         Insert(Translations, Assoc("page", Pages));
-         Insert(Translations, Assoc("page_address", Page_Addresses));
-      end if;
+      Torrent_Table_Translations(Found_Torrents, Translations);
+      
+      Page_Translations(Request, Total_Count, Translations);
 
       declare
          Category_Names, Category_Values : Vector_Tag;

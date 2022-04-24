@@ -1,7 +1,7 @@
 @@-- $1 is width for profile picture
 
 .new-reply-form {
-    margin-top: 30px;
+    margin-top: 3em;
     margin-bottom: 30px;
 }
 
@@ -25,12 +25,6 @@
 .reply-container td {
     vertical-align: top;
     padding-bottom: 1em;
-}
-
-.replies-pages {
-    margin-top: 1em;
-
-    text-align: center;
 }
 
 .reply-actions {

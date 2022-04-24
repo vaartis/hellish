@@ -139,6 +139,27 @@ package Hellish_Database is
       is new T_Abstract_Posts (null, Index) with null record;
    --  To use aliases in the form name1, name2,...
 
+   type T_Abstract_Torrent_Groups
+      (Instance : Cst_String_Access;
+       Index    : Integer)
+   is abstract new SQL_Table (Ta_Torrent_Groups, Instance, Index) with
+   record
+      Id : SQL_Field_Integer (Ta_Torrent_Groups, Instance, N_Id, Index);
+      Name : SQL_Field_Text (Ta_Torrent_Groups, Instance, N_Name, Index);
+      Description : SQL_Field_Text (Ta_Torrent_Groups, Instance, N_Description, Index);
+      Creator : SQL_Field_Integer (Ta_Torrent_Groups, Instance, N_Creator, Index);
+      Data : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Torrent_Groups, Instance, N_Data, Index);
+   end record;
+
+   type T_Torrent_Groups (Instance : Cst_String_Access)
+      is new T_Abstract_Torrent_Groups (Instance, -1) with null record;
+   --  To use named aliases of the table in a query
+   --  Use Instance=>null to use the default name.
+
+   type T_Numbered_Torrent_Groups (Index : Integer)
+      is new T_Abstract_Torrent_Groups (null, Index) with null record;
+   --  To use aliases in the form name1, name2,...
+
    type T_Abstract_Torrents
       (Instance : Cst_String_Access;
        Index    : Integer)
@@ -157,6 +178,7 @@ package Hellish_Database is
       Meta : GNATCOLL.SQL_Fields.SQL_Field_Json (Ta_Torrents, Instance, N_Meta, Index);
       --  Additional data
 
+      Group : SQL_Field_Integer (Ta_Torrents, Instance, N_Group, Index);
    end record;
 
    type T_Torrents (Instance : Cst_String_Access)
@@ -220,7 +242,9 @@ package Hellish_Database is
    function FK (Self : T_Posts'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Posts'Class) return SQL_Criteria;
    function FK (Self : T_Posts'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
+   function FK (Self : T_Torrent_Groups'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria;
+   function FK (Self : T_Torrents'Class; Foreign : T_Torrent_Groups'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria;
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Torrents'Class) return SQL_Criteria;
    Config : T_Config (null);
@@ -229,6 +253,7 @@ package Hellish_Database is
    Irc_Channels : T_Irc_Channels (null);
    Peer_Data : T_Peer_Data (null);
    Posts : T_Posts (null);
+   Torrent_Groups : T_Torrent_Groups (null);
    Torrents : T_Torrents (null);
    User_Torrent_Stats : T_User_Torrent_Stats (null);
    Users : T_Users (null);

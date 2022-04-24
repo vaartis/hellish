@@ -160,7 +160,6 @@ package body Posts is
       Params : Parameters.List := Status.Parameters(Request);
       Query : String := Params.Get("query");
       Author : Natural := (if Params.Exist("author") then Natural'Value(Params.Get("author")) else 0);
-      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
       Flag : Integer := (if Params.Exist("flag") then Integer'Value(Params.Get("flag")) else -1);
 
       Translations : Translate_Set;
@@ -175,17 +174,15 @@ package body Posts is
       end if;
 
       declare
-         Page_Size : constant Natural := 25;
-         Page_Offset : constant Natural := (Page - 1) * Page_Size;
+         Page_Size, Page_Offset : Natural;
+         Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+
          Total_Count : Natural;
          Found_Posts : Post_List := Database.Search_Posts(Query, Flag, Author,
                                                           Page_Offset, Page_Size, Total_Count);
-         -- Round up
-         Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
          Post_Titles, Post_Ids, Post_Authors,
            The_Post_Flags, Post_Replies : Vector_Tag;
-         Pages, Page_Addresses : Vector_Tag;
       begin
          while Found_Posts.Has_Row loop
             Post_Ids := @ & Found_Posts.Element.Id;
@@ -212,28 +209,7 @@ package body Posts is
          Insert(Translations, Assoc("post_flag", The_Post_Flags));
          Insert(Translations, Assoc("post_replies", Post_Replies));
 
-         if Page_Count > 1 then
-            for P in 1..Page_Count loop
-               if P <= 10 or P = Page_Count then
-                  if P = Page_Count and Page_Count > 11 then
-                     -- Insert a ... before the last page
-                     Pages := @ & "...";
-                     Page_Addresses := @ & "";
-                  end if;
-
-                  Pages := @ & P;
-
-                  Params.Update(To_Unbounded_String("page"),
-                                To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
-                                Decode => False);
-                  Page_Addresses := @ & String'("/post/search" & Params.Uri_Format);
-               end if;
-            end loop;
-
-            Insert(Translations, Assoc("page", Pages));
-            Insert(Translations, Assoc("page_address", Page_Addresses));
-
-         end if;
+         Page_Translations(Request, Total_Count, Translations);
 
          declare
             Flag_Names, Flag_Values : Vector_Tag;

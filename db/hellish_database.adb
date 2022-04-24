@@ -28,9 +28,19 @@ package body Hellish_Database is
       return Self.Parent_Torrent = Foreign.Id;
    end FK;
 
+   function FK (Self : T_Torrent_Groups'Class; Foreign : T_Users'Class) return SQL_Criteria is
+   begin
+      return Self.Creator = Foreign.Id;
+   end FK;
+
    function FK (Self : T_Torrents'Class; Foreign : T_Users'Class) return SQL_Criteria is
    begin
       return Self.Created_By = Foreign.Id;
+   end FK;
+
+   function FK (Self : T_Torrents'Class; Foreign : T_Torrent_Groups'Class) return SQL_Criteria is
+   begin
+      return Self.Group = Foreign.Id;
    end FK;
 
    function FK (Self : T_User_Torrent_Stats'Class; Foreign : T_Users'Class) return SQL_Criteria is
@@ -54,6 +64,7 @@ package body Hellish_Database is
          & "|description|Text|NOT NULL||" & ASCII.LF
          & "|category|Integer|NOT NULL,INDEX|0|" & ASCII.LF
          & "|meta|json|NOT NULL|'{}'|" & ASCII.LF
+         & "|group|FK torrent_groups|,INDEX||" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| users" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
@@ -106,6 +117,13 @@ package body Hellish_Database is
          & "|TABLE| irc_channels" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF
          & "|name|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
+         & "|data|json|NOT NULL|'{}'|" & ASCII.LF
+         & "" & ASCII.LF
+         & "|TABLE| torrent_groups" & ASCII.LF
+         & "|id|AUTOINCREMENT|PK||" & ASCII.LF
+         & "|name|Text|NOT NULL,INDEX,UNIQUE||" & ASCII.LF
+         & "|description|Text|NOT NULL||" & ASCII.LF
+         & "|creator|FK users|||" & ASCII.LF
          & "|data|json|NOT NULL|'{}'|" & ASCII.LF
          & "" & ASCII.LF
          & "";

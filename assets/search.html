@@ -25,23 +25,12 @@
          font-size: 18px;
      }
 
-     .torrent-name {
-         width: 500px;
-         height: 30px;
-     }
-
      .query-info {
          margin-bottom: 10px;
          text-align: center;
      }
 
-     .search-info-column {
-         padding-left: 1em;
-     }
-
-     .sl-column {
-         white-space: nowrap;
-     }
+     @@INCLUDE@@ torrent_table.css
     </style>
     <title>Torrents :: Hellish</title>
 </head>
@@ -83,61 +72,10 @@
                 </select>
             </div>
         </form>
-        <table class="hellish-results-table">
-            <colgroup>
-                <col class="hellish-results-column">
-                <col class="hellish-name-column">
-                <col class="hellish-number-column">
-                <col>
-                <col>
-            </colgroup>
-            <thead>
-                <tr class="hellish-results-header">
-                    <th></th>
-                    <th>Uploader</th>
-                    <th>Comments</th>
-                    <th>Category</th>
-                    <th class="sl-column">
-                        <abbr title="Seeding / Leeching">S / L</abbr>
-                    </th>
-                </tr>
-            </thead>
-            @@TABLE@@
-            <tr class="search-line">
-                <td class="torrent-name">
-                    @@-- new-replies-link and new-replies-count are for new_replies.js
-                    <a href="/view/@_torrent_id_@" class="new-replies-link">@_torrent_name_@</a>
-                </td>
-                <td>
-                    <a href="/profile/@_torrent_uploader_@">@_torrent_uploader_@</i>
-                </td>
-                <td class="search-info-column new-replies-count">
-                    @_torrent_comments_@
-                </td>
-                <td class="search-info-column">
-                    @_torrent_category_@
-                </td>
-                <td class="search-info-column sl-column">
-                    @_torrent_stats_@
-                </td>
-            </tr>
-            @@END_TABLE@@
-        </table>
 
-        @@IF@@ @_EXIST:page_@
-        <div class="center">
-            @@TABLE@@
+        @@INCLUDE@@ torrent_table.html
 
-            @@IF@@ @_page_@ = "..."
-            @@-- Some way to select an inbetween page?
-            @_page_@
-            @@ELSE@@
-            <a href="@_page_address_@">@_page_@</a>
-            @@END_IF@@
-
-            @@END_TABLE@@
-        </div>
-        @@END_IF@@
+        @@INCLUDE@@ pages.html
     </div>
 
     <script>

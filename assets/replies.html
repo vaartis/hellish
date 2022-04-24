@@ -42,20 +42,7 @@
     @@END_TABLE@@
 </div>
 
-@@IF@@ @_EXIST:page_@
-<div class="replies-pages">
-    @@TABLE@@
-
-    @@IF@@ @_page_@ = "..."
-    @@-- Some way to select an inbetween page?
-    @_page_@
-    @@ELSE@@
-    <a href="@_page_address_@">@_page_@</a>
-    @@END_IF@@
-
-    @@END_TABLE@@
-</div>
-@@END_IF@@
+@@INCLUDE@@ pages.html
 
 <form id="reply-form" class="new-reply-form" action="/api/post/create?@_$1_@=@_id_@" method="POST">
     <textarea required form="reply-form" class="hellish-input-field reply-input" type="textbox"

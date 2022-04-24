@@ -39,7 +39,7 @@ with
   Templates_Parser.Utils;
 use Templates_Parser;
 
-with Gnatcoll.Json;
+with Gnatcoll.Json, Gnatcoll.Sql.Exec;
 
 with Sodium.Functions;
 
@@ -155,6 +155,65 @@ package body Hellish_Web.Routes is
    Post_Flags : constant Int_String_Maps.Map :=
      (1 => "News", 2 => "Request / Offer");
 
+   function Page_Parameters(Params : Parameters.List; Result_Page_Size, Page_Offset : out Natural) return Natural is
+      Page_Size : constant Natural := 25;
+      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
+   begin
+      Result_Page_Size := Page_Size;
+      Page_Offset := (Page - 1) * Page_Size;
+
+      return Page;
+   end;
+
+   procedure Page_Translations(Request : Status.Data;
+                               Total_Count : Natural;
+                               Translations : in out Translate_Set) is
+      Params : Parameters.List := Status.Parameters(Request);
+
+      Page_Size, Page_Offset : Natural;
+      Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+
+      -- Round up
+      Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
+
+      Pages, Page_Addresses : Vector_Tag;
+   begin
+      if Page_Count > 1 then
+         Pages := @ & 1;
+         Params.Update(To_Unbounded_String("page"), To_Unbounded_String("1"), Decode => False);
+         Page_Addresses := @ & String'(Status.Uri(Request) & Params.Uri_Format);
+
+         if Page_Count > 3 and Page > 4 then
+            Pages := @ & "...";
+            Page_Addresses := @ & "";
+         end if;
+
+         for P in 2..Page_Count - 1 loop
+            if P >= Page - 2 and P <= Page + 2 then
+               Pages := @ & P;
+               Params.Update(To_Unbounded_String("page"),
+                             To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
+                             Decode => False);
+               Page_Addresses := @ & String'(Status.Uri(Request) & Params.Uri_Format);
+            end if;
+         end loop;
+
+         if Page_Count > 3 and Page < Page_Count - 4 then
+            Pages := @ & "...";
+            Page_Addresses := @ & "";
+         end if;
+
+         Pages := @ & Page_Count;
+         Params.Update(To_Unbounded_String("page"), To_Unbounded_String(Trim(Page_Count'Image, Ada.Strings.Left)), Decode => False);
+         Page_Addresses := @ & String'(Status.Uri(Request) & Params.Uri_Format);
+
+         Insert(Translations, Assoc("page", Pages));
+         Insert(Translations, Assoc("page_address", Page_Addresses));
+      end if;
+
+      Insert(Translations, Assoc("current_page", Page));
+   end Page_Translations;
+
    procedure Replies_Translations(Parent : Integer;
                                   The_User : Detached_User'Class;
                                   Translations : in out Translate_Set;
@@ -164,23 +223,17 @@ package body Hellish_Web.Routes is
                                                                    Total_Count : out Integer) return Post_List;
                                   Request : Status.Data
                                  ) is
-      Page_Size : constant Natural := 25;
+      Page_Size, Page_Offset : Natural;
+      Page : Integer := Page_Parameters(Status.Parameters(Request), Page_Size, Page_Offset);
 
-      Params : Parameters.List := Status.Parameters(Request);
-      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
-
-      Page_Offset : constant Natural := (Page - 1) * Page_Size;
       Total_Count : Natural;
       Replies : Post_List := Fetch_Function(Parent, Page_Offset, Page_Size, Total_Count);
-      -- Round up
-      Page_Count : Natural := Natural(Float'Ceiling(Float(Total_Count) / Float(Page_Size)));
 
       Reply : Orm.Post;
       Reply_Author : Detached_User'Class := No_Detached_User;
       Reply_Ids, Replies_Authors, Replies_Content,
         Replies_Is_Author, Replies_Profile_Picture,
         Replies_Created_At : Vector_Tag;
-      Pages, Page_Addresses : Vector_Tag;
    begin
       while Replies.Has_row loop
          Reply := Replies.Element;
@@ -219,27 +272,7 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("reply_profile_picture", Replies_Profile_Picture));
       Insert(Translations, Assoc("reply_created_at", Replies_Created_At));
 
-      if Page_Count > 1 then
-         for P in 1..Page_Count loop
-            if P <= 10 or P = Page_Count then
-               if P = Page_Count and Page_Count > 11 then
-                  -- Insert a ... before the last page
-                  Pages := @ & "...";
-                  Page_Addresses := @ & "";
-               end if;
-
-               Pages := @ & P;
-
-               Params.Update(To_Unbounded_String("page"),
-                             To_Unbounded_String(Trim(P'Image, Ada.Strings.Left)),
-                             Decode => False);
-               Page_Addresses := @ & String'(Status.Uri(Request) & Params.Uri_Format);
-            end if;
-         end loop;
-
-         Insert(Translations, Assoc("page", Pages));
-         Insert(Translations, Assoc("page_address", Page_Addresses));
-      end if;
+      Page_Translations(Request, Total_Count, Translations);
    end Replies_Translations;
 
    procedure Userinfo_Translations(The_User : Detached_User'Class; Translations : in out Translate_Set) is
@@ -261,6 +294,42 @@ package body Hellish_Web.Routes is
       end;
       Insert(Translations, Assoc("userinfo_is_admin", The_User.Role = 1));
    end Userinfo_Translations;
+
+   procedure Torrent_Table_Translations(Found_Torrents : in out Direct_Torrent_List; Translations : in out Translate_set) is
+      Torrent_Names, Torrent_Ids,
+        Torrent_Uploaders, Torrent_Comments, The_Torrent_Categories,
+        The_Torrent_Stats: Vector_Tag;
+   begin
+      while Found_Torrents.Has_Row loop
+         Torrent_Ids := @ & Found_Torrents.Element.Id;
+         Torrent_Names := @ & Found_Torrents.Element.Display_Name;
+         Torrent_Uploaders := @ & Database.Get_User(Found_Torrents.Element.Created_By).Username;
+
+         declare
+            Total_Comments : Integer;
+            Searched_Replies : Post_List := Database.Torrent_Comments(Found_Torrents.Element.Id, 0, 0, Total_Comments);
+         begin
+            Torrent_Comments := @ & Total_Comments;
+         end;
+
+         The_Torrent_Categories := @ & Torrent_Categories(Found_Torrents.Element.Category);
+
+         declare
+            Torrent_Stats : Peers.Scrape_Stat_Data := Peers.Protected_Map.Scrape_Stats(Found_Torrents.Element.Info_Hash);
+         begin
+            The_Torrent_Stats := @ & (Trim(Torrent_Stats.Complete'Image, Ada.Strings.Left) & " /" & Torrent_Stats.Incomplete'Image);
+         end;
+
+         Found_Torrents.Next;
+      end loop;
+
+      Insert(Translations, Assoc("torrent_id", Torrent_Ids));
+      Insert(Translations, Assoc("torrent_name", Torrent_Names));
+      Insert(Translations, Assoc("torrent_uploader", Torrent_Uploaders));
+      Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
+      Insert(Translations, Assoc("torrent_category", The_Torrent_Categories));
+      Insert(Translations, Assoc("torrent_stats", The_Torrent_Stats));
+   end Torrent_Table_Translations;
 
    function Uri_Group_Match(Request : in Status.Data;
                             Matcher : Pattern_Matcher;
@@ -585,11 +654,16 @@ package body Hellish_Web.Routes is
       if Update /= "" then
          declare
             The_Torrent : Detached_Torrent'Class := Database.Get_Torrent(Integer'Value(Update));
+            Torrent_Group : Integer := The_Torrent.Group;
          begin
             Insert(Translations, Assoc("update", Update));
             Insert(Translations, Assoc("update_name", The_Torrent.Display_Name));
             Insert(Translations, Assoc("update_desc", The_Torrent.Description));
             Insert(Translations, Assoc("update_category", The_Torrent.Category));
+
+            if Torrent_Group > 0 then
+               Insert(Translations, Assoc("update_group", Database.Get_Group(The_Torrent.Group).Name));
+            end if;
          end;
       else
          -- This needs to always be set, as textarea uses all whitespace literally
@@ -750,6 +824,15 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("peer_download", Peers_Downloaded));
             Insert(Translations, Assoc("peer_percent", Peers_Percent));
          end;
+
+         if The_Torrent.Group > 0 then
+            declare
+               The_Group : Detached_Torrent_Group'Class := Database.Get_Group(The_Torrent.Group);
+            begin
+               Insert(Translations, Assoc("group_name", The_Group.Name));
+               Insert(Translations, Assoc("group_id", The_Group.Id));
+            end;
+         end if;
 
          if Error /= "" then
             Insert(Translations, Assoc("error", Error));
@@ -1011,6 +1094,136 @@ package body Hellish_Web.Routes is
                             String'(Templates_Parser.Parse("assets/admin.html", Translations)));
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Group_Create_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+
+      The_User : Detached_User'Class := No_Detached_User;
+
+      Params : Parameters.List := Status.Parameters(Request);
+      Update : Integer := (if Params.Exist("update")
+                           then Integer'Value(Params.Get("update"))
+                           else -1);
+      Error : String := Params.Get("error");
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+      The_User := Database.Get_User(Username);
+
+      if Update /= -1 then
+         declare
+            Updated_Group : Detached_Torrent_Group'Class := Database.Get_Group(Update);
+         begin
+            Insert(Translations, Assoc("update", Update));
+            Insert(Translations, Assoc("update_name", Updated_Group.Name));
+            Insert(Translations, Assoc("update_desc", Updated_Group.Description));
+         end;
+      else
+         Insert(Translations, Assoc("update_desc", ""));
+      end if;
+
+      if Error /= "" then
+         Insert(Translations, Assoc("error", Error));
+      end if;
+
+      Userinfo_Translations(The_User, Translations);
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/group_create.html", Translations)));
+   end Dispatch;
+
+   Group_Matcher : constant Pattern_Matcher := Compile("/group/(\d+)");
+   overriding function Dispatch(Handler : in Group_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Translations : Translate_Set;
+
+      The_User : Detached_User'Class := No_Detached_User;
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+      The_User := Database.Get_User(Username);
+
+      declare
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, Group_Matcher, 1));
+         The_Group : Detached_Torrent_Group'Class := Database.Get_Group(Id);
+      begin
+         Insert(Translations, Assoc("id", The_Group.Id));
+         Insert(Translations, Assoc("name", Templates_Parser.Utils.Web_Escape(The_Group.Name)));
+         Insert(Translations, Assoc("description", Markdown.To_Html(The_Group.Description, Default_Md_Flags)));
+
+         declare
+            Torrents_In_Group : Direct_Torrent_List := Database.Get_Group_Torrents(Id);
+         begin
+            Torrent_Table_Translations(Torrents_In_Group, Translations);
+         end;
+      end;
+
+      Userinfo_Translations(The_User, Translations);
+      return Response.Build(Mime.Text_Html,
+                            String'(Templates_Parser.Parse("assets/group.html", Translations)));
+   end Dispatch;
+
+   overriding function Dispatch(Handler : in Group_Search_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Params : Parameters.List := Status.Parameters(Request);
+      Query : String := Params.Get("query");
+
+      Translations : Translate_Set;
+   begin
+      if not Database.User_Exists(Username) then
+         -- Redirect to the login page
+         return Response.Url(Location => "/login");
+      end if;
+
+      if Query /= "" then
+         Insert(Translations, Assoc("query", Query));
+      end if;
+
+      declare
+         use Gnatcoll.Sql.Exec;
+
+         Page_Size, Page_Offset : Natural;
+         Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+
+         Total_Count : Natural;
+         Found_Groups : Torrent_Group_List := Database.Search_Torrent_Groups(Query, Page_Offset, Page_Size, Total_Count);
+
+         Group_Ids, Group_Names, Group_Creators, Group_N_Torrents : Vector_Tag;
+      begin
+         Page_Translations(Request, Total_Count, Translations);
+
+         while Found_Groups.Has_Row loop
+            Group_Ids := @ & Found_Groups.Element.Id;
+            Group_Names := @ & Found_Groups.Element.Name;
+            Group_Creators := @ & Database.Get_User(Found_Groups.Element.Creator).Username;
+            Group_N_Torrents := @ & Rows_Count(Direct_Cursor(Database.Get_Group_Torrents(Found_Groups.Element.Id)));
+
+            Found_Groups.Next;
+         end loop;
+         Insert(Translations, Assoc("group_id", Group_Ids));
+         Insert(Translations, Assoc("group_name", Group_Names));
+         Insert(Translations, Assoc("group_creator", Group_Creators));
+         Insert(Translations, Assoc("group_n_torrents", Group_N_Torrents));
+
+         Userinfo_Translations(Database.Get_User(Username), Translations);
+
+         return Response.Build(Mime.Text_Html,
+                               String'(Templates_Parser.Parse("assets/group_search.html", Translations)));
+      end;
+   end Dispatch;
+
    -- API
 
    function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
@@ -1222,6 +1435,58 @@ package body Hellish_Web.Routes is
       return Response.Url(Location => Status.Header(Request).Get_Values("Referer"));
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Api_Group_Create_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Params : Parameters.List := Status.Parameters(Request);
+      Update : Integer := (if Params.Exist("update")
+                           then Integer'Value(Params.Get("update"))
+                           else -1);
+      Name : String := Params.Get("name");
+      Description : String := Params.Get("description");
+
+      The_User : Detached_User'Class := No_Detached_User;
+      The_Group : Detached_Torrent_Group'Class := No_Detached_Torrent_Group;
+
+      Maybe_Existing_Name : Detached_Torrent_Group'Class := Database.Get_Group(Name);
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+      The_User := Database.Get_User(Username);
+
+      if (Update = -1 and Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group))
+        or else (Update /= -1 and then Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group)
+                   and then Maybe_Existing_Name.Id /= Update) then
+         return Response.Url(Location => "/group/create?error=A group with this name already exists"
+                               & (if Update = -1
+                                  then ""
+                                  else "&update=" & Trim(Update'Image, Ada.Strings.Left)));
+      end if;
+
+      if Update /= -1 then
+         The_Group := Database.Get_Group(Update);
+
+         if Detached_Torrent_Group(The_Group) = No_Detached_Torrent_Group then
+            return Response.Acknowledge(Messages.S403, "No such group");
+         end if;
+      else
+         The_Group := New_Torrent_Group;
+
+         The_Group.Set_Creator(The_User.Id);
+      end if;
+
+      Put_Line(Description);
+
+      The_Group.Set_Name(Name);
+      The_Group.Set_Description(Description);
+      Database.Create_Group(The_Group);
+
+      return Response.Url(Location => "/group/" & Trim(The_Group.Id'Image, Ada.Strings.Left));
+   end Dispatch;
+
    -- Uploads
 
    Uploads_Images_Matcher : constant Pattern_Matcher := Compile("/uploads/images/(\w+\.\w+)");
@@ -1301,6 +1566,9 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/images", Images.Images);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/profile/((\w|\d)+)", Profile);
       Services.Dispatchers.Uri.Register(Root, "/admin", Admin);
+      Services.Dispatchers.Uri.Register(Root, "/group/create", Group_Create);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/group/(\d+)", Group);
+      Services.Dispatchers.Uri.Register(Root, "/group/search", Group_Search);
 
       -- API
 
@@ -1314,6 +1582,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/api/delete/image/(\d+)", Images.Api_Image_Delete);
       Services.Dispatchers.Uri.Register(Root, "/api/subscribe", Api_Subscribe);
       Services.Dispatchers.Uri.Register(Root, "/api/notifications/clear", Api_Notifications_Clear);
+      Services.Dispatchers.Uri.Register(Root, "/api/group/create", Api_Group_Create);
 
       -- Uploads
 

@@ -23,7 +23,7 @@ with Sodium.Functions;
 with Hellish_Database;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 9;
+   Latest_Version : Natural := 10;
 
    procedure Migrate(Session : Session_Type) is
       Version_Query : Prepared_Statement :=
@@ -245,8 +245,17 @@ package body Hellish_Web.Database is
    end;
 
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class) is
+      use Hellish_Database;
+
       Session : Session_Type := Get_New_Session;
    begin
+      -- Have to manually set the field to NULL because ORM has no way of doing this for some reason
+      if The_Torrent.Group = -1 and The_Torrent.Id > 0 then
+         Session.Db.Execute(Sql_Update(Table => Torrents,
+                                       Where => (Torrents.Id = The_Torrent.Id),
+                                       Set => (Torrents.Group = Null_Field_Integer)));
+      end if;
+
       Session.Persist(The_Torrent);
       Session.Commit;
    end Create_Torrent;
@@ -359,7 +368,7 @@ package body Hellish_Web.Database is
       use Hellish_Database;
 
       Search_Criteria : Sql_Criteria :=
-        -- Only search by display_name of query is not empty
+        -- Only search by display_name if query is not empty
         ((Text_Param(1) = "")
            or Ilike(Torrents.Display_Name, Concat("%" & Text_Param(1) & "%"))) and
         -- Only search by uploader if not 0
@@ -457,6 +466,65 @@ package body Hellish_Web.Database is
    begin
          return (if Stats_List.Has_Row then Stats_List.Element.Detach else No_Detached_User_Torrent_Stat);
    end;
+
+   function Get_Group(Id : Integer) return Detached_Torrent_Group'Class is (Get_Torrent_Group(Get_New_Session, Id));
+   function Get_Group(Name : String) return Detached_Torrent_Group'Class is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+      Group_List : Torrent_Group_List :=  All_Torrent_Groups.Filter(Torrent_Groups.Name = Name).Get(Session);
+   begin
+      return (if Group_List.Has_Row
+              then Group_List.Element.Detach
+              else No_Detached_Torrent_Group);
+   end Get_Group;
+
+   procedure Create_Group(The_Group : in out Detached_Torrent_Group'Class) is
+      Session : Session_Type := Get_New_Session;
+   begin
+      Session.Persist(The_Group);
+      Session.Commit;
+   end;
+
+   function Get_Group_Torrents(Id : Integer) return Direct_Torrent_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+   begin
+      return All_Torrents
+          .Filter(Group => Id)
+          .Order_By(Desc(Torrents.Id))
+          .Get_Direct(Session);
+   end;
+
+   function Search_Torrent_Groups(Query : String;
+
+                                  Offset : Integer;
+                                  Limit : Integer;
+                                  Total_Count : out Integer) return Torrent_Group_List is
+      use Hellish_Database;
+
+      Search_Criteria : Sql_Criteria :=
+        -- Only search by name if query is not empty
+        ((Text_Param(1) = "")
+           or Ilike(Torrent_Groups.Name, Concat("%" & Text_Param(1) & "%")));
+
+      Session : Session_Type := Get_New_Session;
+      The_Query_Managers : Torrent_Groups_Managers := All_Torrent_Groups
+        .Limit(Limit, From => Offset)
+        .Order_By(Desc(Torrent_Groups.Id))
+        .Filter(Search_Criteria);
+
+      Count_Cur : Direct_Cursor;
+      Count_Query : Sql_Query :=
+        Sql_Select(From => Torrent_Groups, Fields => Apply(Func_Count, Torrent_Groups.Id), Where => Search_Criteria);
+      Params : Sql_Parameters := (1 => +Query);
+   begin
+      Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
+      Total_Count := Count_Cur.Integer_Value(0);
+
+      return The_Query_Managers.Get(Session, Params => Params);
+   end Search_Torrent_Groups;
 
    function Create_Invite(From_User : Detached_User'Class) return String is
       use Sodium.Functions;
@@ -585,7 +653,7 @@ package body Hellish_Web.Database is
       use Hellish_Database;
 
       Search_Criteria : Sql_Criteria :=
-        -- Only search by display_name of query is not empty
+        -- Only search by display_name if query is not empty
         ((Text_Param(1) = "")
            or Ilike(Hellish_Database.Posts.Title, Concat("%" & Text_Param(1) & "%"))) and
         -- Only show posts without parents

@@ -1,3 +1,6 @@
+with Gnatcoll.Sql; use Gnatcoll.Sql;
+with Gnatcoll.Sql.Sessions;
+
 separate (Hellish_Web.Routes)
 function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
                              Request : in Status.Data) return Response.Data is
@@ -10,6 +13,7 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
    Description : String := Params.Get("description");
    Category : Integer := Integer'Value(Params.Get("category"));
    Update : String := Params.Get("update");
+   Group : String := Params.Get("group");
 
    Session_Id : Session.Id := Request_Session(Request);
    Username : String := Session.Get(Session_Id, "username");
@@ -18,6 +22,12 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
    begin
       The_Torrent.Set_Display_Name(Display_Name);
       The_Torrent.Set_Description(Description);
+
+      if Group /= "" then
+         The_Torrent.Set_Group(Database.Get_Group(Group));
+      else
+         The_Torrent.Set_Group(-1);
+      end if;
 
       if Torrent_Categories.Contains(Category) then
          The_Torrent.Set_Category(Category);
@@ -28,6 +38,10 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
 begin
    if not Database.User_Exists(Username) then
       return Response.Acknowledge(Messages.S403, "Forbidden");
+   end if;
+
+   if Group /= "" and then Database.Get_Group(Group) = Detached_Torrent_Group'Class(No_Detached_Torrent_Group) then
+      return Response.Url("/upload?error=The group """ & Url.Encode(Group) & """ does not exist.");
    end if;
 
    if Update /= "" then

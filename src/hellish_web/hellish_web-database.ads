@@ -45,6 +45,16 @@ package Hellish_Web.Database is
    function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Detached_Torrent'Class)
                                       return Detached_User_Torrent_Stat'Class;
 
+   function Get_Group(Id : Integer) return Detached_Torrent_Group'Class;
+   function Get_Group(Name : String) return Detached_Torrent_Group'Class;
+   procedure Create_Group(The_Group : in out Detached_Torrent_Group'Class);
+   function Get_Group_Torrents(Id : Integer) return Direct_Torrent_List;
+   function Search_Torrent_Groups(Query : String;
+
+                                  Offset : Integer;
+                                  Limit : Integer;
+                                  Total_Count : out Integer) return Torrent_Group_List;
+
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;
    procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class);

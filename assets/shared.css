@@ -155,3 +155,15 @@ a:hover {
     white-space: nowrap;
     color: var(--download-color);
 }
+
+.pages-center {
+    position: absolute;
+    left: 50%;
+    margin-top: 1em;
+
+    transform: translate(-50%, 0);
+}
+
+.current-page {
+    text-decoration: underline dotted;
+}

@@ -84,8 +84,16 @@ package Orm is
    No_Detached_Post : constant Detached_Post;
    No_Post : constant Post;
 
+   type Torrent_Group is new Orm_Element with null record;
+   type Torrent_Group_DDR is new Detached_Data (6) with private;
+   type Detached_Torrent_Group is  --  Get() returns a Torrent_Group_DDR
+   new Sessions.Detached_Element with private;
+   type Detached_Torrent_Group_Access is access all Detached_Torrent_Group'Class;
+   No_Detached_Torrent_Group : constant Detached_Torrent_Group;
+   No_Torrent_Group : constant Torrent_Group;
+
    type Torrent is new Orm_Element with null record;
-   type Torrent_DDR is new Detached_Data (8) with private;
+   type Torrent_DDR is new Detached_Data (10) with private;
    type Detached_Torrent is  --  Get() returns a Torrent_DDR
    new Sessions.Detached_Element with private;
    type Detached_Torrent_Access is access all Detached_Torrent'Class;
@@ -139,6 +147,15 @@ package Orm is
    function Display_Name (Self : Torrent) return String;
    function Display_Name (Self : Detached_Torrent) return String;
    procedure Set_Display_Name (Self : Detached_Torrent; Value : String);
+
+   function Group (Self : Torrent) return Integer;
+   function Group (Self : Detached_Torrent) return Integer;
+   procedure Set_Group (Self : Detached_Torrent; Value : Integer);
+   function Group (Self : Torrent) return Torrent_Group'Class;
+   function Group (Self : Detached_Torrent) return Detached_Torrent_Group'Class;
+   procedure Set_Group
+     (Self  : Detached_Torrent;
+      Value : Detached_Torrent_Group'Class);
 
    function Id (Self : Torrent) return Integer;
    function Id (Self : Detached_Torrent) return Integer;
@@ -517,6 +534,55 @@ package Orm is
 
    function New_Irc_Channel return Detached_Irc_Channel'Class;
 
+   ------------------------------
+   -- Elements: Torrent_Groups --
+   ------------------------------
+
+   function "=" (Op1 : Torrent_Group; Op2 : Torrent_Group) return Boolean;
+   function "="
+     (Op1 : Detached_Torrent_Group;
+      Op2 : Detached_Torrent_Group)
+     return Boolean;
+   --  Compares two elements using only the primary keys. All other fields are
+   --  ignored
+
+   function Creator (Self : Torrent_Group) return Integer;
+   function Creator (Self : Detached_Torrent_Group) return Integer;
+   procedure Set_Creator (Self : Detached_Torrent_Group; Value : Integer);
+   function Creator (Self : Torrent_Group) return User'Class;
+   function Creator (Self : Detached_Torrent_Group) return Detached_User'Class;
+   procedure Set_Creator
+     (Self  : Detached_Torrent_Group;
+      Value : Detached_User'Class);
+
+   function Data (Self : Torrent_Group) return String;
+   function Data (Self : Detached_Torrent_Group) return String;
+   procedure Set_Data (Self : Detached_Torrent_Group; Value : String);
+
+   function Description (Self : Torrent_Group) return String;
+   function Description (Self : Detached_Torrent_Group) return String;
+   procedure Set_Description (Self : Detached_Torrent_Group; Value : String);
+
+   function Id (Self : Torrent_Group) return Integer;
+   function Id (Self : Detached_Torrent_Group) return Integer;
+
+   function Name (Self : Torrent_Group) return String;
+   function Name (Self : Detached_Torrent_Group) return String;
+   procedure Set_Name (Self : Detached_Torrent_Group; Value : String);
+
+   function Detach
+     (Self : Torrent_Group'Class)
+     return Detached_Torrent_Group'Class;
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Torrent_Group'Class;
+   --  Check whether there is already an element with this primary key. If
+   --  not, the returned value will be a null element (test with Is_Null)
+
+   function New_Torrent_Group return Detached_Torrent_Group'Class;
+
    --------------------------------------
    -- Managers(Implementation Details) --
    --------------------------------------
@@ -562,6 +628,14 @@ package Orm is
       Pk_Only   : Boolean := False);
 
    procedure Internal_Query_Posts
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Internal_Query_Torrent_Groups
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -675,6 +749,19 @@ package Orm is
    Empty_Direct_Post_List : constant Direct_Post_List :=
    I_Posts.Empty_Direct_List;
 
+   type I_Torrent_Groups_Managers is abstract new Manager with null record;
+   package I_Torrent_Groups is new Generic_Managers
+     (I_Torrent_Groups_Managers, Torrent_Group, Related_Depth, DBA.Torrent_Groups,
+      Internal_Query_Torrent_Groups);
+   type Torrent_Groups_Managers is new I_Torrent_Groups.Manager with null record;
+   subtype Torrent_Groups_Stmt is I_Torrent_Groups.ORM_Prepared_Statement;
+
+   subtype Torrent_Group_List is I_Torrent_Groups.List;
+   subtype Direct_Torrent_Group_List is I_Torrent_Groups.Direct_List;
+   Empty_Torrent_Group_List : constant Torrent_Group_List := I_Torrent_Groups.Empty_List;
+   Empty_Direct_Torrent_Group_List : constant Direct_Torrent_Group_List :=
+   I_Torrent_Groups.Empty_Direct_List;
+
    type I_Torrents_Managers is abstract new Manager with null record;
    package I_Torrents is new Generic_Managers
      (I_Torrents_Managers, Torrent, Related_Depth, DBA.Torrents,
@@ -741,7 +828,8 @@ package Orm is
       Display_Name : String := No_Update;
       Description  : String := No_Update;
       Category     : Integer := -1;
-      Meta         : String := No_Update)
+      Meta         : String := No_Update;
+      Group        : Integer := -1)
      return Torrents_Managers;
 
    function Get_Torrent
@@ -762,6 +850,16 @@ package Orm is
    --------------------
    -- Manager: Users --
    --------------------
+
+   function Torrent_Groups_Creator_Id
+     (Self : User'Class)
+     return Torrent_Groups_Managers;
+   function Torrent_Groups_Creator_Id
+     (Self : Detached_User'Class)
+     return Torrent_Groups_Managers;
+   function Torrent_Groups_Creator_Id
+     (Self : I_Users_Managers'Class)
+     return Torrent_Groups_Managers;
 
    function Created_Posts (Self : User'Class) return Posts_Managers;
    function Created_Posts (Self : Detached_User'Class) return Posts_Managers;
@@ -948,6 +1046,34 @@ package Orm is
       Follow_Left_Join : Boolean := False)
      return Detached_Irc_Channel'Class;
 
+   -----------------------------
+   -- Manager: Torrent_Groups --
+   -----------------------------
+
+   function Filter
+     (Self        : Torrent_Groups_Managers'Class;
+      Id          : Integer := -1;
+      Name        : String := No_Update;
+      Description : String := No_Update;
+      Creator     : Integer := -1;
+      Data        : String := No_Update)
+     return Torrent_Groups_Managers;
+
+   function Get_Torrent_Group
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Torrent_Group'Class;
+
+   function Group_Torrents (Self : Torrent_Group'Class) return Torrents_Managers;
+   function Group_Torrents
+     (Self : Detached_Torrent_Group'Class)
+     return Torrents_Managers;
+   function Group_Torrents
+     (Self : I_Torrent_Groups_Managers'Class)
+     return Torrents_Managers;
+
    --------------
    -- Managers --
    --------------
@@ -970,6 +1096,9 @@ package Orm is
    All_Posts : constant Posts_Managers :=
      (I_Posts.All_Managers with null record);
 
+   All_Torrent_Groups : constant Torrent_Groups_Managers :=
+     (I_Torrent_Groups.All_Managers with null record);
+
    All_Torrents : constant Torrents_Managers :=
      (I_Torrents.All_Managers with null record);
 
@@ -990,6 +1119,7 @@ package Orm is
    overriding procedure Free (Self : in out Irc_Channel_Ddr);
    overriding procedure Free (Self : in out Peer_Data_Ddr);
    overriding procedure Free (Self : in out Post_Ddr);
+   overriding procedure Free (Self : in out Torrent_Group_Ddr);
    overriding procedure Free (Self : in out Torrent_Ddr);
    overriding procedure Free (Self : in out User_Torrent_Stat_Ddr);
    overriding procedure Free (Self : in out User_Ddr);
@@ -1019,6 +1149,10 @@ package Orm is
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
    overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Torrent_Group;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask);
+   overriding procedure Insert_Or_Update
      (Self        : in out Detached_Torrent;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask);
@@ -1037,6 +1171,7 @@ package Orm is
    overriding procedure Internal_Delete (Self : Detached_Irc_Channel);
    overriding procedure Internal_Delete (Self : Detached_Peer_Data);
    overriding procedure Internal_Delete (Self : Detached_Post);
+   overriding procedure Internal_Delete (Self : Detached_Torrent_Group);
    overriding procedure Internal_Delete (Self : Detached_Torrent);
    overriding procedure Internal_Delete (Self : Detached_User_Torrent_Stat);
    overriding procedure Internal_Delete (Self : Detached_User);
@@ -1047,6 +1182,7 @@ package Orm is
    overriding function Key (Self : Irc_Channel_Ddr) return Element_Key;
    overriding function Key (Self : Peer_Data_Ddr) return Element_Key;
    overriding function Key (Self : Post_Ddr) return Element_Key;
+   overriding function Key (Self : Torrent_Group_Ddr) return Element_Key;
    overriding function Key (Self : Torrent_Ddr) return Element_Key;
    overriding function Key (Self : User_Torrent_Stat_Ddr) return Element_Key;
    overriding function Key (Self : User_Ddr) return Element_Key;
@@ -1055,6 +1191,7 @@ package Orm is
    overriding procedure On_Persist (Self : Detached_Invite);
    overriding procedure On_Persist (Self : Detached_Peer_Data);
    overriding procedure On_Persist (Self : Detached_Post);
+   overriding procedure On_Persist (Self : Detached_Torrent_Group);
    overriding procedure On_Persist (Self : Detached_Torrent);
    overriding procedure On_Persist (Self : Detached_User_Torrent_Stat);
 
@@ -1114,12 +1251,24 @@ private
     end record;
     type Post_Data is access all Post_DDR;
     
-    type Torrent_DDR is new Detached_Data (8) with record
+    type Torrent_Group_DDR is new Detached_Data (6) with record
+       ORM_Creator        : Integer := -1;
+       ORM_Data           : Unbounded_String := To_Unbounded_String ("{}");
+       ORM_Description    : Unbounded_String := Null_Unbounded_String;
+       ORM_FK_Creator     : Detached_User_Access := null;
+       ORM_Id             : Integer := -1;
+       ORM_Name           : Unbounded_String := Null_Unbounded_String;
+    end record;
+    type Torrent_Group_Data is access all Torrent_Group_DDR;
+    
+    type Torrent_DDR is new Detached_Data (10) with record
        ORM_Category        : Integer := 0;
        ORM_Created_By      : Integer := -1;
        ORM_Description     : Unbounded_String := Null_Unbounded_String;
        ORM_Display_Name    : Unbounded_String := Null_Unbounded_String;
        ORM_FK_Created_By   : Detached_User_Access := null;
+       ORM_FK_Group        : Detached_Torrent_Group_Access := null;
+       ORM_Group           : Integer := -1;
        ORM_Id              : Integer := -1;
        ORM_Info_Hash       : Unbounded_String := Null_Unbounded_String;
        ORM_Meta            : Unbounded_String := To_Unbounded_String ("{}");
@@ -1184,6 +1333,12 @@ private
        is new Sessions.Detached_Element with null record;
     No_Post : constant Post :=(No_Orm_Element with null record);
     No_Detached_Post : constant Detached_Post :=
+      (Sessions.Detached_Element with null record);
+ 
+    type Detached_Torrent_Group
+       is new Sessions.Detached_Element with null record;
+    No_Torrent_Group : constant Torrent_Group :=(No_Orm_Element with null record);
+    No_Detached_Torrent_Group : constant Detached_Torrent_Group :=
       (Sessions.Detached_Element with null record);
  
     type Detached_Torrent

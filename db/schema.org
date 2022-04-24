@@ -1,11 +1,12 @@
-| TABLE        | torrents                   | torrent                 |      |                              |
-| id           | AUTOINCREMENT              | PK                      |      |                              |
-| info_hash    | TEXT                       | NOT NULL, UNIQUE, INDEX |      | The SHA1 hash of the torrent |
-| created_by   | FK users(created_torrents) | NOT NULL, INDEX         |      |                              |
-| display_name | TEXT                       | NOT NULL                |      |                              |
-| description  | TEXT                       | NOT NULL                |      |                              |
-| category     | INTEGER                    | NOT NULL, INDEX         |    0 | 0 = Other                    |
-| meta         | JSON                       | NOT NULL                | '{}' | Additional data              |
+| TABLE        | torrents                          | torrent                 |      |                              |
+| id           | AUTOINCREMENT                     | PK                      |      |                              |
+| info_hash    | TEXT                              | NOT NULL, UNIQUE, INDEX |      | The SHA1 hash of the torrent |
+| created_by   | FK users(created_torrents)        | NOT NULL, INDEX         |      |                              |
+| display_name | TEXT                              | NOT NULL                |      |                              |
+| description  | TEXT                              | NOT NULL                |      |                              |
+| category     | INTEGER                           | NOT NULL, INDEX         |    0 | 0 = Other                    |
+| meta         | JSON                              | NOT NULL                | '{}' | Additional data              |
+| group        | FK torrent_groups(group_torrents) | INDEX                   |      |                              |
 
 | TABLE      | users         | user                    |      |                     |
 | id         | AUTOINCREMENT | PK                      |      |                     |
@@ -60,3 +61,10 @@
 | id    | AUTOINCREMENT | PK                      |      |   |
 | name  | TEXT          | NOT NULL, UNIQUE, INDEX |      |   |
 | data  | JSON          | NOT NULL                | '{}' |   |
+
+| TABLE       | torrent_groups | torrent_group           |      |   |
+| id          | AUTOINCREMENT  | PK                      |      |   |
+| name        | TEXT           | NOT NULL, UNIQUE, INDEX |      |   |
+| description | TEXT           | NOT NULL                |      |   |
+| creator     | FK users       |                         |      |   |
+| data        | JSON           | NOT NULL                | '{}' |   |

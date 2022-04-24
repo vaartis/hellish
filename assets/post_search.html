@@ -55,7 +55,7 @@
         </div>
         @@END_IF@@
 
-        <div class="search-bar-container">
+        <div>
             <form action="/post/search" id="search-form" method="GET">
                 <input class="search-input hellish-input-field" name="query" role="search"
                        @@IF@@ @_EXIST:query_@
@@ -114,20 +114,7 @@
             @@END_TABLE@@
         </table>
 
-        @@IF@@ @_EXIST:page_@
-        <div class="center">
-            @@TABLE@@
-
-            @@IF@@ @_page_@ = "..."
-            @@-- Some way to select an inbetween page?
-            @_page_@
-            @@ELSE@@
-            <a href="@_page_address_@">@_page_@</a>
-            @@END_IF@@
-
-            @@END_TABLE@@
-        </div>
-        @@END_IF@@
+        @@INCLUDE@@ pages.html
     </div>
 
     <script>

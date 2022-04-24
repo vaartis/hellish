@@ -24,6 +24,8 @@ package body Orm is
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( Torrent_DDR, Torrent_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+      ( Torrent_Group_DDR, Torrent_Group_Data);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( User_DDR, User_Data);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
       ( User_Torrent_Stat_DDR, User_Torrent_Stat_Data);
@@ -31,6 +33,8 @@ package body Orm is
      (Detached_Post'Class, Detached_Post_Access);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
      (Detached_Torrent'Class, Detached_Torrent_Access);
+   procedure Unchecked_Free is new Ada.Unchecked_Deallocation
+     (Detached_Torrent_Group'Class, Detached_Torrent_Group_Access);
    procedure Unchecked_Free is new Ada.Unchecked_Deallocation
      (Detached_User'Class, Detached_User_Access);
 
@@ -57,7 +61,7 @@ package body Orm is
    F_Peer_Data_Torrent_Id : constant := 0;
    F_Peer_Data_Data       : constant := 1;
    Upto_Peer_Data_0 : constant Counts := ((2,2),(2,2),(2,2),(2,2));
-   Alias_Peer_Data : constant Alias_Array := (-1,2,-1,4,-1);
+   Alias_Peer_Data : constant Alias_Array := (-1,2,-1,5,6,-1,-1,8,0);
    F_Posts_Id             : constant := 0;
    F_Posts_Title          : constant := 1;
    F_Posts_Content        : constant := 2;
@@ -66,11 +70,19 @@ package body Orm is
    F_Posts_Flag           : constant := 5;
    F_Posts_Parent_Torrent : constant := 6;
    F_Posts_Meta           : constant := 7;
-   Counts_Posts : constant Counts := ((8,8),(16,31),(16,62),(16,93));
+   Counts_Posts : constant Counts := ((8,8),(16,32),(16,69),(16,114));
    Upto_Posts_0 : constant Counts := ((8,8),(8,8),(8,8),(8,8));
    Upto_Posts_1 : constant Counts := ((8,8),(16,16),(16,16),(16,16));
-   Upto_Posts_2 : constant Counts := ((8,8),(16,24),(16,47),(16,78));
-   Alias_Posts : constant Alias_Array := (-1,4,5,20,-1,0,9,10,17,1,2,14,15,16,4,5,6,3,19,7,-1,22,8);
+   Upto_Posts_2 : constant Counts := ((8,8),(16,24),(16,48),(16,85));
+   Alias_Posts : constant Alias_Array := (-1,4,5,22,-1,0,9,10,17,1,2,14,15,16,4,5,6,3,20,21,7,-1,-1,25,26,8,9,28,10);
+   F_Torrent_Groups_Id          : constant := 0;
+   F_Torrent_Groups_Name        : constant := 1;
+   F_Torrent_Groups_Description : constant := 2;
+   F_Torrent_Groups_Creator     : constant := 3;
+   F_Torrent_Groups_Data        : constant := 4;
+   Counts_Torrent_Groups : constant Counts := ((5,5),(5,13),(5,13),(5,13));
+   Upto_Torrent_Groups_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
+   Alias_Torrent_Groups : constant Alias_Array := (-1,2,-1);
    F_Torrents_Id           : constant := 0;
    F_Torrents_Info_Hash    : constant := 1;
    F_Torrents_Created_By   : constant := 2;
@@ -78,9 +90,11 @@ package body Orm is
    F_Torrents_Description  : constant := 4;
    F_Torrents_Category     : constant := 5;
    F_Torrents_Meta         : constant := 6;
-   Counts_Torrents : constant Counts := ((7,7),(15,15),(15,15),(15,15));
-   Upto_Torrents_0 : constant Counts := ((7,7),(7,7),(7,7),(7,7));
-   Alias_Torrents : constant Alias_Array := (-1,2,-1);
+   F_Torrents_Group        : constant := 7;
+   Counts_Torrents : constant Counts := ((8,8),(16,21),(16,29),(16,29));
+   Upto_Torrents_0 : constant Counts := ((8,8),(8,8),(8,8),(8,8));
+   Upto_Torrents_1 : constant Counts := ((8,8),(16,16),(16,16),(16,16));
+   Alias_Torrents : constant Alias_Array := (-1,3,4,-1,-1,6,0);
    F_User_Torrent_Stats_By_User    : constant := 0;
    F_User_Torrent_Stats_Of_Torrent : constant := 1;
    F_User_Torrent_Stats_Uploaded   : constant := 2;
@@ -88,7 +102,7 @@ package body Orm is
    F_User_Torrent_Stats_Snatched   : constant := 4;
    Upto_User_Torrent_Stats_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
    Upto_User_Torrent_Stats_1 : constant Counts := ((5,5),(13,13),(13,13),(13,13));
-   Alias_User_Torrent_Stats : constant Alias_Array := (-1,3,4,-1,-1,6,0);
+   Alias_User_Torrent_Stats : constant Alias_Array := (-1,3,4,-1,-1,7,8,0,-1,10,1);
    F_Users_Id         : constant := 0;
    F_Users_Username   : constant := 1;
    F_Users_Password   : constant := 2;
@@ -126,6 +140,10 @@ package body Orm is
       Session : Session_Type)
      return Detached_Post'Class;
    function Detach_No_Lookup
+     (Self    : Torrent_Group'Class;
+      Session : Session_Type)
+     return Detached_Torrent_Group'Class;
+   function Detach_No_Lookup
      (Self    : Torrent'Class;
       Session : Session_Type)
      return Detached_Torrent'Class;
@@ -143,7 +161,8 @@ package body Orm is
    --  Same as Detach, but does not check the session cache Same as Detach, but
    --  does not check the session cache Same as Detach, but does not check the
    --  session cache Same as Detach, but does not check the session cache Same
-   --  as Detach, but does not check the session cache
+   --  as Detach, but does not check the session cache Same as Detach, but does
+   --  not check the session cache
 
    procedure Do_Query_Config
      (Fields    : in out SQL_Field_List;
@@ -196,6 +215,16 @@ package body Orm is
       Pk_Only   : Boolean := False);
 
    procedure Do_Query_Posts
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False);
+
+   procedure Do_Query_Torrent_Groups
      (Fields    : in out SQL_Field_List;
       From      : out SQL_Table_List;
       Criteria  : in out Sql_Criteria;
@@ -427,6 +456,33 @@ package body Orm is
    function "="
      (Op1 : Detached_Irc_Channel;
       Op2 : Detached_Irc_Channel)
+     return Boolean is
+   begin
+      if Op1.Is_Null then
+         return Op2.Is_Null;
+      elsif Op2.Is_Null then
+         return False;
+      else
+         return Integer'(Op1.Id) = Op2.Id;
+      end if;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "=" (Op1 : Torrent_Group; Op2 : Torrent_Group) return Boolean is
+   begin
+      return Integer'(Op1.Id) = Op2.Id;
+   end "=";
+
+   ---------
+   -- "=" --
+   ---------
+
+   function "="
+     (Op1 : Detached_Torrent_Group;
+      Op2 : Detached_Torrent_Group)
      return Boolean is
    begin
       if Op1.Is_Null then
@@ -834,6 +890,74 @@ package body Orm is
       return D.ORM_FK_Created_By.all;
    end Created_By;
 
+   -------------
+   -- Creator --
+   -------------
+
+   function Creator (Self : Torrent_Group) return Integer is
+   begin
+      return Integer_Value (Self, F_Torrent_Groups_Creator);
+   end Creator;
+
+   -------------
+   -- Creator --
+   -------------
+
+   function Creator (Self : Detached_Torrent_Group) return Integer is
+   begin
+      return Torrent_Group_Data (Self.Unchecked_Get).ORM_Creator;
+   end Creator;
+
+   -------------
+   -- Creator --
+   -------------
+
+   function Creator (Self : Torrent_Group) return User'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 and then Self.Data.Follow_LJ then
+         return I_Users.Internal_Element
+           (Self,
+            Upto_Torrent_Groups_0 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Creator";
+         end if;
+
+         return Filter (All_Users, Id => Self.Creator)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end Creator;
+
+   -------------
+   -- Creator --
+   -------------
+
+   function Creator (Self : Detached_Torrent_Group) return Detached_User'Class
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_Creator = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Creator";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_Creator := new Detached_User'Class'
+           (Get_User (S, Id => D.ORM_Creator));
+      end if;
+      return D.ORM_FK_Creator.all;
+   end Creator;
+
    ----------
    -- Data --
    ----------
@@ -870,6 +994,24 @@ package body Orm is
       return To_String (Irc_Channel_Data (Self.Unchecked_Get).ORM_Data);
    end Data;
 
+   ----------
+   -- Data --
+   ----------
+
+   function Data (Self : Torrent_Group) return String is
+   begin
+      return String_Value (Self, F_Torrent_Groups_Data);
+   end Data;
+
+   ----------
+   -- Data --
+   ----------
+
+   function Data (Self : Detached_Torrent_Group) return String is
+   begin
+      return To_String (Torrent_Group_Data (Self.Unchecked_Get).ORM_Data);
+   end Data;
+
    -----------------
    -- Description --
    -----------------
@@ -886,6 +1028,24 @@ package body Orm is
    function Description (Self : Detached_Torrent) return String is
    begin
       return To_String (Torrent_Data (Self.Unchecked_Get).ORM_Description);
+   end Description;
+
+   -----------------
+   -- Description --
+   -----------------
+
+   function Description (Self : Torrent_Group) return String is
+   begin
+      return String_Value (Self, F_Torrent_Groups_Description);
+   end Description;
+
+   -----------------
+   -- Description --
+   -----------------
+
+   function Description (Self : Detached_Torrent_Group) return String is
+   begin
+      return To_String (Torrent_Group_Data (Self.Unchecked_Get).ORM_Description);
    end Description;
 
    ------------------
@@ -1048,6 +1208,74 @@ package body Orm is
       return D.ORM_FK_For_User.all;
    end For_User;
 
+   -----------
+   -- Group --
+   -----------
+
+   function Group (Self : Torrent) return Integer is
+   begin
+      return Integer_Value (Self, F_Torrents_Group);
+   end Group;
+
+   -----------
+   -- Group --
+   -----------
+
+   function Group (Self : Detached_Torrent) return Integer is
+   begin
+      return Torrent_Data (Self.Unchecked_Get).ORM_Group;
+   end Group;
+
+   -----------
+   -- Group --
+   -----------
+
+   function Group (Self : Torrent) return Torrent_Group'Class is
+   begin
+      if Current (Self.Current) /= Self.Index then
+         raise Cursor_Has_Moved;
+      end if;
+
+      if Self.Depth > 0 and then Self.Data.Follow_LJ then
+         return I_Torrent_Groups.Internal_Element
+           (Self,
+            Upto_Torrents_1 (Self.Depth, Self.Data.Follow_LJ));
+      else
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Group";
+         end if;
+
+         return Filter (All_Torrent_Groups, Id => Self.Group)
+         .Limit (1).Get (Self.Data.Session).Element;
+      end if;
+   end Group;
+
+   -----------
+   -- Group --
+   -----------
+
+   function Group (Self : Detached_Torrent) return Detached_Torrent_Group'Class
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+      S : Session_Type;
+   begin
+      if D.ORM_FK_Group = null then
+         if not Dynamic_Fetching then
+            raise Field_Not_Available with
+            "Dynamic fetching disabled for Group";
+         end if;
+         S := Session (Self);
+         if S = No_Session then
+            raise Field_Not_Available with
+            "Element is detached from any session";
+         end if;
+         D.ORM_FK_Group := new Detached_Torrent_Group'Class'
+           (Get_Torrent_Group (S, Id => D.ORM_Group));
+      end if;
+      return D.ORM_FK_Group.all;
+   end Group;
+
    --------
    -- Id --
    --------
@@ -1174,6 +1402,24 @@ package body Orm is
       return Irc_Channel_Data (Self.Unchecked_Get).ORM_Id;
    end Id;
 
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Torrent_Group) return Integer is
+   begin
+      return Integer_Value (Self, F_Torrent_Groups_Id);
+   end Id;
+
+   --------
+   -- Id --
+   --------
+
+   function Id (Self : Detached_Torrent_Group) return Integer is
+   begin
+      return Torrent_Group_Data (Self.Unchecked_Get).ORM_Id;
+   end Id;
+
    ---------------
    -- Info_Hash --
    ---------------
@@ -1244,6 +1490,24 @@ package body Orm is
    function Name (Self : Detached_Irc_Channel) return String is
    begin
       return To_String (Irc_Channel_Data (Self.Unchecked_Get).ORM_Name);
+   end Name;
+
+   ----------
+   -- Name --
+   ----------
+
+   function Name (Self : Torrent_Group) return String is
+   begin
+      return String_Value (Self, F_Torrent_Groups_Name);
+   end Name;
+
+   ----------
+   -- Name --
+   ----------
+
+   function Name (Self : Detached_Torrent_Group) return String is
+   begin
+      return To_String (Torrent_Group_Data (Self.Unchecked_Get).ORM_Name);
    end Name;
 
    ----------------
@@ -1566,6 +1830,42 @@ package body Orm is
    begin
       return To_String (Post_Data (Self.Unchecked_Get).ORM_Title);
    end Title;
+
+   -------------------------------
+   -- Torrent_Groups_Creator_Id --
+   -------------------------------
+
+   function Torrent_Groups_Creator_Id
+     (Self : User'Class)
+     return Torrent_Groups_Managers is
+   begin
+      return Filter (All_Torrent_Groups, Creator => Self.Id);
+   end Torrent_Groups_Creator_Id;
+
+   -------------------------------
+   -- Torrent_Groups_Creator_Id --
+   -------------------------------
+
+   function Torrent_Groups_Creator_Id
+     (Self : Detached_User'Class)
+     return Torrent_Groups_Managers is
+   begin
+      return Filter (All_Torrent_Groups, Creator => Self.Id);
+   end Torrent_Groups_Creator_Id;
+
+   -------------------------------
+   -- Torrent_Groups_Creator_Id --
+   -------------------------------
+
+   function Torrent_Groups_Creator_Id
+     (Self : I_Users_Managers'Class)
+     return Torrent_Groups_Managers
+   is
+      Q : constant SQL_Query := I_Users.Build_Query(Self, +DBA.Users.Id);
+   begin
+      return All_Torrent_Groups.Filter
+        (SQL_In(DBA.Torrent_Groups.Creator, Q));
+   end Torrent_Groups_Creator_Id;
 
    ----------------
    -- Torrent_Id --
@@ -2022,6 +2322,23 @@ package body Orm is
       end if;
    end Detach;
 
+   ------------
+   -- Detach --
+   ------------
+
+   function Detach
+     (Self : Torrent_Group'Class)
+     return Detached_Torrent_Group'Class
+   is
+      R : constant Detached_Torrent_Group'Class := From_Cache (Self.Data.Session, Self.Id);
+   begin
+      if R.Is_Null then
+         return Detach_No_Lookup (Self, Self.Data.Session);
+      else
+         return R;
+      end if;
+   end Detach;
+
    ----------------------
    -- Detach_No_Lookup --
    ----------------------
@@ -2250,6 +2567,46 @@ package body Orm is
    ----------------------
 
    function Detach_No_Lookup
+     (Self    : Torrent_Group'Class;
+      Session : Session_Type)
+     return Detached_Torrent_Group'Class
+   is
+      Default    : Detached_Torrent_Group;
+      Result     : Detached_Torrent_Group'Class := Detached_Torrent_Group'Class (Session.Factory (Self, Default));
+      Fk_Creator : Detached_User_Access;
+      Lj         : constant Boolean := Self.Data.Follow_LJ;
+      Tmp        : Torrent_Group_Data;
+   begin
+      if Result.Is_Null then
+         Result.Set (Torrent_Group_DDR'
+              (Detached_Data with Field_Count => 6, others => <>));
+      end if;
+
+      Tmp := Torrent_Group_Data (Result.Unchecked_Get);
+      if Self.Depth > 0 then
+         if LJ then
+            FK_Creator := new Detached_User'Class'(
+               I_Users.Internal_Element
+                 (Self, Upto_Torrent_Groups_0 (Self.Depth, LJ)).Detach);
+         end if;
+
+      end if;
+
+      Tmp.ORM_Creator        := Integer_Value (Self, F_Torrent_Groups_Creator);
+      Tmp.ORM_Data           := To_Unbounded_String (String_Value (Self, F_Torrent_Groups_Data));
+      Tmp.ORM_Description    := To_Unbounded_String (String_Value (Self, F_Torrent_Groups_Description));
+      Tmp.ORM_FK_Creator     := FK_Creator;
+      Tmp.ORM_Id             := Integer_Value (Self, F_Torrent_Groups_Id);
+      Tmp.ORM_Name           := To_Unbounded_String (String_Value (Self, F_Torrent_Groups_Name));
+      Session.Persist (Result);
+      return Result;
+   end Detach_No_Lookup;
+
+   ----------------------
+   -- Detach_No_Lookup --
+   ----------------------
+
+   function Detach_No_Lookup
      (Self    : Torrent'Class;
       Session : Session_Type)
      return Detached_Torrent'Class
@@ -2257,12 +2614,13 @@ package body Orm is
       Default       : Detached_Torrent;
       Result        : Detached_Torrent'Class := Detached_Torrent'Class (Session.Factory (Self, Default));
       Fk_Created_By : Detached_User_Access;
+      Fk_Group      : Detached_Torrent_Group_Access;
       Lj            : constant Boolean := Self.Data.Follow_LJ;
       Tmp           : Torrent_Data;
    begin
       if Result.Is_Null then
          Result.Set (Torrent_DDR'
-              (Detached_Data with Field_Count => 8, others => <>));
+              (Detached_Data with Field_Count => 10, others => <>));
       end if;
 
       Tmp := Torrent_Data (Result.Unchecked_Get);
@@ -2270,6 +2628,12 @@ package body Orm is
          FK_Created_By := new Detached_User'Class'(
             I_Users.Internal_Element
               (Self, Upto_Torrents_0 (Self.Depth, LJ)).Detach);
+         if LJ then
+            FK_Group := new Detached_Torrent_Group'Class'(
+               I_Torrent_Groups.Internal_Element
+                 (Self, Upto_Torrents_1 (Self.Depth, LJ)).Detach);
+         end if;
+
       end if;
 
       Tmp.ORM_Category        := Integer_Value (Self, F_Torrents_Category);
@@ -2277,6 +2641,8 @@ package body Orm is
       Tmp.ORM_Description     := To_Unbounded_String (String_Value (Self, F_Torrents_Description));
       Tmp.ORM_Display_Name    := To_Unbounded_String (String_Value (Self, F_Torrents_Display_Name));
       Tmp.ORM_FK_Created_By   := FK_Created_By;
+      Tmp.ORM_FK_Group        := FK_Group;
+      Tmp.ORM_Group           := Integer_Value (Self, F_Torrents_Group);
       Tmp.ORM_Id              := Integer_Value (Self, F_Torrents_Id);
       Tmp.ORM_Info_Hash       := To_Unbounded_String (String_Value (Self, F_Torrents_Info_Hash));
       Tmp.ORM_Meta            := To_Unbounded_String (String_Value (Self, F_Torrents_Meta));
@@ -2631,6 +2997,55 @@ package body Orm is
    end if;
    end Do_Query_Posts;
 
+   -----------------------------
+   -- Do_Query_Torrent_Groups --
+   -----------------------------
+
+   procedure Do_Query_Torrent_Groups
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Base      : Natural;
+      Aliases   : Alias_Array;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False)
+   is
+      Table : T_Numbered_Torrent_Groups(Aliases(Base));
+      C2    : Sql_Criteria;
+      T     : SQL_Table_List;
+   begin
+      if PK_Only then
+         Fields := Fields & Table.Id;
+      else
+         Fields := Fields & Table.Id
+         & Table.Name
+         & Table.Description
+         & Table.Creator
+         & Table.Data;
+      end if;
+      From := Empty_Table_List;
+      if Depth > 0 then
+
+         declare
+            FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
+         begin if Follow_LJ then
+            From := +Left_Join(Table, FK1, Table.Creator=FK1.Id);
+         else
+            From := +Table;
+         end if;
+         if Follow_LJ then
+            C2 := No_Criteria;
+            Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
+               Aliases, Depth - 1, Follow_LJ);
+            if Depth > 1 then
+               Criteria := Criteria and C2;
+            end if;
+         end if;
+      end;
+   end if;
+   end Do_Query_Torrent_Groups;
+
    -----------------------
    -- Do_Query_Torrents --
    -----------------------
@@ -2658,16 +3073,22 @@ package body Orm is
          & Table.Display_Name
          & Table.Description
          & Table.Category
-         & Table.Meta;
+         & Table.Meta
+         & Table.Group;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
 
          declare
             FK1 : T_Numbered_Users(Aliases(Aliases(Base + 1)));
+            FK2 : T_Numbered_Torrent_Groups(Aliases(Aliases(Base + 2)));
          begin Criteria := Criteria
          and Table.Created_By = FK1.Id;
-         From := +Table;
+         if Follow_LJ then
+            From := +Left_Join(Table, FK2, Table.Group=FK2.Id);
+         else
+            From := +Table;
+         end if;
          C2 := No_Criteria;
          Do_Query_Users(Fields, T, C2,Aliases(Base + 1),
             Aliases, Depth - 1, Follow_LJ);
@@ -2675,6 +3096,15 @@ package body Orm is
             Criteria := Criteria and C2;
          end if;
          From := From & T;
+
+         if Follow_LJ then
+            C2 := No_Criteria;
+            Do_Query_Torrent_Groups(Fields, T, C2,Aliases(Base + 2),
+               Aliases, Depth - 1, Follow_LJ);
+            if Depth > 1 then
+               Criteria := Criteria and C2;
+            end if;
+         end if;
       end;
    end if;
    end Do_Query_Torrents;
@@ -2773,7 +3203,8 @@ package body Orm is
       Display_Name : String := No_Update;
       Description  : String := No_Update;
       Category     : Integer := -1;
-      Meta         : String := No_Update)
+      Meta         : String := No_Update;
+      Group        : Integer := -1)
      return Torrents_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -2799,6 +3230,9 @@ package body Orm is
       end if;
       if Meta /= No_Update then
          C := C and DBA.Torrents.Meta = Meta;
+      end if;
+      if Group /= -1 then
+         C := C and DBA.Torrents.Group = Group;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -3068,6 +3502,41 @@ package body Orm is
       return Result;
    end Filter;
 
+   ------------
+   -- Filter --
+   ------------
+
+   function Filter
+     (Self        : Torrent_Groups_Managers'Class;
+      Id          : Integer := -1;
+      Name        : String := No_Update;
+      Description : String := No_Update;
+      Creator     : Integer := -1;
+      Data        : String := No_Update)
+     return Torrent_Groups_Managers
+   is
+      C      : Sql_Criteria := No_Criteria;
+      Result : Torrent_Groups_Managers;
+   begin
+      if Id /= -1 then
+         C := C and DBA.Torrent_Groups.Id = Id;
+      end if;
+      if Name /= No_Update then
+         C := C and DBA.Torrent_Groups.Name = Name;
+      end if;
+      if Description /= No_Update then
+         C := C and DBA.Torrent_Groups.Description = Description;
+      end if;
+      if Creator /= -1 then
+         C := C and DBA.Torrent_Groups.Creator = Creator;
+      end if;
+      if Data /= No_Update then
+         C := C and DBA.Torrent_Groups.Data = Data;
+      end if;
+      Copy(Self.Filter(C), Into => Result);
+      return Result;
+   end Filter;
+
    ----------
    -- Free --
    ----------
@@ -3137,9 +3606,21 @@ package body Orm is
    -- Free --
    ----------
 
+   overriding procedure Free (Self : in out Torrent_Group_Ddr) is
+   begin
+      Unchecked_Free (Self.ORM_FK_Creator);
+
+      Free (Detached_Data (Self));
+   end Free;
+
+   ----------
+   -- Free --
+   ----------
+
    overriding procedure Free (Self : in out Torrent_Ddr) is
    begin
       Unchecked_Free (Self.ORM_FK_Created_By);
+      Unchecked_Free (Self.ORM_FK_Group);
 
       Free (Detached_Data (Self));
    end Free;
@@ -3259,6 +3740,18 @@ package body Orm is
      return Detached_Irc_Channel'Class is
    begin
       return Detached_Irc_Channel'Class (Session.From_Cache ((8000000, Id), No_Detached_Irc_Channel));
+   end From_Cache;
+
+   ----------------
+   -- From_Cache --
+   ----------------
+
+   function From_Cache
+     (Session : Session_Type;
+      Id      : Integer)
+     return Detached_Torrent_Group'Class is
+   begin
+      return Detached_Torrent_Group'Class (Session.From_Cache ((9000000, Id), No_Detached_Torrent_Group));
    end From_Cache;
 
    ----------------
@@ -3569,6 +4062,50 @@ package body Orm is
       end if;
    end Get_Torrent;
 
+   -----------------------
+   -- Get_Torrent_Group --
+   -----------------------
+
+   function Get_Torrent_Group
+     (Session          : Session_Type;
+      Id               : Integer;
+      Depth            : Related_Depth := 0;
+      Follow_Left_Join : Boolean := False)
+     return Detached_Torrent_Group'Class
+   is
+      R : constant Detached_Torrent_Group'Class := From_Cache (Session, Id);
+   begin
+      if not R.Is_Null then
+         return R;
+      else
+
+         declare
+            M : Torrent_Groups_Managers := Filter
+              (All_Torrent_Groups,
+               Id => Id);
+            L : I_Torrent_Groups.List;
+         begin
+            M.Select_Related
+              (Depth, Follow_Left_Join => Follow_Left_Join);
+            M.Limit (1);
+            L := M.Get(Session);
+            if not L.Has_Row then
+               return No_Detached_Torrent_Group;
+            else
+
+               declare
+                  E : constant Torrent_Group := L.Element;
+               begin
+                  --  Workaround bug in gnat which is missing a call
+                  --  to Finalize if we do not reset the list (K321-012)
+                  L := I_Torrent_Groups.Empty_List;
+                  return E.Detach_No_Lookup (Session);
+               end;
+            end if;
+         end;
+      end if;
+   end Get_Torrent_Group;
+
    --------------
    -- Get_User --
    --------------
@@ -3612,6 +4149,41 @@ package body Orm is
          end;
       end if;
    end Get_User;
+
+   --------------------
+   -- Group_Torrents --
+   --------------------
+
+   function Group_Torrents (Self : Torrent_Group'Class) return Torrents_Managers
+   is
+   begin
+      return Filter (All_Torrents, Group => Self.Id);
+   end Group_Torrents;
+
+   --------------------
+   -- Group_Torrents --
+   --------------------
+
+   function Group_Torrents
+     (Self : Detached_Torrent_Group'Class)
+     return Torrents_Managers is
+   begin
+      return Filter (All_Torrents, Group => Self.Id);
+   end Group_Torrents;
+
+   --------------------
+   -- Group_Torrents --
+   --------------------
+
+   function Group_Torrents
+     (Self : I_Torrent_Groups_Managers'Class)
+     return Torrents_Managers
+   is
+      Q : constant SQL_Query := I_Torrent_Groups.Build_Query(Self, +DBA.Torrent_Groups.Id);
+   begin
+      return All_Torrents.Filter
+        (SQL_In(DBA.Torrents.Group, Q));
+   end Group_Torrents;
 
    ----------------------
    -- Insert_Or_Update --
@@ -3934,6 +4506,61 @@ package body Orm is
    ----------------------
 
    overriding procedure Insert_Or_Update
+     (Self        : in out Detached_Torrent_Group;
+      Pk_Modified : in out Boolean;
+      Mask        : Dirty_Mask)
+   is
+      D          : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+      Q          : SQL_Query;
+      A          : Sql_Assignment := No_Assignment;
+      Missing_Pk : constant Boolean := D.ORM_Id = -1;
+      R          : Forward_Cursor;
+   begin
+      if Mask (2) then
+         A := A & (DBA.Torrent_Groups.Name = To_String (D.ORM_Name));
+      end if;
+      if Mask (3) then
+         A := A & (DBA.Torrent_Groups.Description = To_String (D.ORM_Description));
+      end if;
+      if Mask (4) then
+         if D.ORM_Creator /= -1 then
+            A := A & (DBA.Torrent_Groups.Creator = D.ORM_Creator);
+         else
+
+            declare
+               D2 : constant User_Data :=
+               User_data (D.ORM_FK_Creator.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_Creator.all);
+               end if;
+
+               A := A & (DBA.Torrent_Groups.Creator = D2.ORM_Id);
+            end;
+         end if;
+      end if;
+      if Mask (5) then
+         A := A & (DBA.Torrent_Groups.Data = To_String (D.ORM_Data));
+      end if;
+      if Missing_PK then
+         Q := SQL_Insert (A);
+      else
+         Q := SQL_Update (DBA.Torrent_Groups, A, DBA.Torrent_Groups.Id = D.ORM_Id);
+      end if;
+      R.Fetch (Self.Session.DB, Q);
+
+      if Missing_PK and then Success (Self.Session.DB) then
+         PK_Modified := True;
+         D.ORM_Id := R.Last_Id (Self.Session.DB, DBA.Torrent_Groups.Id);
+      end if;
+   end Insert_Or_Update;
+
+   ----------------------
+   -- Insert_Or_Update --
+   ----------------------
+
+   overriding procedure Insert_Or_Update
      (Self        : in out Detached_Torrent;
       Pk_Modified : in out Boolean;
       Mask        : Dirty_Mask)
@@ -3976,6 +4603,24 @@ package body Orm is
       end if;
       if Mask (7) then
          A := A & (DBA.Torrents.Meta = To_String (D.ORM_Meta));
+      end if;
+      if Mask (8) then
+         if D.ORM_Group /= -1 then
+            A := A & (DBA.Torrents.Group = D.ORM_Group);
+         else
+
+            declare
+               D2 : constant Torrent_Group_Data :=
+               Torrent_Group_data (D.ORM_FK_Group.Unchecked_Get);
+            begin
+               if D2.ORM_Id = -1 then
+                  Self.Session.Insert_Or_Update
+                    (D.ORM_FK_Group.all);
+               end if;
+
+               A := A & (DBA.Torrents.Group = D2.ORM_Id);
+            end;
+         end if;
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -4173,6 +4818,17 @@ package body Orm is
    -- Internal_Delete --
    ---------------------
 
+   overriding procedure Internal_Delete (Self : Detached_Torrent_Group)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+   begin
+      Execute (Self.Session.DB, SQL_Delete (DBA.Torrent_Groups, DBA.Torrent_Groups.Id = D.ORM_Id));
+   end Internal_Delete;
+
+   ---------------------
+   -- Internal_Delete --
+   ---------------------
+
    overriding procedure Internal_Delete (Self : Detached_Torrent)
    is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
@@ -4296,6 +4952,22 @@ package body Orm is
       Do_Query_Posts(Fields, From, Criteria,
          0, Alias_Posts, Depth, Follow_LJ, PK_Only);
    end Internal_Query_Posts;
+
+   -----------------------------------
+   -- Internal_Query_Torrent_Groups --
+   -----------------------------------
+
+   procedure Internal_Query_Torrent_Groups
+     (Fields    : in out SQL_Field_List;
+      From      : out SQL_Table_List;
+      Criteria  : in out Sql_Criteria;
+      Depth     : Natural;
+      Follow_LJ : Boolean;
+      Pk_Only   : Boolean := False) is
+   begin
+      Do_Query_Torrent_Groups(Fields, From, Criteria,
+         0, Alias_Torrent_Groups, Depth, Follow_LJ, PK_Only);
+   end Internal_Query_Torrent_Groups;
 
    -----------------------------
    -- Internal_Query_Torrents --
@@ -4490,6 +5162,19 @@ package body Orm is
    -- Key --
    ---------
 
+   overriding function Key (Self : Torrent_Group_Ddr) return Element_Key is
+   begin
+      if Self.ORM_Id = -1 then
+         return (9000000, No_Primary_Key);
+      else
+         return (9000000, Self.ORM_Id);
+      end if;
+   end Key;
+
+   ---------
+   -- Key --
+   ---------
+
    overriding function Key (Self : Torrent_Ddr) return Element_Key is
    begin
       if Self.ORM_Id = -1 then
@@ -4615,6 +5300,19 @@ package body Orm is
       return Result;
    end New_Torrent;
 
+   -----------------------
+   -- New_Torrent_Group --
+   -----------------------
+
+   function New_Torrent_Group return Detached_Torrent_Group'Class
+   is
+      Result : Detached_Torrent_Group;
+      Data   : Torrent_Group_Ddr;
+   begin
+      Result.Set (Data);
+      return Result;
+   end New_Torrent_Group;
+
    --------------
    -- New_User --
    --------------
@@ -4714,6 +5412,21 @@ package body Orm is
    -- On_Persist --
    ----------------
 
+   overriding procedure On_Persist (Self : Detached_Torrent_Group)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+   begin
+      if Persist_Cascade (Self.Session) then
+         if D.ORM_FK_Creator /= null then
+            Self.Session.Persist (D.ORM_FK_Creator.all);
+         end if;
+      end if;
+   end On_Persist;
+
+   ----------------
+   -- On_Persist --
+   ----------------
+
    overriding procedure On_Persist (Self : Detached_Torrent)
    is
       D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
@@ -4721,6 +5434,9 @@ package body Orm is
       if Persist_Cascade (Self.Session) then
          if D.ORM_FK_Created_By /= null then
             Self.Session.Persist (D.ORM_FK_Created_By.all);
+         end if;
+         if D.ORM_FK_Group /= null then
+            Self.Session.Persist (D.ORM_FK_Group.all);
          end if;
       end if;
    end On_Persist;
@@ -4940,6 +5656,39 @@ package body Orm is
       end if;
    end Set_Created_By;
 
+   -----------------
+   -- Set_Creator --
+   -----------------
+
+   procedure Set_Creator (Self : Detached_Torrent_Group; Value : Integer)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Creator);
+      D.ORM_Creator := Value;
+      Self.Set_Modified (4);
+   end Set_Creator;
+
+   -----------------
+   -- Set_Creator --
+   -----------------
+
+   procedure Set_Creator
+     (Self  : Detached_Torrent_Group;
+      Value : Detached_User'Class)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Creator);
+      D.ORM_Creator := Value.Id;
+      D.ORM_FK_Creator := new Detached_User'Class'(Value);
+
+      Self.Set_Modified (4);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_Creator.all);
+      end if;
+   end Set_Creator;
+
    --------------
    -- Set_Data --
    --------------
@@ -4964,6 +5713,18 @@ package body Orm is
       Self.Set_Modified (3);
    end Set_Data;
 
+   --------------
+   -- Set_Data --
+   --------------
+
+   procedure Set_Data (Self : Detached_Torrent_Group; Value : String)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Data := To_Unbounded_String (Value);
+      Self.Set_Modified (5);
+   end Set_Data;
+
    ---------------------
    -- Set_Description --
    ---------------------
@@ -4974,6 +5735,18 @@ package body Orm is
    begin
       D.ORM_Description := To_Unbounded_String (Value);
       Self.Set_Modified (5);
+   end Set_Description;
+
+   ---------------------
+   -- Set_Description --
+   ---------------------
+
+   procedure Set_Description (Self : Detached_Torrent_Group; Value : String)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Description := To_Unbounded_String (Value);
+      Self.Set_Modified (3);
    end Set_Description;
 
    ----------------------
@@ -5069,6 +5842,39 @@ package body Orm is
       end if;
    end Set_For_User;
 
+   ---------------
+   -- Set_Group --
+   ---------------
+
+   procedure Set_Group (Self : Detached_Torrent; Value : Integer)
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Group);
+      D.ORM_Group := Value;
+      Self.Set_Modified (8);
+   end Set_Group;
+
+   ---------------
+   -- Set_Group --
+   ---------------
+
+   procedure Set_Group
+     (Self  : Detached_Torrent;
+      Value : Detached_Torrent_Group'Class)
+   is
+      D : constant Torrent_Data := Torrent_Data (Self.Unchecked_Get);
+   begin
+      Unchecked_Free (D.ORM_FK_Group);
+      D.ORM_Group := Value.Id;
+      D.ORM_FK_Group := new Detached_Torrent_Group'Class'(Value);
+
+      Self.Set_Modified (8);
+      if Persist_Cascade (Self.Session) then
+         Self.Session.Persist (D.ORM_FK_Group.all);
+      end if;
+   end Set_Group;
+
    -------------------
    -- Set_Info_Hash --
    -------------------
@@ -5112,6 +5918,18 @@ package body Orm is
    procedure Set_Name (Self : Detached_Irc_Channel; Value : String)
    is
       D : constant Irc_Channel_Data := Irc_Channel_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Name := To_Unbounded_String (Value);
+      Self.Set_Modified (2);
+   end Set_Name;
+
+   --------------
+   -- Set_Name --
+   --------------
+
+   procedure Set_Name (Self : Detached_Torrent_Group; Value : String)
+   is
+      D : constant Torrent_Group_Data := Torrent_Group_Data (Self.Unchecked_Get);
    begin
       D.ORM_Name := To_Unbounded_String (Value);
       Self.Set_Modified (2);

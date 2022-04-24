@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .page-container {
+         position: absolute;
+         left: 50%;
+         top: 10%;
+         transform: translate(-50%, 0);
+     }
+
+     .search-input {
+         width: 500px;
+         height: 30px;
+
+         font-size: 18px;
+     }
+
+     .group-title {
+         width: 500px;
+         height: 30px;
+     }
+
+     .search-info-column {
+         padding-left: 1em;
+     }
+    </style>
+    <title>Posts :: Hellish</title>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="page-container">
+        <div>
+            <form action="/group/search" id="search-form" method="GET">
+                <input class="search-input hellish-input-field" name="query" role="search"
+                       @@IF@@ @_EXIST:query_@
+                       value="@_WEB_ESCAPE:query_@"
+                       @@END_IF@@
+                >
+                <input class="hellish-button hellish-thin-button" type="submit" value="Search!">
+            </form>
+        </div>
+        <table class="hellish-results-table">
+            <colgroup>
+                <col class="hellish-results-column">
+                <col class="hellish-name-column">
+                <col class="hellish-number-column">
+            </colgroup>
+            <thead>
+                <tr class="hellish-results-header">
+                    <th></th>
+                    <th class="search-info-column">Creator</th>
+                    <th class="search-info-column">Number of torrents</th>
+                </tr>
+            </thead>
+            @@TABLE@@
+            <tr class="search-line">
+                <td class="group-title">
+                    <a href="/group/@_group_id_@">@_group_name_@</a>
+                </td>
+                <td class="search-info-column">
+                    <a href="/profile/@_group_creator_@">@_group_creator_@</i>
+                </td>
+                <td class="search-info-column new-replies-count">
+                    @_group_n_torrents_@
+                </td>
+            </tr>
+            @@END_TABLE@@
+        </table>
+
+        @@INCLUDE@@ pages.html
+    </div>
+</body>

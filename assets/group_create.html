@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+     @@INCLUDE@@ shared.css
+
+     .text-centered {
+         text-align: center;
+     }
+
+     .centered {
+         position: absolute;
+         left: 50%;
+         transform: translate(-50%, 0%);
+
+         margin-top: 1em;
+     }
+
+     td:nth-child(odd) {
+         border-right: solid var(--panel-color) 2px;
+         padding-right: 2em;
+     }
+     td:nth-child(even) {
+         padding-left: 1em;
+     }
+
+     .group-input {
+         width: 450px;
+     }
+    </style>
+    <title>New group :: Hellish</title>
+</head>
+<body>
+    @@INCLUDE@@ navbar.html
+
+    <div class="centered">
+        @@IF@@ @_EXIST:error_@
+        <div class="hellish-error">
+            @_error_@
+        </div>
+        @@END_IF@@
+
+        <p class="text-centered">
+            <b>New group</b>
+        </p>
+
+        <form id="group-form"
+              @@IF@@ not @_EXIST:update_@
+              action="/api/group/create"
+              @@ELSE@@
+              action="/api/group/create?update=@_update_@"
+              @@END_IF@@
+              method="POST">
+            <table>
+                <tr>
+                    <td>Name</td>
+                    <td>
+                        <input required class="hellish-input-field group-input" name="name"
+                               @@IF@@ @_EXIST:update_@
+                               value="@_WEB_ESCAPE:update_name_@"
+                               @@END_IF@@
+                        >
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>Description</td>
+                    <td>
+                        <textarea form="group-form" class="hellish-input-field group-input" type="textbox"
+                                  name="description" rows="15">@_update_desc_@</textarea>
+                    </td>
+                </tr>
+            </table>
+
+            <input class="hellish-button" type="submit"
+                   @@IF@@ not @_EXIST:update_@
+                   value="Create!"
+                   @@ELSE@@
+                   value="Update!"
+                   @@END_IF@@
+            >
+        </form>
+    </div>
+</body>

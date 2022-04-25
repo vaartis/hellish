@@ -177,7 +177,7 @@ package body Search is
                   Desc : Dc.Element := Append_Child(Item, Create_Element(Doc, "description"));
                   Desc_Text : Dc.Element := 
                     Append_Child(Desc, 
-                                 Create_Text_Node(Doc, Found_Torrents.Element.Description));
+                                 Create_Text_Node(Doc, Markdown.To_Html(Found_Torrents.Element.Description, Default_Md_Flags)));
                   
                   Torrent_Meta : Json_Value := Read(Found_Torrents.Element.Meta);
                   Created_At : String := (if Torrent_Meta.Has_Field("created_at")
@@ -185,7 +185,7 @@ package body Search is
                                           else "");
                begin
                   Set_Attribute(Guid, "isPermaLink", "true");
-                  Set_Attribute(Desc, "type", "text/markdown");
+                  Set_Attribute(Desc, "type", "html");
                   
                   if Created_At /= "" then
                      declare

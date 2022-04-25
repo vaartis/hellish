@@ -495,9 +495,6 @@ package body Hellish_Irc is
                                   " :Going down for a restart!", From => "hellish");
                         end loop;
                      end loop;
-                     for Client of Clients loop
-                        Send(Client, "ERROR :Restarting!");
-                     end loop;
 
                      -- Shut everything down
                      Hellish_Web.Routes.Shutdown_Server;

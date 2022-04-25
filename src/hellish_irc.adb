@@ -537,7 +537,7 @@ package body Hellish_Irc is
 
                if Client.Caps_Negotiated and not Client.Nick.Is_Empty and not Client.Username.Is_Empty and not Client.Motd_Sent then
                   Send(Client, "001 " & Client.Nick.Element & " :Welcome to Hellish IRC!");
-                  Send(Client, Rpl_Motd_Start & " : ** Message of the day:");
+                  Send(Client, Rpl_Motd_Start & " : Message of the day:");
 
                   declare
                      use Ada.Directories;
@@ -549,15 +549,15 @@ package body Hellish_Irc is
                         Open(Motd_File, Mode => In_File, Name => "motd.txt");
                         while not End_Of_File(Motd_File) loop
                            Get_Line(Motd_File, Motd_Line);
-                           Send(Client, Rpl_Motd & " :**   " & To_String(Motd_Line));
+                           Send(Client, Rpl_Motd & " :    " & To_String(Motd_Line));
                         end loop;
                         Close(Motd_File);
                      else
-                        Send(Client, Rpl_Motd & " :**   Nothing in particular..");
+                        Send(Client, Rpl_Motd & " :    Nothing in particular..");
                      end if;
                   end;
 
-                  Send(Client, Rpl_End_Of_Motd & " :** End of MOTD");
+                  Send(Client, Rpl_End_Of_Motd & " : End of MOTD");
                   Client.Motd_Sent := True;
                end if;
 

@@ -346,6 +346,7 @@ package body Hellish_Web.Routes is
 
    package body Images is separate;
    package body Posts is separate;
+   package body Search is separate;
 
    Announce_Passkey_Matcher : constant Pattern_Matcher := Compile("/(\w+)/announce");
    function Dispatch
@@ -902,11 +903,6 @@ package body Hellish_Web.Routes is
                                String'(Templates_Parser.Parse("assets/invite.html", Translations)));
       end;
    end Dispatch;
-
-   function Search_Dispatch(Handler : in Search_Handler;
-                            Request : in Status.Data) return Response.Data is separate;
-   overriding function Dispatch(Handler : in Search_Handler;
-                                Request : in Status.Data) return Response.Data renames Search_Dispatch;
 
    overriding function Dispatch(Handler : in Confirm_Handler;
                                 Request : in Status.Data) return Response.Data is
@@ -1558,7 +1554,8 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/upload", Upload);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/view/(\d+)", View);
       Services.Dispatchers.Uri.Register(Root, "/invite", Invite);
-      Services.Dispatchers.Uri.Register(Root, "/search", Search);
+      Services.Dispatchers.Uri.Register(Root, "/search", Search.Search);
+      Services.Dispatchers.Uri.Register(Root, "/search.rss", Search.Search_Rss);
       Services.Dispatchers.Uri.Register(Root, "/post/create", Posts.Post_Create);
       Services.Dispatchers.Uri.Register(Root, "/post/search", Posts.Post_Search);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/post/(\d+)", Posts.Post);

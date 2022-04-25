@@ -16,3 +16,5 @@ command = [ "sh", "pre-build.sh" ]
 
 [[depends-on]]  # Added by alr
 gnatcoll_postgres = "^22.0.0"  # Added by alr
+[[depends-on]]  # Added by alr
+xmlada = "^22.0.0"  # Added by alr

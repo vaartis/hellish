@@ -68,6 +68,20 @@ private
       Api_Image_Delete : Api_Image_Delete_Handler;
    end Images;
 
+   package Search is
+      type Search_Handler is new Dispatchers.Handler with null record;
+      type Search_Rss_Handler is new Dispatchers.Handler with null record;
+
+      overriding function Dispatch(Handler : in Search_Handler; Request : in Status.Data) return Response.Data;
+      overriding function Dispatch(Handler : in Search_Rss_Handler; Request : in Status.Data) return Response.Data;
+
+      overriding function Clone(Element : in Search_Handler) return Search_Handler is (Element);
+      overriding function Clone(Element : in Search_Rss_Handler) return Search_Rss_Handler is (Element);
+
+      Search : Search_Handler;
+      Search_Rss : Search_Rss_Handler;
+   end Search;
+
    type Index_Handler is new Dispatchers.Handler with null record;
    type Announce_Handler is new Dispatchers.Handler with null record;
    type Scrape_Handler is new Dispatchers.Handler with null record;
@@ -77,7 +91,6 @@ private
    type Upload_Handler is new Dispatchers.Handler with null record;
    type View_Handler is new Dispatchers.Handler with null record;
    type Invite_Handler is new Dispatchers.Handler with null record;
-   type Search_Handler is new Dispatchers.Handler with null record;
    type Confirm_Handler is new Dispatchers.Handler with null record;
    type Profile_Handler is new Dispatchers.Handler with null record;
    type Admin_Handler is new Dispatchers.Handler with null record;
@@ -94,7 +107,6 @@ private
    overriding function Dispatch(Handler : in Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in View_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Invite_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Search_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Confirm_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Profile_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Admin_Handler; Request : in Status.Data) return Response.Data;
@@ -111,7 +123,6 @@ private
    overriding function Clone(Element : in Upload_Handler) return Upload_Handler is (Element);
    overriding function Clone(Element : in View_Handler) return View_Handler is (Element);
    overriding function Clone(Element : in Invite_Handler) return Invite_Handler is (Element);
-   overriding function Clone(Element : in Search_Handler) return Search_Handler is (Element);
    overriding function Clone(Element : in Confirm_Handler) return Confirm_Handler is (Element);
    overriding function Clone(Element : in Profile_Handler) return Profile_Handler is (Element);
    overriding function Clone(Element : in Admin_Handler) return Admin_Handler is (Element);
@@ -129,7 +140,6 @@ private
    Upload : Upload_Handler;
    View : View_Handler;
    Invite : Invite_Handler;
-   Search : Search_Handler;
    Confirm : Confirm_Handler;
    Profile : Profile_Handler;
    Admin : Admin_Handler;

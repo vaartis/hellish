@@ -23,17 +23,15 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
       The_Torrent.Set_Display_Name(Display_Name);
       The_Torrent.Set_Description(Description);
 
-      if Group /= "" then
-         The_Torrent.Set_Group(Database.Get_Group(Group));
-      else
-         The_Torrent.Set_Group(-1);
-      end if;
-
       if Torrent_Categories.Contains(Category) then
          The_Torrent.Set_Category(Category);
       end if;
 
       Database.Create_Torrent(The_Torrent);
+
+      Database.Set_Torrent_Group(The_Torrent, (if Group /= ""
+                                               then Database.Get_Group(Group).Id
+                                               else -1));
    end Set_Updatable_Fields_And_Create;
 begin
    if not Database.User_Exists(Username) then

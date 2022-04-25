@@ -245,20 +245,25 @@ package body Hellish_Web.Database is
    end;
 
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class) is
+      Session : Session_Type := Get_New_Session;
+   begin
+      Session.Persist(The_Torrent);
+      Session.Commit;
+   end Create_Torrent;
+
+   procedure Set_Torrent_Group(The_Torrent : in out Detached_Torrent'Class; Group : Integer) is
       use Hellish_Database;
 
       Session : Session_Type := Get_New_Session;
    begin
       -- Have to manually set the field to NULL because ORM has no way of doing this for some reason
-      if The_Torrent.Group = -1 and The_Torrent.Id > 0 then
-         Session.Db.Execute(Sql_Update(Table => Torrents,
-                                       Where => (Torrents.Id = The_Torrent.Id),
-                                       Set => (Torrents.Group = Null_Field_Integer)));
-      end if;
-
-      Session.Persist(The_Torrent);
+      Session.Db.Execute(Sql_Update(Table => Torrents,
+                                    Where => (Torrents.Id = The_Torrent.Id),
+                                    Set => (Torrents.Group = (if Group = -1
+                                                              then Null_Field_Integer
+                                                              else Expression(Group)))));
       Session.Commit;
-   end Create_Torrent;
+   end Set_Torrent_Group;
 
    Update_User_Torrent_Stats_Stmt : Prepared_Statement :=
      Prepare("UPDATE user_torrent_stats SET " &

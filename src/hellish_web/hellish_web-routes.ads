@@ -97,6 +97,7 @@ private
    type Group_Create_Handler is new Dispatchers.Handler with null record;
    type Group_Handler is new Dispatchers.Handler with null record;
    type Group_Search_Handler is new Dispatchers.Handler with null record;
+   type Group_Rss_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -113,6 +114,7 @@ private
    overriding function Dispatch(Handler : in Group_Create_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Group_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Group_Search_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Group_Rss_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -129,6 +131,7 @@ private
    overriding function Clone(Element : in Group_Create_Handler) return Group_Create_Handler is (Element);
    overriding function Clone(Element : in Group_Handler) return Group_Handler is (Element);
    overriding function Clone(Element : in Group_Search_Handler) return Group_Search_Handler is (Element);
+   overriding function Clone(Element : in Group_Rss_Handler) return Group_Rss_Handler is (Element);
 
 
    Index : Index_Handler;
@@ -146,6 +149,7 @@ private
    Group_Create : Group_Create_Handler;
    Group : Group_Handler;
    Group_Search : Group_Search_Handler;
+   Group_Rss : Group_Rss_Handler;
 
    -- API
 

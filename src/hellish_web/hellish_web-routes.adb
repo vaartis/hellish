@@ -9,12 +9,16 @@ with Ada.Directories;
 with Ada.Containers.Indefinite_Ordered_Maps;
 with
   Ada.Calendar,
-  Ada.Calendar.Formatting;
+  Ada.Calendar.Formatting,
+  Ada.Calendar.Time_Zones;
 
-with GNAT.Regpat; use GNAT.Regpat;
-with Gnat.SHA1;
-with GNAT.Command_Line;
-with GNAT.Traceback.Symbolic;
+with
+  Gnat.Regpat,
+  Gnat.Sha1,
+  Gnat.Command_Line,
+  Gnat.Traceback.Symbolic,
+  Gnat.Calendar.Time_Io;
+use Gnat.Regpat;
 
 with Markdown; use Markdown;
 
@@ -32,7 +36,8 @@ with
   Aws.Response.Set,
   Aws.Log,
   Aws.Exceptions,
-  Aws.Url;
+  Aws.Url,
+  Aws.Utils.Streams;
 
 with
   Templates_Parser,
@@ -42,6 +47,13 @@ use Templates_Parser;
 with Gnatcoll.Json, Gnatcoll.Sql.Exec;
 
 with Sodium.Functions;
+
+with
+  Dom.Core,
+  Dom.Core.Documents,
+  Dom.Core.Elements,
+  Dom.Core.Nodes,
+  Dom.Core.Attrs;
 
 with Hellish_Web.Bencoder;
 with Hellish_Web.Peers;
@@ -343,6 +355,113 @@ package body Hellish_Web.Routes is
               then Uri(Matches(Group).First..Matches(Group).Last)
               else "");
    end Uri_Group_Match;
+
+   function Rss_Feed_Base(Title, Description, Page_Link : String; Channel : out Dom.Core.Element;
+                          Correlating_Page : String := "") return Dom.Core.Document is
+      use
+        Dom.Core,
+        Dom.Core.Documents,
+        Dom.Core.Elements,
+        Dom.Core.Nodes,
+        Dom.Core.Attrs;
+      package Dc renames Dom.Core;
+
+      Impl : Dom_Implementation;
+      Doc : Document := Create_Document(Impl);
+
+      Rss : Dc.Element := Append_Child(Doc, Create_Element(Doc, "rss"));
+
+      Channel_Elem : Dc.Element := Append_Child(Rss, Create_Element(Doc, "channel"));
+
+      Title_Elem : Dc.Element := Append_Child(Channel_Elem, Create_Element(Doc, "title"));
+      Title_Text : Text := Append_Child(Title_Elem, Create_Text_Node(Doc, Title));
+
+      Desc : Dc.Element := Append_Child(Channel_Elem, Create_Element(Doc, "description"));
+      Desc_Text : Text := Append_Child(Desc, Create_Text_Node(Doc, Description));
+
+      Link : Dc.Element := Append_Child(Channel_Elem, Create_Element(Doc, "link"));
+      Link_Text : Text := Append_Child(Link, Create_Text_Node(Doc, (if Https then "https://" else "http://") & Host_Name & Correlating_Page));
+
+      W3_Atom : String := "http://www.w3.org/2005/Atom";
+      Atom_Link : Dc.Element :=
+        Append_Child(Channel_Elem, Create_Element_Ns(Doc, Namespace_URI => W3_Atom, Qualified_Name => "atom:link"));
+   begin
+      Set_Attribute(Rss, "version", "2.0");
+      Set_Attribute_Ns(Rss, W3_Atom, "xmlns:atom", W3_Atom);
+
+      Set_Attribute(Atom_Link, "href", Page_Link);
+      Set_Attribute(Atom_Link, "rel", "self");
+      Set_Attribute(Atom_Link, "type", "application/atom+xml");
+
+      Channel := Channel_Elem;
+      return Doc;
+   end Rss_Feed_Base;
+
+   procedure Rss_Feed_Torrent_List(Channel : in out Dom.Core.Element;
+                                   Found_Torrents : in out Direct_Torrent_List;
+                                   Passkey : String) is
+      use
+        Dom.Core,
+        Dom.Core.Documents,
+        Dom.Core.Elements,
+        Dom.Core.Nodes,
+        Dom.Core.Attrs;
+      use Gnatcoll.Json;
+
+      package Dc renames Dom.Core;
+
+      Full_Host : String := (if Https then "https://" else "http://") & Host_Name;
+      Doc : Dc.Document := Owner_Document(Channel);
+   begin
+      while Found_Torrents.Has_Row loop
+         declare
+            Item : Dc.Element := Append_Child(Channel, Create_Element(Doc, "item"));
+
+            Title : Dc.Element := Append_Child(Item, Create_Element(Doc, "title"));
+            Title_Text : Dc.Element := Append_Child(Title, Create_Text_Node(Doc, Found_Torrents.Element.Display_Name));
+
+            Link : Dc.Element := Append_Child(Item, Create_Element(Doc, "link"));
+            Link_Text : Dc.Element :=
+              Append_Child(Link,
+                           Create_Text_Node(Doc, Full_Host & "/download/" &
+                                               Trim(Found_Torrents.Element.Id'Image, Ada.Strings.Left) & "?passkey=" & Passkey));
+            Guid : Dc.Element := Append_Child(Item, Create_Element(Doc, "guid"));
+            Guid_Text : Dc.Element := Append_Child(Guid,
+                                                   Create_Text_Node(Doc, Full_Host & "/view/" &
+                                                                      Trim(Found_Torrents.Element.Id'Image, Ada.Strings.Left)));
+
+            Desc : Dc.Element := Append_Child(Item, Create_Element(Doc, "description"));
+            Desc_Text : Dc.Element :=
+              Append_Child(Desc,
+                           Create_Text_Node(Doc, Markdown.To_Html(Found_Torrents.Element.Description, Default_Md_Flags)));
+
+            Torrent_Meta : Json_Value := Read(Found_Torrents.Element.Meta);
+            Created_At : String := (if Torrent_Meta.Has_Field("created_at")
+                                    then Torrent_Meta.Get("created_at")
+                                    else "");
+         begin
+            Set_Attribute(Guid, "isPermaLink", "true");
+            Set_Attribute(Desc, "type", "html");
+
+            if Created_At /= "" then
+               declare
+                  use Ada.Calendar, Ada.Calendar.Formatting, Ada.Calendar.Time_Zones;
+
+                  Created_Time : Time := Value(Created_At) - Duration(Utc_Time_Offset * 60);
+
+                  Pub_Date : Dc.Element := Append_Child(Item, Create_Element(Doc, "pubDate"));
+                  Pub_Date_Text : Text :=
+                    Append_Child(Pub_Date,
+                                 Create_Text_Node(Doc, Gnat.Calendar.Time_Io.Image(Created_Time, "%a, %d %b %Y %T") & " -0000"));
+               begin
+                  null;
+               end;
+            end if;
+         end;
+
+         Found_Torrents.Next;
+      end loop;
+   end Rss_Feed_Torrent_List;
 
    package body Images is separate;
    package body Posts is separate;
@@ -1138,6 +1257,8 @@ package body Hellish_Web.Routes is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
 
+      Params : Parameters.List := Status.Parameters(Request);
+
       Translations : Translate_Set;
 
       The_User : Detached_User'Class := No_Detached_User;
@@ -1163,10 +1284,55 @@ package body Hellish_Web.Routes is
          end;
       end;
 
+      Params.Update(To_Unbounded_String("passkey"), To_Unbounded_String(The_User.Passkey), Decode => False);
+      Insert(Translations, Assoc("rss", Status.Uri(Request) & ".rss" & Params.Uri_format));
+
       Userinfo_Translations(The_User, Translations);
       return Response.Build(Mime.Text_Html,
                             String'(Templates_Parser.Parse("assets/group.html", Translations)));
    end Dispatch;
+
+   Group_Rss_Matcher : constant Pattern_Matcher := Compile("/group/(\d+).rss");
+   overriding function Dispatch(Handler : in Group_Rss_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Params : Parameters.List := Status.Parameters(Request);
+
+      Passkey : String := Params.Get("passkey");
+   begin
+      if Database.Get_User_By_Passkey(Passkey) = Detached_User'Class(No_Detached_User) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+
+      declare
+         use
+           Dom.Core,
+           Dom.Core.Documents,
+           Dom.Core.Elements,
+           Dom.Core.Nodes,
+           Dom.Core.Attrs;
+         package Dc renames Dom.Core;
+
+         Id : Natural := Natural'Value(Uri_Group_Match(Request, Group_Matcher, 1));
+         The_Group : Detached_Torrent_Group'Class := Database.Get_Group(Id);
+
+         Channel : Dc.Element;
+         Doc : Document := Rss_Feed_Base(Title => "Hellish :: Torrents from the """ & The_Group.Name & """ group",
+                                         Description => "RSS feed for the """ & The_Group.Name & """ group",
+                                         Page_Link => Status.Url(Request),
+                                         Channel => Channel,
+                                         Correlating_Page => "/group/" & Trim(The_Group.Id'Image, Ada.Strings.Left));
+
+         Doc_Stream : aliased Aws.Utils.Streams.Strings;
+
+         Torrents_In_Group : Direct_Torrent_List := Database.Get_Group_Torrents(Id);
+      begin
+         Rss_Feed_Torrent_List (Channel => Channel, Found_Torrents => Torrents_In_Group, Passkey => Passkey);
+
+         Write(Doc_Stream'Access, Doc);
+         return Response.Build(Mime.Application_Xml, Doc_Stream.Value);
+      end;
+   end Dispatch;
+
 
    overriding function Dispatch(Handler : in Group_Search_Handler;
                                 Request : in Status.Data) return Response.Data is
@@ -1564,6 +1730,7 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register_Regexp(Root, "/profile/((\w|\d)+)", Profile);
       Services.Dispatchers.Uri.Register(Root, "/admin", Admin);
       Services.Dispatchers.Uri.Register(Root, "/group/create", Group_Create);
+      Services.Dispatchers.Uri.Register_Regexp(Root, "/group/(\d+).rss", Group_Rss);
       Services.Dispatchers.Uri.Register_Regexp(Root, "/group/(\d+)", Group);
       Services.Dispatchers.Uri.Register(Root, "/group/search", Group_Search);
 

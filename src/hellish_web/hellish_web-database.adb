@@ -764,7 +764,7 @@ package body Hellish_Web.Database is
       return All_Invites.Filter(Activated => True)
           .Limit(Limit)
           .Select_Related(Depth => 1)
-          .Order_By(Desc(Hellish_Database.Invites.Id))
+          .Order_By(Desc(Hellish_Database.Invites.For_User))
           .Get(Session);
    end;
 

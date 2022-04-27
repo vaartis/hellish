@@ -1606,7 +1606,7 @@ package body Hellish_Web.Routes is
       Update : Integer := (if Params.Exist("update")
                            then Integer'Value(Params.Get("update"))
                            else -1);
-      Name : String := Params.Get("name");
+      Name : String := Trim(Params.Get("name"), Ada.Strings.Both);
       Description : String := Params.Get("description");
 
       The_User : Detached_User'Class := No_Detached_User;
@@ -1619,14 +1619,25 @@ package body Hellish_Web.Routes is
       end if;
       The_User := Database.Get_User(Username);
 
-      if (Update = -1 and Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group))
-        or else (Update /= -1 and then Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group)
-                   and then Maybe_Existing_Name.Id /= Update) then
-         return Response.Url(Location => "/group/create?error=A group with this name already exists"
-                               & (if Update = -1
-                                  then ""
-                                  else "&update=" & Trim(Update'Image, Ada.Strings.Left)));
-      end if;
+      declare
+         Referer : Url.Object := Url.Parse(Status.Header(Request).Get_Values("Referer"));
+         Referer_Params : Parameters.List := Url.Parameters(Referer);
+
+         Error_Str : Unbounded_String;
+      begin
+         if (Update = -1 and Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group))
+           or else (Update /= -1 and then Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group)
+                      and then Maybe_Existing_Name.Id /= Update) then
+            Error_Str := To_Unbounded_String("A group with this name already exists");
+         elsif Name = "" then
+            Error_Str := To_Unbounded_String("A group can't have an empty name");
+         end if;
+
+         if Error_Str /= "" then
+            Referer_Params.Update(To_Unbounded_String("error"), Error_Str);
+            return Response.Url(Location => Url.Abs_Path(Referer) & Referer_Params.Uri_Format);
+         end if;
+      end;
 
       if Update /= -1 then
          The_Group := Database.Get_Group(Update);

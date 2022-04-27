@@ -9,11 +9,11 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
    Params : constant Parameters.List := Status.Parameters(Request);
 
    File_Path : String := Params.Get("file");
-   Display_Name : String := Params.Get("name");
+   Display_Name : String := Trim(Params.Get("name"), Ada.Strings.Both);
    Description : String := Params.Get("description");
    Category : Integer := Integer'Value(Params.Get("category"));
    Update : String := Params.Get("update");
-   Group : String := Params.Get("group");
+   Group : String := Trim(Params.Get("group"), Ada.Strings.Both);
 
    Session_Id : Session.Id := Request_Session(Request);
    Username : String := Session.Get(Session_Id, "username");
@@ -38,9 +38,23 @@ begin
       return Response.Acknowledge(Messages.S403, "Forbidden");
    end if;
 
-   if Group /= "" and then Database.Get_Group(Group) = Detached_Torrent_Group'Class(No_Detached_Torrent_Group) then
-      return Response.Url("/upload?error=The group """ & Url.Encode(Group) & """ does not exist.");
-   end if;
+   declare
+      Referer : Url.Object := Url.Parse(Status.Header(Request).Get_Values("Referer"));
+      Referer_Params : Parameters.List := Url.Parameters(Referer);
+
+      Error_Str : Unbounded_String;
+   begin
+      if Group /= "" and then Database.Get_Group(Group) = Detached_Torrent_Group'Class(No_Detached_Torrent_Group) then
+         Error_Str := To_Unbounded_String("The group """ & Url.Encode(Group) & """ does not exist.");
+      elsif Display_Name = "" then
+         Error_Str := To_Unbounded_String("Name cannot be empty");
+      end if;
+
+      if Error_Str /= "" then
+         Referer_Params.Update(To_Unbounded_String("error"), Error_Str);
+         return Response.Url(Location => Url.Abs_Path(Referer) & Referer_Params.Uri_Format);
+      end if;
+   end;
 
    if Update /= "" then
       declare

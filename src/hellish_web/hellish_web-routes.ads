@@ -15,6 +15,9 @@ package Hellish_Web.Routes is
    procedure Shutdown_Server;
 
    function Host_Name return String;
+   function Host_Name_Website return String;
+
+   Https : Boolean := False;
 private
    package Posts is
       type Post_Handler is new Dispatchers.Handler with null record;
@@ -210,11 +213,11 @@ private
 
    -- Additional options
    Invite_Required : Boolean := True;
-   Https : Boolean := False;
    Server_Host : Unbounded_String;
 
    Uploads_Path : constant String := "uploads/torrents/";
    Image_Uploads_Path : constant String := "uploads/images/";
 
    function Host_Name return String is (if Server_Host /= "" then To_String(Server_Host) else Aws.Config.Server_Host(Conf));
+   function Host_Name_Website return String is (if Server_Host /= "" then To_String(Server_Host) else Host);
 end Hellish_Web.Routes;

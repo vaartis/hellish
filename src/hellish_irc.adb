@@ -18,6 +18,7 @@ with Gnat.String_Split; use Gnat.String_Split;
 with Gnat.Os_Lib;
 
 with Gnatcoll.Json;
+with Gnatcoll.Sql.Sessions;
 
 with
   Aws.Client,
@@ -1045,6 +1046,59 @@ package body Hellish_Irc is
                             Response => 5.0);
 
       Latest_Preview : Link_Preview_Request;
+      Title_Str : String_Holders.Holder;
+
+      Full_Host : String := (if Hellish_Web.Routes.Https then "https://" else "http://") & Hellish_Web.Routes.Host_Name_Website;
+      Local_Torrent_Matcher : constant Pattern_Matcher :=
+        Compile(Full_Host & "/view/(\d+)");
+      Local_Group_Matcher : constant Pattern_Matcher :=
+        Compile(Full_Host & "/group/(\d+)");
+      Local_Post_Matcher : constant Pattern_Matcher :=
+        Compile(Full_Host & "/post/(\d+)");
+      Matches : Match_Array (0..1);
+
+      generic
+         type T is new Gnatcoll.Sql.Sessions.Detached_Element with private;
+         with function Get_Value(Id : Integer) return T'Class;
+         with function Name(Value : T) return String;
+         No_Value : T;
+
+         Pattern : String;
+         Matcher : Pattern_Matcher := Compile(Pattern);
+      function Local_Match return Boolean;
+
+      function Local_Match return Boolean is
+      begin
+         Match(Matcher, Latest_Preview.Link.Element, Matches);
+         if Matches(1) /= No_Match then
+            declare
+               Id : Integer := Integer'Value(Latest_Preview.Link.Element(Matches(1).First..Matches(1).Last));
+               The_Value : T'Class := Get_Value(Id);
+            begin
+               if The_Value = T'Class(No_Value) then
+                  return False;
+               end if;
+
+               Title_Str := To_Holder(Name(T(The_Value)));
+               return True;
+            end;
+         end if;
+
+         return False;
+      end Local_Match;
+
+      function Local_Torrent_Match is new Local_Match
+        (T => Detached_Torrent, No_Value => No_Detached_Torrent,
+         Get_Value => Database.Get_Torrent, Name => Display_Name,
+         Pattern => "/view/(\d+)");
+      function Local_Group_Match is new Local_Match
+        (T => Detached_Torrent_Group, No_Value => No_Detached_Torrent_Group,
+         Get_Value => Database.Get_Group, Name => Name,
+         Pattern => "/group/(\d+)");
+      function Local_Post_Match is new Local_Match
+        (T => Detached_Post, No_Value => No_Detached_Post,
+         Get_Value => Database.Get_Post, Name => Title,
+         Pattern => "/post/(\d+)");
    begin
       loop
          begin
@@ -1052,6 +1106,13 @@ package body Hellish_Irc is
                Latest_Preview := Link_Preview_Queue(Link_Preview_Queue.First);
             else
                goto Next;
+            end if;
+
+            -- Only show local preview in channels that require login
+            if Channels(Latest_Preview.Channel.Element).Modes.Contains("i") then
+               if Local_Torrent_Match then goto Send; end if;
+               if Local_Group_Match then goto Send; end if;
+               if Local_Post_Match then goto Send; end if;
             end if;
 
             Preview_Data := Aws.Client.Get(Latest_Preview.Link.Element, Timeouts => Timeouts,
@@ -1063,18 +1124,25 @@ package body Hellish_Irc is
                   Parse(Doc, Message_Body(Preview_Data));
 
                   declare
-                     Title_Str : String := Title(Doc);
+                     Html_Title_Str : String := Title(Doc);
                   begin
-                     if Title_Str /= "" then
-                        Protected_Clients.Send_Special_Message(Latest_Preview.Channel.Element,
-                                                               "Link title: " & Title_Str);
+                     if Html_Title_Str /= "" then
+                        Title_Str := To_Holder(Html_Title_Str);
                      end if;
                   end;
                end;
             end if;
+         <<Send>>
+
+            if not Title_Str.Is_Empty then
+               Protected_Clients.Send_Special_Message(Latest_Preview.Channel.Element,
+                                                      "Link title: " & Title_Str.Element);
+            end if;
+         <<Skip>>
+            Title_Str.Clear;
             Link_Preview_Queue.Delete_First;
 
-            <<Next>>
+         <<Next>>
          exception
             when E : others =>
                Put_Line(Exception_Information(E));

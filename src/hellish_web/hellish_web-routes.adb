@@ -429,7 +429,7 @@ package body Hellish_Web.Routes is
 
       package Dc renames Dom.Core;
 
-      Full_Host : String := (if Https then "https://" else "http://") & Host_Name;
+      Full_Host : String := (if Https then "https://" else "http://") & Host_Name_Website;
       Doc : Dc.Document := Owner_Document(Channel);
    begin
       while Found_Torrents.Has_Row loop

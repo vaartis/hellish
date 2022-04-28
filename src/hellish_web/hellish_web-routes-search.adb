@@ -109,7 +109,7 @@ package body Search is
                                          Page_Link => Status.Url(Request),
                                          Channel => Channel);
 
-         Full_Host : String := (if Https then "https://" else "http://") & Host_Name;
+         Full_Host : String := (if Https then "https://" else "http://") & Host_Name_Website;
 
          Page_Size, Page_Offset : Natural;
          Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);

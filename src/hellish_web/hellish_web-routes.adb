@@ -73,6 +73,9 @@ package body Hellish_Web.Routes is
    package Torrent_Subscriptions is new Database.Subscriptions
      (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
 
+   package String_Holders is new Ada.Containers.Indefinite_Holders(String);
+   use String_Holders;
+
    function To_Hex_string(Input : String) return String is
       Result : Unbounded_String;
    begin
@@ -166,6 +169,22 @@ package body Hellish_Web.Routes is
       8 => "Books", 9 => "Comics");
    Post_Flags : constant Int_String_Maps.Map :=
      (1 => "News", 2 => "Request / Offer");
+
+   type Meta_Link is record
+      Name : String_Holders.Holder;
+      Json_Name : String_Holders.Holder;
+      Prefix : String_Holders.Holder;
+      Category : Integer;
+   end record;
+   Possible_Meta_Links : array (Natural range <>) of Meta_Link :=
+     (1 => (Name => To_Holder("Wikipedia"), Json_Name => To_Holder("wikipedia"),
+             Prefix => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1),
+      2 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
+            Prefix => To_Holder("https://myanimelist.net/anime/"), Category => 3),
+      3 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
+            Prefix => To_Holder("https://myanimelist.net/manga/"), Category => 9),
+      4 => (Name => To_Holder("MusicBrainz"), Json_Name => To_Holder("musicbrainz"),
+            Prefix => To_Holder("https://musicbrainz.org/release/"), Category => 1));
 
    function Page_Parameters(Params : Parameters.List; Result_Page_Size, Page_Offset : out Natural) return Natural is
       Page_Size : constant Natural := 25;
@@ -463,6 +482,14 @@ package body Hellish_Web.Routes is
       end loop;
    end Rss_Feed_Torrent_List;
 
+   function Referer_With_Error(Request : Status.Data; Error : String) return Response.Data is
+      Referer : Url.Object := Url.Parse(Status.Header(Request).Get_Values("Referer"));
+      Referer_Params : Parameters.List := Url.Parameters(Referer);
+   begin
+      Referer_Params.Update(To_Unbounded_String("error"), To_Unbounded_String(Error));
+      return Response.Url(Location => Url.Abs_Path(Referer) & Referer_Params.Uri_Format);
+   end Referer_With_Error;
+
    package body Images is separate;
    package body Posts is separate;
    package body Search is separate;
@@ -537,10 +564,7 @@ package body Hellish_Web.Routes is
             Compact : Boolean := not Params.Exist("compact") or Params.Get("compact") = "1";
             Num_Want : Natural := 50;
 
-            package Indefinite_String_Holders is new Ada.Containers.Indefinite_Holders(String);
-            use Indefinite_String_Holders;
-
-            Warning : Indefinite_String_Holders.Holder;
+            Warning : String_Holders.Holder;
             procedure Include_Warning(Dict : in out Bencoder.Bencode_Value'Class) is
             begin
                -- Add the warning to the held result
@@ -784,6 +808,38 @@ package body Hellish_Web.Routes is
             if Torrent_Group > 0 then
                Insert(Translations, Assoc("update_group", Database.Get_Group(The_Torrent.Group).Name));
             end if;
+
+            declare
+               use Gnatcoll.Json;
+
+               Torrent_Meta : Json_Value := Read(The_Torrent.Meta);
+               Torrent_Links : Json_Value := (if Torrent_Meta.Has_Field("links")
+                                              then Torrent_Meta.Get("links")
+                                              else Create_Object);
+
+               Link_Names, Link_Json_Names, Link_Values, Link_Prefixes : Vector_Tag;
+            begin
+               for Possible_Link of Possible_Meta_Links loop
+                  -- Check if the category is right
+                  if The_Torrent.Category = Possible_Link.Category or Possible_Link.Category = -1 then
+                     declare
+                        Maybe_Existing_Value : String := (if Torrent_Links.Has_Field(Possible_Link.Json_Name.Element)
+                                                          then Torrent_Links.Get(Possible_Link.Json_Name.Element)
+                                                          else "");
+                     begin
+                        Link_Names := @ & Possible_Link.Name.Element;
+                        Link_Json_Names := @ & Possible_Link.Json_Name.Element;
+                        Link_Prefixes := @ & Possible_Link.Prefix.Element;
+                        Link_Values := @ & Maybe_Existing_Value;
+                     end;
+                  end if;
+               end loop;
+
+               Insert(Translations, Assoc("link_name", Link_Names));
+               Insert(Translations, Assoc("link_json_name", Link_Json_Names));
+               Insert(Translations, Assoc("link_prefix", Link_Prefixes));
+               Insert(Translations, Assoc("link_value", Link_Values));
+            end;
          end;
       else
          -- This needs to always be set, as textarea uses all whitespace literally
@@ -968,8 +1024,25 @@ package body Hellish_Web.Routes is
             Created_At : String := (if Torrent_Meta.Has_Field("created_at")
                                     then Torrent_Meta.Get("created_at")
                                     else "");
+
+            Torrent_Links : Json_Value := (if Torrent_Meta.Has_Field("links")
+                                           then Torrent_Meta.Get("links")
+                                           else Create_Object);
+            Link_Names, Link_Values : Vector_Tag;
          begin
             Insert(Translations, Assoc("created_at", Created_At));
+
+            for Possible_Link of Possible_Meta_Links loop
+               -- Check if the category is right
+               if The_Torrent.Category = Possible_Link.Category or Possible_Link.Category = -1 then
+                  if Torrent_Links.Has_Field(Possible_Link.Json_Name.Element) then
+                     Link_Names := @ & Possible_Link.Name.Element;
+                     Link_Values := @ & String'(Torrent_Links.Get(Possible_Link.Json_Name.Element));
+                  end if;
+               end if;
+            end loop;
+            Insert(Translations, Assoc("link_name", Link_Names));
+            Insert(Translations, Assoc("link_value", Link_Values));
          end;
 
          Replies_Translations(The_Torrent.Id, The_User, Translations, Database.Torrent_Comments'Access, Request);
@@ -1439,10 +1512,7 @@ package body Hellish_Web.Routes is
       Min_Pwd_Length : constant Positive := 8;
       Max_Pwd_Length : constant Positive := 128;
 
-      package Indefinite_String_Holders is new Ada.Containers.Indefinite_Holders(String);
-      use Indefinite_String_Holders;
-
-      Error_String : Indefinite_String_Holders.Holder;
+      Error_String : String_Holders.Holder;
    begin
       if Username'Length < Min_Name_Length and Username'Length > Max_Name_Length then
          Error_String := To_Holder("Username must be at least" & Min_Name_Length'Image & " characters long and at most"
@@ -1619,25 +1689,14 @@ package body Hellish_Web.Routes is
       end if;
       The_User := Database.Get_User(Username);
 
-      declare
-         Referer : Url.Object := Url.Parse(Status.Header(Request).Get_Values("Referer"));
-         Referer_Params : Parameters.List := Url.Parameters(Referer);
 
-         Error_Str : Unbounded_String;
-      begin
-         if (Update = -1 and Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group))
-           or else (Update /= -1 and then Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group)
-                      and then Maybe_Existing_Name.Id /= Update) then
-            Error_Str := To_Unbounded_String("A group with this name already exists");
-         elsif Name = "" then
-            Error_Str := To_Unbounded_String("A group can't have an empty name");
-         end if;
-
-         if Error_Str /= "" then
-            Referer_Params.Update(To_Unbounded_String("error"), Error_Str);
-            return Response.Url(Location => Url.Abs_Path(Referer) & Referer_Params.Uri_Format);
-         end if;
-      end;
+      if (Update = -1 and Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group))
+        or else (Update /= -1 and then Maybe_Existing_Name /= Detached_Torrent_Group'Class(No_Detached_Torrent_Group)
+                   and then Maybe_Existing_Name.Id /= Update) then
+         return Referer_With_Error(Request, "A group with this name already exists");
+      elsif Name = "" then
+         return Referer_With_Error(Request, "A group can't have an empty name");
+      end if;
 
       if Update /= -1 then
          The_Group := Database.Get_Group(Update);

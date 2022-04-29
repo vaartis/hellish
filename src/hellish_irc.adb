@@ -1165,6 +1165,7 @@ package body Hellish_Irc is
                         Id : Task_Id;
                         E : Exception_Occurrence) is
       begin
+         Put_Line("!! TASK CRASHED " & Image(Id));
          Put_Line(Exception_Information(E));
       end Handler;
    end Termination_Handler;

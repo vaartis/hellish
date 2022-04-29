@@ -184,7 +184,9 @@ package body Hellish_Web.Routes is
       3 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
             Prefix => To_Holder("https://myanimelist.net/manga/"), Category => 9),
       4 => (Name => To_Holder("MusicBrainz"), Json_Name => To_Holder("musicbrainz"),
-            Prefix => To_Holder("https://musicbrainz.org/release/"), Category => 1));
+            Prefix => To_Holder("https://musicbrainz.org/release/"), Category => 1),
+      5 => (Name => To_Holder("Discogs"), Json_Name => To_Holder("discogs"),
+            Prefix => To_Holder("https://www.discogs.com/release/"), Category => 1));
 
    function Page_Parameters(Params : Parameters.List; Result_Page_Size, Page_Offset : out Natural) return Natural is
       Page_Size : constant Natural := 25;

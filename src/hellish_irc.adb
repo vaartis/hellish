@@ -275,18 +275,18 @@ package body Hellish_Irc is
                   elsif Message_Parts(0) * "MODE" then
                      if Channels.Contains(Message_Parts(1)) then
                         if Length(Message_Parts) >= 3 then
-                           declare
-                              Req_Str : String := Message_Parts(2);
-                           begin
-                              if Req_Str(Req_Str'First) /= '+' and Req_Str(Req_Str'First) /= '-' then
-                                 -- Request for user modes or something? Don't respond with anything (for now)
-                                 goto After;
-                              end if;
-                           end;
+                           if Message_Parts(2) = "b" then
+                              -- Ban list, just send empty one for now
+
+                              Send(Client, Rpl_End_Of_Banlist
+                                     & " " & Client.Nick.Element & " " & Channels(Message_Parts(1)).Name.Element);
+                              goto After;
+                           end if;
 
                            if Client.Tracker_User = No_Detached_User or else Client.Tracker_User.Role /= 1 then
                               Send(Client, Err_Chan_Op_Privs_Needed
-                                     & " " & Client.Nick.Element & " " & Message_Parts(1) & " :Only admins can channel set modes");
+                                     & " " & Client.Nick.Element & " " & Channels(Message_Parts(1)).Name.Element
+                                     & " :Only admins can channel set modes");
                               goto After;
                            end if;
 

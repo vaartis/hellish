@@ -214,6 +214,8 @@ private
    Rpl_Whois_Channels : String := "319";
    Rpl_Who_Reply : String := "352";
    Rpl_End_Of_Who : String := "315";
+   Rpl_Banlist : String := "367";
+   Rpl_End_Of_Banlist : String := "368";
 
    Err_Unknown_Error : String := "400";
    Err_No_Such_Nick : String := "401";

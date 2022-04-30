@@ -85,6 +85,38 @@ private
       Search_Rss : Search_Rss_Handler;
    end Search;
 
+   package Groups is
+      type Group_Create_Handler is new Dispatchers.Handler with null record;
+      type Group_Handler is new Dispatchers.Handler with null record;
+      type Group_Search_Handler is new Dispatchers.Handler with null record;
+      type Group_Rss_Handler is new Dispatchers.Handler with null record;
+
+      overriding function Dispatch(Handler : in Group_Create_Handler; Request : in Status.Data) return Response.Data;
+      overriding function Dispatch(Handler : in Group_Handler; Request : in Status.Data) return Response.Data;
+      overriding function Dispatch(Handler : in Group_Search_Handler; Request : in Status.Data) return Response.Data;
+      overriding function Dispatch(Handler : in Group_Rss_Handler; Request : in Status.Data) return Response.Data;
+
+      overriding function Clone(Element : in Group_Create_Handler) return Group_Create_Handler is (Element);
+      overriding function Clone(Element : in Group_Handler) return Group_Handler is (Element);
+      overriding function Clone(Element : in Group_Search_Handler) return Group_Search_Handler is (Element);
+      overriding function Clone(Element : in Group_Rss_Handler) return Group_Rss_Handler is (Element);
+
+      Group_Create : Group_Create_Handler;
+      Group : Group_Handler;
+      Group_Search : Group_Search_Handler;
+      Group_Rss : Group_Rss_Handler;
+
+      -- API
+
+      type Api_Group_Create_Handler is new Dispatchers.Handler with null record;
+
+      overriding function Dispatch(Handler : in Api_Group_Create_Handler; Request : in Status.Data) return Response.Data;
+
+      overriding function Clone(Element : in Api_Group_Create_Handler) return Api_Group_Create_Handler is (Element);
+
+      Api_Group_Create : Api_Group_Create_Handler;
+   end Groups;
+
    type Index_Handler is new Dispatchers.Handler with null record;
    type Announce_Handler is new Dispatchers.Handler with null record;
    type Scrape_Handler is new Dispatchers.Handler with null record;
@@ -97,10 +129,6 @@ private
    type Confirm_Handler is new Dispatchers.Handler with null record;
    type Profile_Handler is new Dispatchers.Handler with null record;
    type Admin_Handler is new Dispatchers.Handler with null record;
-   type Group_Create_Handler is new Dispatchers.Handler with null record;
-   type Group_Handler is new Dispatchers.Handler with null record;
-   type Group_Search_Handler is new Dispatchers.Handler with null record;
-   type Group_Rss_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Index_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Announce_Handler; Request : in Status.Data) return Response.Data;
@@ -114,10 +142,6 @@ private
    overriding function Dispatch(Handler : in Confirm_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Profile_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Admin_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Group_Create_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Group_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Group_Search_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Group_Rss_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Index_Handler) return Index_Handler is (Element);
    overriding function Clone(Element : in Announce_Handler) return Announce_Handler is (Element);
@@ -131,10 +155,6 @@ private
    overriding function Clone(Element : in Confirm_Handler) return Confirm_Handler is (Element);
    overriding function Clone(Element : in Profile_Handler) return Profile_Handler is (Element);
    overriding function Clone(Element : in Admin_Handler) return Admin_Handler is (Element);
-   overriding function Clone(Element : in Group_Create_Handler) return Group_Create_Handler is (Element);
-   overriding function Clone(Element : in Group_Handler) return Group_Handler is (Element);
-   overriding function Clone(Element : in Group_Search_Handler) return Group_Search_Handler is (Element);
-   overriding function Clone(Element : in Group_Rss_Handler) return Group_Rss_Handler is (Element);
 
 
    Index : Index_Handler;
@@ -149,10 +169,6 @@ private
    Confirm : Confirm_Handler;
    Profile : Profile_Handler;
    Admin : Admin_Handler;
-   Group_Create : Group_Create_Handler;
-   Group : Group_Handler;
-   Group_Search : Group_Search_Handler;
-   Group_Rss : Group_Rss_Handler;
 
    -- API
 
@@ -163,7 +179,6 @@ private
    type Api_Delete_Handler is new Dispatchers.Handler with null record;
    type Api_Subscribe_Handler is new Dispatchers.Handler with null record;
    type Api_Notifications_Clear_Handler is new Dispatchers.Handler with null record;
-   type Api_Group_Create_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Api_Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Register_Handler; Request : in Status.Data) return Response.Data;
@@ -172,7 +187,6 @@ private
    overriding function Dispatch(Handler : in Api_Delete_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_Subscribe_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_Notifications_Clear_Handler; Request : in Status.Data) return Response.Data;
-   overriding function Dispatch(Handler : in Api_Group_Create_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Api_Upload_Handler) return Api_Upload_Handler is (Element);
    overriding function Clone(Element : in Api_User_Register_Handler) return Api_User_Register_Handler is (Element);
@@ -181,7 +195,6 @@ private
    overriding function Clone(Element : in Api_Delete_Handler) return Api_Delete_Handler is (Element);
    overriding function Clone(Element : in Api_Subscribe_Handler) return Api_Subscribe_Handler is (Element);
    overriding function Clone(Element : in Api_Notifications_Clear_Handler) return Api_Notifications_Clear_Handler is (Element);
-   overriding function Clone(Element : in Api_Group_Create_Handler) return Api_Group_Create_Handler is (Element);
 
    Api_Upload : Api_Upload_Handler;
    Api_User_Register : Api_User_Register_Handler;
@@ -190,7 +203,6 @@ private
    Api_Delete : Api_Delete_Handler;
    Api_Subscribe : Api_Subscribe_Handler;
    Api_Notifications_Clear : Api_Notifications_Clear_Handler;
-   Api_Group_Create : Api_Group_Create_Handler;
 
    -- Uploads
 

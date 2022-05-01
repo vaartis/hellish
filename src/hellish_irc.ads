@@ -52,6 +52,7 @@ private
 
    Socket : Socket_Type;
    Socket_Ssl : Socket_Type;
+   Selector : Selector_Type;
 
    task Accept_Connections_Ssl is
       entry Start;
@@ -164,12 +165,14 @@ private
    protected Protected_Clients is
       procedure Append(The_Client : in out Client);
 
-      procedure Process_Clients;
+      procedure Process_Clients(R_Selector_Set : in out Socket_Set_Type);
       procedure Load_Persisted_Channels;
       procedure Send_Special_Message(To, Message : String);
+
+      function R_Selector_Set return Socket_Set_Type;
    private
       procedure Process_Message_Queues;
-      procedure Process_Select_Connections;
+      procedure Process_Select_Connections(R_Selector_Set : in out Socket_Set_Type);
 
       procedure Remove(To_Remove : User_Hashed_Sets.Set);
 

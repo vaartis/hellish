@@ -43,6 +43,15 @@ package body Hellish_Irc is
    Link_Preview_Matcher : constant Pattern_Matcher := Compile("https?://[\S]+", Case_Insensitive);
 
    protected body Protected_Clients is
+      function R_Selector_Set return Socket_Set_Type is
+      begin
+         return Result : Socket_Set_Type do
+            for Client of Clients loop
+               Gnat.Sockets.Set(Result, Client.Socket);
+            end loop;
+         end return;
+      end R_Selector_Set;
+
       procedure Append(The_Client : in out Client) is
       begin
          The_Client.Id := Next_Id;
@@ -51,28 +60,11 @@ package body Hellish_Irc is
          Next_Id := @ + 1;
       end;
 
-      procedure Process_Select_Connections is
-         Selector : Selector_Type;
-
-         R_Selector_Set : Socket_Set_Type;
-         W_Selector_Set : Socket_Set_Type;
-         Status : Selector_Status;
-
+      procedure Process_Select_Connections(R_Selector_Set : in out Socket_Set_Type) is
          Curr_Sock : Socket_Type;
 
          To_Remove : User_Hashed_Sets.Set;
       begin
-         for Client of Clients loop
-            Gnat.Sockets.Set(R_Selector_Set, Client.Socket);
-            Gnat.Sockets.Set(W_Selector_Set, Client.Socket);
-         end loop;
-
-         if Is_Empty(R_Selector_Set) then return; end if;
-
-         Create_Selector(Selector);
-         Check_Selector(Selector, R_Selector_Set, W_Selector_Set, Status, Timeout => 5.0);
-         Close_Selector(Selector);
-
          while not Is_Empty(R_Selector_Set) loop
             Get(R_Selector_Set, Curr_Sock);
 
@@ -625,9 +617,9 @@ package body Hellish_Irc is
          end loop;
       end Remove;
 
-      procedure Process_Clients is
+      procedure Process_Clients(R_Selector_Set : in out Socket_Set_Type) is
       begin
-         Process_Select_Connections;
+         Process_Select_Connections(R_Selector_Set);
          Process_Message_Queues;
       end;
 
@@ -1053,6 +1045,8 @@ package body Hellish_Irc is
                           Timeout => Forever, Status => Status);
             if Status = Completed then
                Protected_Clients.Append(The_Client);
+               -- Abort the selector so the new client gets to run as well
+               Abort_Selector(Selector);
             end if;
          exception
             when E : others =>
@@ -1083,6 +1077,7 @@ package body Hellish_Irc is
                Accept_Ssl(The_Client.Socket_Ssl);
 
                Protected_Clients.Append(The_Client);
+               Abort_Selector(Selector);
             end if;
          exception
             when E : others =>
@@ -1095,12 +1090,24 @@ package body Hellish_Irc is
    end Accept_Connections_Ssl;
 
    task body Process_Connections is
+      Status : Selector_Status;
    begin
       accept Start;
+      Create_Selector(Selector);
 
       loop
-         Protected_Clients.Process_Clients;
-         delay 0.5;
+         declare
+            -- Since r_selector_set is a function, the call is not blocking
+            R_Selector_Set : Socket_Set_Type := Protected_Clients.R_Selector_Set;
+            W_Selector_Set : Socket_Set_Type;
+         begin
+            -- Run the selector outside of the protected function, so things aren't blocked while it's running.
+            Check_Selector(Selector, R_Selector_Set, W_Selector_Set, Status);
+
+            if not Is_Empty(R_Selector_Set) and Status /= Aborted then
+               Protected_Clients.Process_Clients(R_Selector_Set);
+            end if;
+         end;
       end loop;
    end Process_Connections;
 

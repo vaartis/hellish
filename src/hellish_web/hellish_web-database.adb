@@ -462,11 +462,11 @@ package body Hellish_Web.Database is
       return The_Post_Managers.Get(Session);
    end Torrent_Comments;
 
-   function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Detached_Torrent'Class)
+   function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Integer)
                                       return Detached_User_Torrent_Stat'Class is
       Session : Session_Type := Get_New_Session;
       Stats_List : User_Torrent_Stat_List := All_User_Torrent_Stats
-        .Filter(By_User => User.Id, Of_Torrent => Torrent.Id)
+        .Filter(By_User => User.Id, Of_Torrent => Torrent)
         .Get(Session);
    begin
          return (if Stats_List.Has_Row then Stats_List.Element.Detach else No_Detached_User_Torrent_Stat);

@@ -71,7 +71,7 @@ package body Groups is
          declare
             Torrents_In_Group : Direct_Torrent_List := Database.Get_Group_Torrents(Id);
          begin
-            Torrent_Table_Translations(Torrents_In_Group, Translations);
+            Torrent_Table_Translations(Torrents_In_Group, Translations, The_User);
          end;
       end;
 

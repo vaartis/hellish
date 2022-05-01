@@ -12,9 +12,14 @@
             <th>Uploader</th>
             <th>Comments</th>
             <th>Category</th>
-            <th class="sl-column">
+            <th class="nb-column">
                 <abbr title="Seeding / Leeching">S / L</abbr>
             </th>
+            @@IF@@ @_EXIST:torrent_ul_@
+            <th class="nb-column">
+                <abbr title="Uploaded / Downloaded">UL / DL</abbr>
+            </th>
+            @@END_IF@@
         </tr>
     </thead>
     @@TABLE@@
@@ -32,9 +37,14 @@
         <td class="search-info-column">
             @_torrent_category_@
         </td>
-        <td class="search-info-column sl-column">
+        <td class="search-info-column nb-column">
             @_torrent_stats_@
         </td>
+        @@IF@@ @_EXIST:torrent_ul_@
+        <td class="search-info-column nb-column">
+            <span class="upload">@_torrent_ul_@</span> / <span class="download">@_torrent_dl_@</span>
+        </td>
+        @@END_IF@@
     </tr>
     @@END_TABLE@@
 </table>

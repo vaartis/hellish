@@ -328,10 +328,12 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("userinfo_is_admin", The_User.Role = 1));
    end Userinfo_Translations;
 
-   procedure Torrent_Table_Translations(Found_Torrents : in out Direct_Torrent_List; Translations : in out Translate_set) is
+   procedure Torrent_Table_Translations(Found_Torrents : in out Direct_Torrent_List; Translations : in out Translate_Set;
+                                        The_User : Detached_User'Class;
+                                        Show_Ul_Dl : Boolean := False) is
       Torrent_Names, Torrent_Ids,
         Torrent_Uploaders, Torrent_Comments, The_Torrent_Categories,
-        The_Torrent_Stats: Vector_Tag;
+        The_Torrent_Stats, Torrent_Uls, Torrent_Dls: Vector_Tag;
    begin
       while Found_Torrents.Has_Row loop
          Torrent_Ids := @ & Found_Torrents.Element.Id;
@@ -353,6 +355,20 @@ package body Hellish_Web.Routes is
             The_Torrent_Stats := @ & (Trim(Torrent_Stats.Complete'Image, Ada.Strings.Left) & " /" & Torrent_Stats.Incomplete'Image);
          end;
 
+         if Show_Ul_Dl then
+            declare
+               Stats : Detached_User_Torrent_Stat'Class := Database.Get_User_Stats_For_Torrent(The_User, Found_Torrents.Element.Id);
+            begin
+               if Stats /= Detached_User_Torrent_Stat'Class(No_Detached_User_Torrent_Stat) then
+                  Torrent_Uls := @ & Bytes_To_Printable(Stats.Uploaded);
+                  Torrent_Dls := @ & Bytes_To_Printable(Stats.Downloaded);
+               else
+                  Torrent_Uls := @ & "";
+                  Torrent_Dls := @ & "";
+               end if;
+            end;
+         end if;
+
          Found_Torrents.Next;
       end loop;
 
@@ -362,6 +378,10 @@ package body Hellish_Web.Routes is
       Insert(Translations, Assoc("torrent_comments", Torrent_Comments));
       Insert(Translations, Assoc("torrent_category", The_Torrent_Categories));
       Insert(Translations, Assoc("torrent_stats", The_Torrent_Stats));
+      if Show_Ul_Dl then
+         Insert(Translations, Assoc("torrent_ul", Torrent_Uls));
+         Insert(Translations, Assoc("torrent_dl", Torrent_Dls));
+      end if;
    end Torrent_Table_Translations;
 
    function Uri_Group_Match(Request : in Status.Data;
@@ -937,7 +957,7 @@ package body Hellish_Web.Routes is
 
                      -- Just in case the file name has something funny, escape it. It's user generated data after all.
                      File_Names := @ & Templates_Parser.Utils.Web_Escape(To_String(File_Path));
-                     File_Sizes := @ & Bytes_To_Printable(size);
+                     File_Sizes := @ & Bytes_To_Printable(Size);
                      Total_Size := @ + Size;
                   end;
                end loop;
@@ -964,7 +984,7 @@ package body Hellish_Web.Routes is
          end;
 
          declare
-            Stats : Detached_User_Torrent_Stat'Class := Database.Get_User_Stats_For_Torrent(The_User, The_Torrent);
+            Stats : Detached_User_Torrent_Stat'Class := Database.Get_User_Stats_For_Torrent(The_User, The_Torrent.Id);
          begin
             if Stats /= Detached_User_Torrent_Stat'Class(No_Detached_User_Torrent_Stat) then
                Insert(Translations, Assoc("user_uploaded", Bytes_To_Printable(Stats.Uploaded)));

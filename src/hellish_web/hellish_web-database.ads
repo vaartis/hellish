@@ -43,7 +43,7 @@ package Hellish_Web.Database is
                              Limit : Integer;
                              Total_Count : out Integer) return Post_List;
 
-   function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Detached_Torrent'Class)
+   function Get_User_Stats_For_Torrent(User: Detached_User'Class; Torrent: Integer)
                                       return Detached_User_Torrent_Stat'Class;
 
    function Get_Group(Id : Integer) return Detached_Torrent_Group'Class;

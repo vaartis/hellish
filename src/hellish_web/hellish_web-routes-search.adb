@@ -42,14 +42,20 @@ package body Search is
       end if;
 
       declare
+         The_User : Detached_User'Class := Database.Get_User(Username);
+
          Page_Size, Page_Offset : Natural;
          Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
 
          Total_Count : Natural;
          Found_Torrents : Direct_Torrent_List := Database.Search_Torrents(Query, Uploader, Category, Snatched_By,
-                                                                       Page_Offset, Page_Size, Total_Count);
+                                                                          Page_Offset, Page_Size, Total_Count);
       begin
-         Torrent_Table_Translations(Found_Torrents, Translations);
+         Torrent_Table_Translations(Found_Torrents, Translations,
+                                    -- Only request these on the snatched by and uploader pages of the current user
+                                    The_User,
+                                    Show_Ul_Dl => (Snatched_By /= -1 and The_User.Id = Snatched_By) or
+                                      (Uploader /= 0 and The_User.Id = Uploader));
 
          Page_Translations(Request, Total_Count, Translations);
 
@@ -65,14 +71,11 @@ package body Search is
             Insert(Translations, Assoc("category_value", Category_Values));
          end;
 
-         declare
-            The_User : Detached_User'Class := Database.Get_User(Username);
-         begin
-            Params.Update(To_Unbounded_String("passkey"), To_Unbounded_String(The_User.Passkey), Decode => False);
-            Insert(Translations, Assoc("rss", Status.Uri(Request) & ".rss" & Params.Uri_format));
 
-            Userinfo_Translations(The_User, Translations);
-         end;
+         Params.Update(To_Unbounded_String("passkey"), To_Unbounded_String(The_User.Passkey), Decode => False);
+         Insert(Translations, Assoc("rss", Status.Uri(Request) & ".rss" & Params.Uri_format));
+
+         Userinfo_Translations(The_User, Translations);
 
          return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/search.html", Translations)));

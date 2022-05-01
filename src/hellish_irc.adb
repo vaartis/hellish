@@ -16,6 +16,7 @@ with Ada.Command_Line;
 with Gnat.Regpat; use Gnat.Regpat;
 with Gnat.String_Split; use Gnat.String_Split;
 with Gnat.Os_Lib;
+with Gnat.Calendar.Time_Io; use Gnat.Calendar.Time_Io;
 
 with Gnatcoll.Json;
 with Gnatcoll.Sql.Sessions;
@@ -37,7 +38,7 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;
 package body Hellish_Irc is
    package body Ssl is separate;
 
-   Supported_Modes : array (Natural range <>) of Character := (1 => 'i', 2 => 't');
+   Supported_Modes : array (Natural range <>) of Character := (1 => 'i', 2 => 't', 3 => 'H');
 
    Link_Preview_Matcher : constant Pattern_Matcher := Compile("https?://[\S]+", Case_Insensitive);
 
@@ -212,13 +213,18 @@ package body Hellish_Irc is
                      declare
                         Real_Name : String := Message_Parts(4);
                      begin
-                        Client.Real_Name := To_Holder(Real_Name(Real_Name'First + 1..Real_Name'Last));
+                        Client.Real_Name := To_Holder(Real_Name);
                      end;
                      Put_Line("Username set to " & Client.Username.Element);
                   elsif Message_Parts(0) * "CAP" then
                      if Message_Parts(1) * "LS" then
                         Client.Caps_Negotiated := False;
-                        Send(Client, "CAP * LS :");
+                        Send(Client, "CAP * LS :server-time");
+                     elsif Message_Parts(1) * "REQ" then
+                        if Message_Parts(2) = "server-time" then
+                           Send(Client, "CAP * ACK server-time");
+                           Client.Server_Time_Supported := True;
+                        end if;
                      elsif Message_Parts(1) * "END" then
                         Client.Caps_Negotiated := True;
                      end if;
@@ -228,7 +234,7 @@ package body Hellish_Irc is
                      declare
                         Quit_Reason : String := "Quit: " &
                           (if Length(Message_Parts) > 1
-                           then Message_Parts(1)(String'(Message_Parts(1))'First + 1..String'(Message_Parts(1))'Last)
+                           then Message_Parts(1)
                            else "");
 
                      begin
@@ -343,8 +349,19 @@ package body Hellish_Irc is
                      if Channels.Contains(Message_Parts(1)) then
                         declare
                            To_Send : String := Join_Parts(Message_Parts);
-                           The_Channel : Channel := Channels(Message_Parts(1));
+                           The_Channel : Channel_Maps.Reference_Type := Channels.Reference(Message_Parts(1));
                         begin
+                           if The_Channel.Modes.Contains("H") then
+                              while Integer(The_Channel.History.Length) > History_Size loop
+                                 The_Channel.History.Delete_First;
+                              end loop;
+
+                              The_Channel.History.Append(History_Entry'(Sent => To_Holder(Image(Clock, "%Y-%m-%dT%H:%M:%S.%iZ")),
+                                                                        Sender => To_Holder(Client.Nick.Element),
+                                                                        Message => To_Holder(Message_Parts(2))));
+                              Persist_Channel(The_Channel);
+                           end if;
+
                            for Channel_User of The_Channel.Users loop
                               if Channel_User /= Client.Id then
                                  Send(Clients(Channel_User), To_Send, From => Client_From(Client));
@@ -408,7 +425,7 @@ package body Hellish_Irc is
 
                                           Epoch : constant Time := Time_Of(1970, 1, 1, 0.0);
                                        begin
-                                          The_Channel.Topic := To_Holder(Topic_Str(Topic_Str'First + 1..Topic_Str'Last));
+                                          The_Channel.Topic := To_Holder(Topic_Str);
                                           The_Channel.Topic_Set_By := Client.Nick;
                                           The_Channel.Topic_Set_At := Positive(Clock - Epoch - Duration(60 * UTC_Time_Offset));
                                        end;
@@ -613,8 +630,8 @@ package body Hellish_Irc is
          Process_Message_Queues;
       end;
 
-      procedure Send(The_Client : Client; Message : String; From : String := Irc_Host.Element) is
-         Message_Full : String := ":" & From & " " & Message;
+      procedure Send(The_Client : Client; Message : String; From : String := Irc_Host.Element; Tag : String := "") is
+         Message_Full : String := (if Tag /= "" then Tag & " " else "") & ":" & From & " " & Message;
          Message_Crlf : String := Message_Full & Cr_Lf;
          Element_Array : Stream_Element_Array(1..Message_Crlf'Length);
          Element_Last : Stream_Element_Offset;
@@ -688,6 +705,20 @@ package body Hellish_Irc is
 
          Send_Topic(The_Client, Channel_Name);
          Send_Names(The_Client, Channel_Name);
+
+         declare
+            The_Channel : Channel_Maps.Reference_Type := Channels.Reference(Channel_Name);
+         begin
+            if The_Channel.Modes.Contains("H") and The_Client.Server_Time_Supported then
+               for Hist_Entry of The_Channel.History loop
+                  Send(
+                       The_Client,
+                       "PRIVMSG " & The_Channel.Name.Element & " :" & Hist_Entry.Message.Element,
+                       From => Hist_Entry.Sender.Element,
+                       Tag => "@time=" & Hist_Entry.Sent.Element);
+               end loop;
+            end if;
+         end;
       end Join_Channel;
 
       procedure Leave_Channel(The_Client : in out Client; The_Channel : in out Channel) is
@@ -810,9 +841,9 @@ package body Hellish_Irc is
       end;
 
       procedure Special_Message(The_Client : in out Client; Message : String) is
-         Login_Matcher : constant Pattern_Matcher := Compile(":login (\S+) (.+)", Case_Insensitive);
-         Memo_Matcher : constant Pattern_Matcher := Compile(":memo (\S+) (.+)", Case_Insensitive);
-         Help_Matcher : constant Pattern_Matcher := Compile(":help", Case_Insensitive);
+         Login_Matcher : constant Pattern_Matcher := Compile("login (\S+) (.+)", Case_Insensitive);
+         Memo_Matcher : constant Pattern_Matcher := Compile("memo (\S+) (.+)", Case_Insensitive);
+         Help_Matcher : constant Pattern_Matcher := Compile("help", Case_Insensitive);
 
          Matches : Match_Array (0..2);
       begin
@@ -896,7 +927,7 @@ package body Hellish_Irc is
          end if;
 
          Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Unknown command or wrong arguments: "
-                & Text_Bold & Message(Message'First + 1..Message'Last) & Text_Bold
+                & Text_Bold & Message & Text_Bold
                 & ", use " & Text_Bold & "help" & Text_Bold & " to see available commands",
               From => "hellish");
       end;
@@ -918,6 +949,24 @@ package body Hellish_Irc is
             Topic_Map.Set_Field("set_by", Create(The_Channel.Topic_Set_By.Element));
             Topic_Map.Set_Field("set_at", Create(The_Channel.Topic_Set_At));
             Channel_Map.Set_Field("topic", Topic_Map);
+         end if;
+         if The_Channel.Modes.Contains("H") then
+            declare
+               Json_History : Json_Array := Empty_Array;
+            begin
+               for Hist_Entry of The_Channel.History loop
+                  declare
+                     Entry_Obj : Json_Value := Create_Object;
+                  begin
+                     Entry_Obj.Set_Field("sent", Hist_Entry.Sent.Element);
+                     Entry_Obj.Set_Field("sender", Hist_Entry.Sender.Element);
+                     Entry_Obj.Set_Field("message", Hist_Entry.Message.Element);
+
+                     Append(Json_History, Entry_Obj);
+                  end;
+               end loop;
+               Channel_Map.Set_Field("history", Json_History);
+            end;
          end if;
 
          Database.Persist_Channel(The_Channel.Name.Element, Channel_Map.Write);
@@ -946,6 +995,20 @@ package body Hellish_Irc is
                   New_Channel.Topic := To_Holder(Get(Topic_Data, "topic"));
                   New_Channel.Topic_Set_By := To_Holder(Get(Topic_Data, "set_by"));
                   New_Channel.Topic_Set_At := Get(Topic_Data, "set_at");
+               end if;
+
+               if new_Channel.Modes.Contains("H") then
+                  declare
+                     Json_History : Json_Array := (if Channel_Data.Has_Field("history")
+                                                   then Channel_Data.Get("history")
+                                                   else Empty_Array);
+                  begin
+                     for Hist_Entry of Json_History loop
+                        New_Channel.History.Append(History_Entry'(Sent => To_Holder(Get(Hist_Entry, "sent")),
+                                                                  Sender => To_Holder(Get(Hist_Entry, "sender")),
+                                                                  Message => To_Holder(Get(Hist_Entry, "message"))));
+                     end loop;
+                  end;
                end if;
 
                Channels.Include(Loaded_Channel.Name, New_Channel);

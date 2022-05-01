@@ -26,6 +26,7 @@ package Hellish_Irc is
    Port : Natural := 16697;
    Port_Ssl : Natural := 16698;
    Queue_Size : Positive := 10;
+   History_Size : Positive := 50;
 
    package String_Holders is new Ada.Containers.Indefinite_Holders(String);
    use String_Holders;
@@ -91,6 +92,14 @@ private
    package String_Sets is new Ada.Containers.Indefinite_Hashed_Sets(Element_Type => String,
                                                                     Hash => Ada.Strings.Hash, Equivalent_Elements => "=");
 
+   type History_Entry is record
+      Sent : String_Holders.Holder;
+      Sender : String_Holders.Holder;
+      Message: String_Holders.Holder;
+   end record;
+   package History_Vectors is new Ada.Containers.Vectors(Index_Type => Natural, Element_Type => History_Entry);
+   use History_Vectors;
+
    type Client ( Is_Ssl : Boolean := False ) is record
       Socket : Socket_Type;
 
@@ -112,6 +121,8 @@ private
 
       Joined_Channels : String_Sets.Set;
 
+      Server_Time_Supported : Boolean := False;
+
       case Is_Ssl is
          when True =>
             Socket_Ssl : Ssl.Ssl;
@@ -129,6 +140,8 @@ private
       Modes : String_Sets.Set;
 
       Users : User_Hashed_Sets.Set;
+
+      History : History_Vectors.Vector;
    end record;
 
    -- Channel name to channel
@@ -160,7 +173,7 @@ private
 
       procedure Remove(To_Remove : User_Hashed_Sets.Set);
 
-      procedure Send(The_Client : Client; Message : String; From : String := Irc_Host.Element);
+      procedure Send(The_Client : Client; Message : String; From : String := Irc_Host.Element; Tag : String := "");
 
       procedure Send_Whois(The_Client : Client; Message_Parts : String_Vectors.Vector);
       procedure Send_Topic(The_Client : Client; Channel_Name : String; From : String := Irc_Host.Element);

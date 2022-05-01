@@ -37,6 +37,8 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;
 package body Hellish_Irc is
    package body Ssl is separate;
 
+   Supported_Modes : array (Natural range <>) of Character := (1 => 'i', 2 => 't');
+
    Link_Preview_Matcher : constant Pattern_Matcher := Compile("https?://[\S]+", Case_Insensitive);
 
    protected body Protected_Clients is
@@ -138,7 +140,9 @@ package body Hellish_Irc is
                            Col_Index : Natural := Index(Message, ":");
                         begin
                            if Col_Index /= 0 and Col_Index /= Message'First then
-                              Maybe_Trailing := To_Unbounded_String(Message(Col_Index..Message'Last));
+                              Maybe_Trailing := (if Col_Index = Message'Last
+                                                 then To_Unbounded_String(":")
+                                                 else To_Unbounded_String(Message(Col_Index + 1..Message'Last)));
                               Unbounded_Message := To_Unbounded_String(Message(Message'First..Col_Index - 2));
                            else
                               Unbounded_Message := To_Unbounded_String(Message);
@@ -150,7 +154,9 @@ package body Hellish_Irc is
                                  Append(Message_Parts, Part);
                               end if;
                            end loop;
-                           if Maybe_Trailing /= "" then
+                           if Maybe_Trailing = ":" then
+                              Append(Message_Parts, "");
+                           elsif Maybe_Trailing /= "" then
                               Append(Message_Parts, To_String(Maybe_Trailing));
                            end if;
 
@@ -307,10 +313,12 @@ package body Hellish_Irc is
                                     Mode_Key := Mode_String(I);
                                     I := @ + 1;
 
-                                    if Mode_Action = '+' then
-                                       Channels(Message_Parts(1)).Modes.Include((1 => Mode_Key));
-                                    elsif Mode_Action = '-' then
-                                       Channels(Message_Parts(1)).Modes.Exclude((1 => Mode_Key));
+                                    if (for some M of Supported_Modes => M = Mode_Key) then
+                                       if Mode_Action = '+' then
+                                          Channels(Message_Parts(1)).Modes.Include((1 => Mode_Key));
+                                       elsif Mode_Action = '-' then
+                                          Channels(Message_Parts(1)).Modes.Exclude((1 => Mode_Key));
+                                       end if;
                                     end if;
                                  end if;
                               end loop;
@@ -392,7 +400,7 @@ package body Hellish_Irc is
                                            & " " & Client.Nick.Element & " " & The_Channel.Name.Element
                                            & " :Only admins can change protected topic");
                                  else
-                                    if Trim(Message_Parts(2), Ada.Strings.Both) = ":" then
+                                    if Trim(Message_Parts(2), Ada.Strings.Both) = "" then
                                        The_Channel.Topic.Clear;
                                     else
                                        declare

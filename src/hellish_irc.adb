@@ -356,9 +356,10 @@ package body Hellish_Irc is
                                  The_Channel.History.Delete_First;
                               end loop;
 
-                              The_Channel.History.Append(History_Entry'(Sent => To_Holder(Image(Clock, "%Y-%m-%dT%H:%M:%S.%iZ")),
-                                                                        Sender => To_Holder(Client.Nick.Element),
-                                                                        Message => To_Holder(Message_Parts(2))));
+                              The_Channel.History.Append
+                                (History_Entry'(Sent => To_Holder(Image(Clock - Duration(Utc_Time_Offset * 60), "%Y-%m-%dT%H:%M:%S.%iZ")),
+                                                Sender => To_Holder(Client.Nick.Element),
+                                                Message => To_Holder(Message_Parts(2))));
                               Persist_Channel(The_Channel);
                            end if;
 

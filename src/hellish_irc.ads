@@ -40,6 +40,7 @@ private
       Ssl_Error : exception;
 
       procedure Initialize(Cert, Key : String);
+      procedure Reload(Cert, Key : String);
 
       type Ssl is new System.Address;
       function Create_Ssl return Ssl;

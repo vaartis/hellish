@@ -174,19 +174,21 @@ package body Ssl is
          raise Ssl_Error with Get_Error_String;
       end if;
 
-      declare
-         Cert_Str : Chars_Ptr := New_String(Cert);
-         Key_Str : Chars_Ptr := New_String(Key);
+      Reload(Cert, Key);
+   end;
 
-         Cert_Result : Integer := Ssl_Ctx_Use_Certificate_Chain_File(Ctx, Cert_Str, Pem);
-         Key_Result : Integer := Ssl_Ctx_Use_Private_Key_File(Ctx, Key_Str, Pem);
-      begin
-         Free(Cert_Str);
-         Free(Key_Str);
+   procedure Reload(Cert, Key : String) is
+      Cert_Str : Chars_Ptr := New_String(Cert);
+      Key_Str : Chars_Ptr := New_String(Key);
 
-         if Cert_Result <= 0 or Key_Result <= 0 then
-            raise Ssl_Error with Get_Error_String;
-         end if;
-      end;
+      Cert_Result : Integer := Ssl_Ctx_Use_Certificate_Chain_File(Ctx, Cert_Str, Pem);
+      Key_Result : Integer := Ssl_Ctx_Use_Private_Key_File(Ctx, Key_Str, Pem);
+   begin
+      Free(Cert_Str);
+      Free(Key_Str);
+
+      if Cert_Result <= 0 or Key_Result <= 0 then
+         raise Ssl_Error with Get_Error_String;
+      end if;
    end;
 end Ssl;

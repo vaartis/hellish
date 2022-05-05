@@ -512,6 +512,21 @@ package body Hellish_Web.Routes is
       return Response.Url(Location => Url.Abs_Path(Referer) & Referer_Params.Uri_Format);
    end Referer_With_Error;
 
+   function Validate_Password(Password, Confirm_Password : String) return String_Holders.Holder is
+      Min_Pwd_Length : constant Positive := 8;
+      Max_Pwd_Length : constant Positive := 128;
+   begin
+      if Password'Length < Min_Pwd_Length or Password'Length > Max_Pwd_Length then
+         return To_Holder("Password must be at least" & Min_Pwd_Length'Image & " characters long and at most"
+                            & Max_Pwd_Length'Image & " characters long");
+      end if;
+      if Password /= Confirm_Password then
+         return To_Holder("Password and confirmation must match");
+      end if;
+
+      return Empty_Holder;
+   end Validate_Password;
+
    package body Images is separate;
    package body Posts is separate;
    package body Search is separate;
@@ -1152,6 +1167,9 @@ package body Hellish_Web.Routes is
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
 
+      Params : constant Parameters.List := Status.Parameters(Request);
+      Error : String := Params.Get("error");
+
       Translations : Translate_Set;
 
       use type Aws.Status.Request_Method;
@@ -1169,15 +1187,26 @@ package body Hellish_Web.Routes is
             Current_User : Detached_User'Class := Database.Get_User(Username);
             Profile_User : Detached_User'Class := Database.Get_User(Uri_Group_Match(Request, Profile_Matcher, 1));
 
-            Params : constant Parameters.List := Status.Parameters(Request);
-
             The_User : Detached_User'Class := Database.Get_User(Username);
             Profile_Json : Json_Value := Read(The_User.Profile);
 
             Generate_Irc_Key : String := Params.Get("generate-irc-key");
+
+            Password : String := Params.Get("password");
+            Confirm_Password : String := Params.Get("confirm-password");
          begin
             if Current_User /= Profile_User then
                return Response.Acknowledge(Messages.S403, "Forbidden");
+            end if;
+
+            if Password /= "" then
+               declare
+                  Error_String : String_Holders.Holder := Validate_Password(Password, Confirm_Password);
+               begin
+                  if not Error_String.Is_Empty then
+                     return Referer_With_Error(Request, Error_String.Element);
+                  end if;
+               end;
             end if;
 
             Profile_Json.Set_Field("profile_picture", Params.Get("profile_picture"));
@@ -1257,6 +1286,10 @@ package body Hellish_Web.Routes is
             end if;
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
+
+         if Error /= "" then
+            Insert(Translations, Assoc("error", Error));
+         end if;
 
          Userinfo_Translations(Current_User, Translations);
       end;
@@ -1356,8 +1389,6 @@ package body Hellish_Web.Routes is
 
       Min_Name_Length : constant Positive := 1;
       Max_Name_Length : constant Positive := 32;
-      Min_Pwd_Length : constant Positive := 8;
-      Max_Pwd_Length : constant Positive := 128;
 
       Error_String : String_Holders.Holder;
    begin
@@ -1374,15 +1405,8 @@ package body Hellish_Web.Routes is
          goto Finish;
       end if;
 
-      if Password'Length < Min_Pwd_Length or Password'Length > Max_Pwd_Length then
-         Error_String := To_Holder("Password must be at least" & Min_Pwd_Length'Image & " characters long and at most"
-                                  & Max_Pwd_Length'Image & " characters long");
-
-         goto Finish;
-      end if;
-      if Password /= Confirm_Password then
-         Error_String := To_Holder("Password and confirmation must match");
-
+      Error_String := Validate_Password(Password, Confirm_Password);
+      if not Error_String.Is_Empty then
          goto Finish;
       end if;
 

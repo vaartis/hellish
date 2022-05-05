@@ -35,6 +35,11 @@
          width: 600px;
      }
 
+     .profile-password-input {
+         width: 50%;
+         margin-top: 1em;
+     }
+
      .stats-block {
          margin-top: 1em;
          margin-bottom: 1em;
@@ -103,6 +108,12 @@
         @@IF@@ @_is_owner_@
         <hr>
 
+        @@IF@@ @_EXIST:error_@
+        <div class="hellish-error">
+            Error: @_error_@
+        </div>
+        @@END_IF@@
+
         <form action="/profile/@_username_@" id="profile-form" method="POST">
             <table>
                 <tr>
@@ -134,6 +145,20 @@
                         @@END_IF@@
                         <input id="generate-irc-key" name="generate-irc-key" class="hellish-input-field" type="checkbox">
                         <label for="generate-irc-key">Regenerate IRC key</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Password</td>
+                    <td>
+                        <div>
+                            <label for="password-input">Password</label>
+                            <input class="hellish-input-field profile-password-input" id="password-input" name="password" type="password" />
+                        </div>
+                        <div>
+                            <label for="confirmp-assword-input">Confirm password</label>
+                            <input class="hellish-input-field profile-password-input"
+                                   id="confirm-password-input" name="confirm-password" type="password" />
+                        </div>
                     </td>
                 </tr>
             </table>

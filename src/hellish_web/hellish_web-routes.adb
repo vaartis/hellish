@@ -1351,6 +1351,7 @@ package body Hellish_Web.Routes is
       Params : constant Parameters.List := Status.Parameters(Request);
       Username : String := Params.Get("username");
       Password : String := Params.Get("password");
+      Confirm_Password : String := Params.Get("confirm-password");
       Invite : String := Params.Get("invite");
 
       Min_Name_Length : constant Positive := 1;
@@ -1379,6 +1380,12 @@ package body Hellish_Web.Routes is
 
          goto Finish;
       end if;
+      if Password /= Confirm_Password then
+         Error_String := To_Holder("Password and confirmation must match");
+
+         goto Finish;
+      end if;
+
       if Invite_Required and then not Database.Invite_Valid(Invite) then
          Error_String := To_Holder("Invalid invite");
 

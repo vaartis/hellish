@@ -3,6 +3,7 @@ with Ada.Text_IO.Text_Streams;  use Ada.Text_IO.Text_Streams;
 with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Float_Text_Io; use Ada.Float_Text_Io;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
+with Ada.Strings.Equal_Case_Insensitive; use Ada.Strings;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Containers.Indefinite_Holders;
 with Ada.Directories;
@@ -198,6 +199,51 @@ package body Hellish_Web.Routes is
       return Page;
    end;
 
+   User_Mention_Matcher : constant Pattern_Matcher := Compile("@(?:\w|\d)+");
+   function Process_Post_Content(Post : Detached_Post'Class) return String is
+      use Gnatcoll.Json;
+
+      Processed_Content : Unbounded_String := To_Unbounded_String(Post.Content);
+
+      Post_Meta : Json_Value := Read(Post.Meta);
+      Known_Mentioned : Json_Array := (if Has_Field(Post_Meta, "mentioned_users")
+                                       then Get(Post_Meta, "mentioned_users")
+                                       else Empty_Array);
+
+      Mentioned_Match : Match_Array(0..0);
+      Current : Natural := Post.Content'First;
+   begin
+      -- Process user mentions
+      loop
+         Match(User_Mention_Matcher, To_String(Processed_Content), Mentioned_Match, Current);
+         exit when Mentioned_Match(0) = No_Match;
+
+         declare
+            Match_Name : String := To_String(Processed_Content)(Mentioned_Match(0).First + 1..Mentioned_Match(0).Last);
+         begin
+
+            for Known of Known_Mentioned loop
+               -- If the mention is known
+               if Equal_Case_Insensitive(Get(Known), Match_Name)  then
+                  Replace_Slice(Processed_Content, Mentioned_Match(0).First, Mentioned_Match(0).Last,
+                                "[@" & Match_Name & "](/profile/" & Match_Name & ")");
+               end if;
+            end loop;
+         end;
+
+      <<Skip>>
+         Current := Mentioned_Match(0).Last + 1;
+      end loop;
+
+      declare
+         -- This both translates markdown to html and escapes whatever html the text might've had,
+         -- so should be safe
+         Post_Content : String := Markdown.To_Html(To_String(Processed_Content), Default_Md_Flags);
+      begin
+         return Post_Content;
+      end;
+   end Process_Post_Content;
+
    procedure Page_Translations(Request : Status.Data;
                                Total_Count : Natural;
                                Translations : in out Translate_Set) is
@@ -274,7 +320,7 @@ package body Hellish_Web.Routes is
 
          Reply_Ids := @ & Reply.Id;
          Replies_Authors := @ & Reply_Author.Username;
-         Replies_Content := @ & Markdown.To_Html(Reply.Content, Default_Md_Flags);
+         Replies_Content := @ & Process_Post_Content(Reply.Detach);
          Replies_Is_Author := @ & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
 
          declare
@@ -689,7 +735,7 @@ package body Hellish_Web.Routes is
             News_Author := Database.Get_User(Latest_News.By_User);
             Insert(Translations, Assoc("news_id", Latest_News.Id));
             Insert(Translations, Assoc("news_title", Templates_Parser.Utils.Web_Escape(Latest_news.Title)));
-            Insert(Translations, Assoc("news_content", Markdown.To_Html(Latest_News.Content, Default_Md_Flags)));
+            Insert(Translations, Assoc("news_content", Process_Post_Content(Latest_News)));
             Insert(Translations, Assoc("news_author", News_Author.Username));
          end if;
       end;

@@ -200,18 +200,13 @@ package body Hellish_Web.Routes is
    end;
 
    User_Mention_Matcher : constant Pattern_Matcher := Compile("@(?:\w|\d)+");
-   function Process_Post_Content(Post : Detached_Post'Class) return String is
+   function Process_Content(Content : String) return String is
       use Gnatcoll.Json;
 
-      Processed_Content : Unbounded_String := To_Unbounded_String(Post.Content);
-
-      Post_Meta : Json_Value := Read(Post.Meta);
-      Known_Mentioned : Json_Array := (if Has_Field(Post_Meta, "mentioned_users")
-                                       then Get(Post_Meta, "mentioned_users")
-                                       else Empty_Array);
+      Processed_Content : Unbounded_String := To_Unbounded_String(Content);
 
       Mentioned_Match : Match_Array(0..0);
-      Current : Natural := Post.Content'First;
+      Current : Natural := Content'First;
    begin
       -- Process user mentions
       loop
@@ -220,15 +215,12 @@ package body Hellish_Web.Routes is
 
          declare
             Match_Name : String := To_String(Processed_Content)(Mentioned_Match(0).First + 1..Mentioned_Match(0).Last);
+            Maybe_User : Detached_User'Class := Database.Get_User(Match_Name);
          begin
-
-            for Known of Known_Mentioned loop
-               -- If the mention is known
-               if Equal_Case_Insensitive(Get(Known), Match_Name)  then
-                  Replace_Slice(Processed_Content, Mentioned_Match(0).First, Mentioned_Match(0).Last,
-                                "[@" & Match_Name & "](/profile/" & Match_Name & ")");
-               end if;
-            end loop;
+            if Maybe_User /= Detached_User'Class(No_Detached_User) then
+               Replace_Slice(Processed_Content, Mentioned_Match(0).First, Mentioned_Match(0).Last,
+                             "[@" & Maybe_User.Username & "](/profile/" & Maybe_User.Username & ")");
+            end if;
          end;
 
       <<Skip>>
@@ -242,7 +234,7 @@ package body Hellish_Web.Routes is
       begin
          return Post_Content;
       end;
-   end Process_Post_Content;
+   end Process_Content;
 
    procedure Page_Translations(Request : Status.Data;
                                Total_Count : Natural;
@@ -320,7 +312,7 @@ package body Hellish_Web.Routes is
 
          Reply_Ids := @ & Reply.Id;
          Replies_Authors := @ & Reply_Author.Username;
-         Replies_Content := @ & Process_Post_Content(Reply.Detach);
+         Replies_Content := @ & Process_Content(Reply.Content);
          Replies_Is_Author := @ & (Reply_Author.Id = The_User.Id or The_User.Role = 1);
 
          declare
@@ -735,7 +727,7 @@ package body Hellish_Web.Routes is
             News_Author := Database.Get_User(Latest_News.By_User);
             Insert(Translations, Assoc("news_id", Latest_News.Id));
             Insert(Translations, Assoc("news_title", Templates_Parser.Utils.Web_Escape(Latest_news.Title)));
-            Insert(Translations, Assoc("news_content", Process_Post_Content(Latest_News)));
+            Insert(Translations, Assoc("news_content", Process_Content(Latest_News.Content)));
             Insert(Translations, Assoc("news_author", News_Author.Username));
          end if;
       end;
@@ -983,7 +975,7 @@ package body Hellish_Web.Routes is
          Html_Name : String := Templates_Parser.Utils.Web_Escape(The_Torrent.Display_Name);
          -- This both translates markdown to html and escapes whatever html the text might've had,
          -- so should be safe
-         Html_Desc : String := Markdown.To_Html(The_Torrent.Description, Default_Md_Flags);
+         Html_Desc : String := Process_Content(The_Torrent.Description);
 
          The_User : Detached_User'Class := Database.Get_User(Username);
       begin
@@ -1318,7 +1310,7 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("encoded_profile_picture", Templates_Parser.Utils.Web_Escape(Profile_Picture)));
 
             Insert(Translations, Assoc("profile_about", About_Text));
-            Insert(Translations, Assoc("rendered_about", Markdown.To_Html(About_Text, Default_Md_Flags)));
+            Insert(Translations, Assoc("rendered_about", Process_Content(About_Text)));
 
             for Notification of Notifications loop
                Html_Notifications := @ & Markdown.To_Html(Get(Notification), Default_Md_Flags);

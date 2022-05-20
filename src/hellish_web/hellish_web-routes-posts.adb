@@ -88,7 +88,7 @@ package body Posts is
          begin
             Insert(Translations, Assoc("id", Post.Id));
             Insert(Translations, Assoc("title", Html_Title));
-            Insert(Translations, Assoc("content", Process_Post_Content(post)));
+            Insert(Translations, Assoc("content", Process_Content(Post.Content)));
             Insert(Translations, Assoc("author", Author.Username));
             Insert(Translations, Assoc("is_author", Author.Id = The_User.Id or The_User.Role = 1));
             Insert(Translations, Assoc("is_subscribed", Post_Subscriptions.Subscribed(The_User, Detached_Post(Post))));

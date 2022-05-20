@@ -66,7 +66,7 @@ package body Groups is
       begin
          Insert(Translations, Assoc("id", The_Group.Id));
          Insert(Translations, Assoc("name", Templates_Parser.Utils.Web_Escape(The_Group.Name)));
-         Insert(Translations, Assoc("description", Markdown.To_Html(The_Group.Description, Default_Md_Flags)));
+         Insert(Translations, Assoc("description", Process_Content(The_Group.Description)));
 
          declare
             Torrents_In_Group : Direct_Torrent_List := Database.Get_Group_Torrents(Id);

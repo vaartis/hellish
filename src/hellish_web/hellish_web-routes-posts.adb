@@ -288,48 +288,6 @@ package body Posts is
             Post.Set_By_User(The_User.Id);
          end if;
 
-         declare
-            Previously_Mentioned : Json_Array := (if Has_Field(Post_Meta, "mentioned_users")
-                                                  then Get(Post_Meta, "mentioned_users")
-                                                  else Empty_Array);
-
-            Mentioned_Match : Match_Array(0..0);
-            Current : Natural := Content'First;
-         begin
-            loop
-               Match(User_Mention_Matcher, Content, Mentioned_Match, Current);
-               exit when Mentioned_Match(0) = No_Match;
-
-               declare
-                  Match_Name : String := Content(Mentioned_Match(0).First + 1..Mentioned_Match(0).Last);
-                  Mentioned_User : Detached_User'Class := Database.Get_User(Match_Name);
-               begin
-                  -- Skip if the user does not exist
-                  if Mentioned_User = Detached_User'Class(No_Detached_User) then goto Skip; end if;
-
-                  for Previous of Previously_Mentioned loop
-                     -- Skip if the user was already mentioned previously
-                     if Equal_Case_Insensitive(Get(Previous), Match_Name) then goto Skip; end if;
-                  end loop;
-                  Append(Previously_Mentioned, Create(Match_Name));
-
-                  declare
-                     Author : Detached_User'Class := Database.Get_User(Post.By_User);
-                  begin
-                     Database.Notify_User(Mentioned_User, "You have been [mentioned](/post/" & Trim(Post.Id'Image, Ada.Strings.Left)
-                                            & ") by [" & Author.Username & "](/profile/" & Author.Username & ")");
-                  end;
-                  <<Skip>>
-               end;
-
-               Current := Mentioned_Match(0).Last + 1;
-            end loop;
-
-            if not Is_Empty(Previously_Mentioned) then
-               Post_Meta.Set_Field("mentioned_users", Previously_Mentioned);
-            end if;
-         end;
-
          Post.Set_Meta(Write(Post_Meta));
       end;
 
@@ -381,6 +339,54 @@ package body Posts is
                                   Trim(Post.Id'Image, Ada.Strings.Left) & ")");
          end if;
       end if;
+
+      declare
+         use Gnatcoll.Json;
+
+         Post_Meta : Json_Value := Read(Post.Meta);
+         Previously_Mentioned : Json_Array := (if Has_Field(Post_Meta, "mentioned_users")
+                                               then Get(Post_Meta, "mentioned_users")
+                                               else Empty_Array);
+
+         Mentioned_Match : Match_Array(0..0);
+         Current : Natural := Content'First;
+      begin
+         loop
+            Match(User_Mention_Matcher, Content, Mentioned_Match, Current);
+            exit when Mentioned_Match(0) = No_Match;
+
+            declare
+               Match_Name : String := Content(Mentioned_Match(0).First + 1..Mentioned_Match(0).Last);
+               Mentioned_User : Detached_User'Class := Database.Get_User(Match_Name);
+            begin
+               -- Skip if the user does not exist
+               if Mentioned_User = Detached_User'Class(No_Detached_User) then goto Skip; end if;
+
+               for Previous of Previously_Mentioned loop
+                  -- Skip if the user was already mentioned previously
+                  if Equal_Case_Insensitive(Get(Previous), Match_Name) then goto Skip; end if;
+               end loop;
+               Append(Previously_Mentioned, Create(Match_Name));
+
+               declare
+                  Author : Detached_User'Class := Database.Get_User(Post.By_User);
+               begin
+                  Database.Notify_User(Mentioned_User, "You have been [mentioned](/post/" & Trim(Post.Id'Image, Ada.Strings.Left)
+                                         & ") by [" & Author.Username & "](/profile/" & Author.Username & ")");
+               end;
+            <<Skip>>
+            end;
+
+            Current := Mentioned_Match(0).Last + 1;
+         end loop;
+
+         if not Is_Empty(Previously_Mentioned) then
+            Post_Meta.Set_Field("mentioned_users", Previously_Mentioned);
+         end if;
+
+         Post.Set_Meta(Write(Post_Meta));
+         Database.Create_Post(Post);
+      end;
 
       return Response.Url("/post/" & Trim(Post.Id'Image, Ada.Strings.Left));
    end Dispatch;

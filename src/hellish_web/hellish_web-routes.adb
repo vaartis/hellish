@@ -171,23 +171,27 @@ package body Hellish_Web.Routes is
    Post_Flags : constant Int_String_Maps.Map :=
      (1 => "News", 2 => "Request / Offer");
 
+   type Meta_Link_Type is (Prefix, Contains);
    type Meta_Link is record
       Name : String_Holders.Holder;
       Json_Name : String_Holders.Holder;
-      Prefix : String_Holders.Holder;
+      Link : String_Holders.Holder;
+      Link_Type : Meta_Link_Type;
       Category : Integer;
    end record;
    Possible_Meta_Links : array (Natural range <>) of Meta_Link :=
      (1 => (Name => To_Holder("Wikipedia"), Json_Name => To_Holder("wikipedia"),
-             Prefix => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1),
+            Link_Type => Prefix, Link => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1),
       2 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
-            Prefix => To_Holder("https://myanimelist.net/anime/"), Category => 3),
+            Link_Type => Prefix, Link => To_Holder("https://myanimelist.net/anime/"), Category => 3),
       3 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
-            Prefix => To_Holder("https://myanimelist.net/manga/"), Category => 9),
+            Link_Type => Prefix, Link => To_Holder("https://myanimelist.net/manga/"), Category => 9),
       4 => (Name => To_Holder("MusicBrainz"), Json_Name => To_Holder("musicbrainz"),
-            Prefix => To_Holder("https://musicbrainz.org/release/"), Category => 1),
+            Link_Type => Prefix, Link => To_Holder("https://musicbrainz.org/release/"), Category => 1),
       5 => (Name => To_Holder("Discogs"), Json_Name => To_Holder("discogs"),
-            Prefix => To_Holder("https://www.discogs.com/release/"), Category => 1));
+            Link_Type => Prefix, Link => To_Holder("https://www.discogs.com/release/"), Category => 1),
+      6 => (Name => To_Holder("Bandcamp"), Json_Name => To_Holder("bandcamp"),
+            Link_Type => Contains, Link => To_Holder(".bandcamp.com"), Category => 1));
 
    function Page_Parameters(Params : Parameters.List; Result_Page_Size, Page_Offset : out Natural) return Natural is
       Page_Size : constant Natural := 25;
@@ -893,7 +897,7 @@ package body Hellish_Web.Routes is
                                               then Torrent_Meta.Get("links")
                                               else Create_Object);
 
-               Link_Names, Link_Json_Names, Link_Values, Link_Prefixes : Vector_Tag;
+               Link_Names, Link_Json_Names, Link_Values,  Link_Links : Vector_Tag;
             begin
                for Possible_Link of Possible_Meta_Links loop
                   -- Check if the category is right
@@ -905,7 +909,7 @@ package body Hellish_Web.Routes is
                      begin
                         Link_Names := @ & Possible_Link.Name.Element;
                         Link_Json_Names := @ & Possible_Link.Json_Name.Element;
-                        Link_Prefixes := @ & Possible_Link.Prefix.Element;
+                        Link_Links := @ & Possible_Link.Link.Element;
                         Link_Values := @ & Maybe_Existing_Value;
                      end;
                   end if;
@@ -913,7 +917,7 @@ package body Hellish_Web.Routes is
 
                Insert(Translations, Assoc("link_name", Link_Names));
                Insert(Translations, Assoc("link_json_name", Link_Json_Names));
-               Insert(Translations, Assoc("link_prefix", Link_Prefixes));
+               Insert(Translations, Assoc("link_link", Link_Links));
                Insert(Translations, Assoc("link_value", Link_Values));
             end;
          end;

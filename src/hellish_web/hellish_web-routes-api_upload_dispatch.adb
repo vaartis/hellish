@@ -42,11 +42,26 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
                begin
                   -- Check if the strings starts with prefix and isn't empty
                   if Maybe_Meta_Link /= "" then
-                     if Ada.Strings.Fixed.Index(Maybe_Meta_link, Possible_Link.Prefix.Element) = 1 then
-                        Link_Meta.Set_Field(Possible_Link.Json_Name.Element, Maybe_Meta_Link);
-                     else
-                        return To_Holder("Link for " & Possible_Link.Name.Element & " must start with " & Possible_Link.Prefix.Element);
-                     end if;
+                     declare
+                        Condition : Boolean :=
+                          (case Possible_Link.Link_Type is
+                              when Prefix => Ada.Strings.Fixed.Index(Maybe_Meta_link, Possible_Link.Link.Element) = 1,
+                              when Contains => Ada.Strings.Fixed.Index(Maybe_Meta_link, Possible_Link.Link.Element) /= 0);
+                        Fail_String : String_Holders.Holder :=
+                          To_Holder("Link for "
+                                      & Possible_Link.Name.Element
+                                      & " must "
+                                      & (case Possible_Link.Link_Type is
+                                            when Prefix => "start with ",
+                                            when Contains => "contain ")
+                                      & Possible_Link.Link.Element);
+                     begin
+                        if Condition then
+                           Link_Meta.Set_Field(Possible_Link.Json_Name.Element, Maybe_Meta_Link);
+                        else
+                           return Fail_String;
+                        end if;
+                     end;
                   end if;
                end;
             end if;

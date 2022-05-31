@@ -176,22 +176,25 @@ package body Hellish_Web.Routes is
       Name : String_Holders.Holder;
       Json_Name : String_Holders.Holder;
       Link : String_Holders.Holder;
-      Link_Type : Meta_Link_Type;
+      Link_Type : Meta_Link_Type := Prefix;
       Category : Integer;
+      Autofind_Image : Boolean := False;
    end record;
    Possible_Meta_Links : array (Natural range <>) of Meta_Link :=
      (1 => (Name => To_Holder("Wikipedia"), Json_Name => To_Holder("wikipedia"),
-            Link_Type => Prefix, Link => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1),
+            Link => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1, others => <>),
       2 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
-            Link_Type => Prefix, Link => To_Holder("https://myanimelist.net/anime/"), Category => 3),
+            Link => To_Holder("https://myanimelist.net/anime/"), Category => 3, others => <>),
       3 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
-            Link_Type => Prefix, Link => To_Holder("https://myanimelist.net/manga/"), Category => 9),
+            Link => To_Holder("https://myanimelist.net/manga/"), Category => 9, others => <>),
       4 => (Name => To_Holder("MusicBrainz"), Json_Name => To_Holder("musicbrainz"),
-            Link_Type => Prefix, Link => To_Holder("https://musicbrainz.org/release/"), Category => 1),
+            Link => To_Holder("https://musicbrainz.org/release/"), Category => 1, others => <>),
       5 => (Name => To_Holder("Discogs"), Json_Name => To_Holder("discogs"),
-            Link_Type => Prefix, Link => To_Holder("https://www.discogs.com/release/"), Category => 1),
+            Link => To_Holder("https://www.discogs.com/release/"), Category => 1,
+            Autofind_Image => True, others => <>),
       6 => (Name => To_Holder("Bandcamp"), Json_Name => To_Holder("bandcamp"),
-            Link_Type => Contains, Link => To_Holder(".bandcamp.com"), Category => 1));
+            Link_Type => Contains, Link => To_Holder(".bandcamp.com"), Category => 1,
+            Autofind_Image => True));
 
    function Page_Parameters(Params : Parameters.List; Result_Page_Size, Page_Offset : out Natural) return Natural is
       Page_Size : constant Natural := 25;
@@ -897,7 +900,7 @@ package body Hellish_Web.Routes is
                                               then Torrent_Meta.Get("links")
                                               else Create_Object);
 
-               Link_Names, Link_Json_Names, Link_Values,  Link_Links : Vector_Tag;
+               Link_Names, Link_Json_Names, Link_Values, Link_Links, Link_Autofinds : Vector_Tag;
             begin
                for Possible_Link of Possible_Meta_Links loop
                   -- Check if the category is right
@@ -911,6 +914,7 @@ package body Hellish_Web.Routes is
                         Link_Json_Names := @ & Possible_Link.Json_Name.Element;
                         Link_Links := @ & Possible_Link.Link.Element;
                         Link_Values := @ & Maybe_Existing_Value;
+                        Link_Autofinds := @ & Possible_Link.Autofind_Image;
                      end;
                   end if;
                end loop;
@@ -919,6 +923,11 @@ package body Hellish_Web.Routes is
                Insert(Translations, Assoc("link_json_name", Link_Json_Names));
                Insert(Translations, Assoc("link_link", Link_Links));
                Insert(Translations, Assoc("link_value", Link_Values));
+               Insert(Translations, Assoc("link_autofind", Link_Autofinds));
+
+               if Torrent_Meta.Has_Field("image") then
+                  Insert(Translations, Assoc("image", String'(Torrent_Meta.Get("image"))));
+               end if;
             end;
          end;
       else
@@ -1123,6 +1132,10 @@ package body Hellish_Web.Routes is
             end loop;
             Insert(Translations, Assoc("link_name", Link_Names));
             Insert(Translations, Assoc("link_value", Link_Values));
+
+            if Torrent_Meta.Has_Field("image") then
+               Insert(Translations, Assoc("image", String'(Torrent_Meta.Get("image"))));
+            end if;
          end;
 
          Replies_Translations(The_Torrent.Id, The_User, Translations, Database.Torrent_Comments'Access, Request);

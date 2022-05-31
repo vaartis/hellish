@@ -125,11 +125,32 @@
                         >
                     </td>
                 </tr>
+                <tr>
+                    <td>Image</td>
+                    <td>
+                        <p class="upload-input">
+                            You can upload an image from the <a href="/images">Images</a> page,
+                            or check the box below to try and find one from the links.
+                            <input type="checkbox" name="autofind-image" id="autofind-image">
+                            <label for="autofind-image">Auto-find image</label>
+                        </p>
+                        <input class="hellish-input-field upload-input" id="upload-image"
+                               name="image"
+                               value="@_WEB_ESCAPE:image_@"
+                        >
+                    </td>
+                </tr>
+                <tr>
                     <td>Links</td>
                     <td>
                         @@TABLE@@
                         <p>
-                            <label for="meta-@_link_json_name_@">@_link_name_@ (<i>@_link_link_@</i>)</label>
+                            <label for="meta-@_link_json_name_@">
+                                @_link_name_@ (<i>@_link_link_@</i>)
+                                @@IF@@ @_link_autofind_@
+                                <abbr title="Can auto-find images from here">A</abbr>
+                                @@END_IF@@
+                            </label>
                         </p>
                         <input class="hellish-input-field upload-input" id="meta-@_link_json_name_@"
                                name="meta-@_link_json_name_@"
@@ -137,7 +158,6 @@
                         >
                         @@END_TABLE@@
                     </td>
-                    <tr>
                 </tr>
             </table>
 

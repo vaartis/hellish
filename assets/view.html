@@ -56,6 +56,17 @@
          margin-bottom: 0.5em;
      }
 
+     @media (min-width: 1650px) {
+         .torrent-image {
+             position: absolute;
+             transform: translateX(-110%);
+         }
+     }
+
+     .torrent-image {
+         max-width: 40%;
+     }
+
      @@INCLUDE@@ replies.css 15%
     </style>
     <title>@_display_name_@ :: Hellish</title>
@@ -96,6 +107,11 @@
 
             <p>
                 <h3>Description</h3>
+
+                @@IF@@ @_EXIST:image_@
+                <img class="torrent-image" src="@_image_@" />
+                @@END_IF@@
+
                 <div class="hellish-content-box">@_description_@</div>
             </p>
         </div>

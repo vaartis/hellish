@@ -69,6 +69,8 @@ private
 
       Api_Image_Upload : Api_Image_Upload_Handler;
       Api_Image_Delete : Api_Image_Delete_Handler;
+
+      function Image_From_Path(File_Path : String; Username : String; Success : out Boolean) return String;
    end Images;
 
    package Search is

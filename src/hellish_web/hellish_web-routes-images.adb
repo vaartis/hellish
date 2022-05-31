@@ -42,33 +42,21 @@ package body Images is
 
    -- API
 
-   function Dispatch
-     (Handler : in Api_Image_Upload_Handler;
-      Request : in Status.Data) return Response.Data is
+   function Image_From_Path(File_Path : String; Username : String; Success : out Boolean) return String is
       use Ada.Directories;
-
-      Params : constant Parameters.List := Status.Parameters(Request);
-
-      Session_Id : Session.Id := Request_Session(Request);
-      Username : String := Session.Get(Session_Id, "username");
-
-      File_Path : String := Params.Get("file");
 
       -- Approx. 1MB
       Max_Size : constant Natural := 1024 * 1024;
 
       Mime_Type : String := Mime.Content_Type(File_Path);
    begin
-      if not Database.User_Exists(Username) then
-         return Response.Acknowledge(Messages.S403, "Forbidden");
-      end if;
-
       if Size(File_Path) > File_Size(Max_Size) then
-         return Response.Url(Location => "/images?error=Image too big (max size is "
-                               & Bytes_To_Printable(Long_Long_Integer(Max_Size)) & ")");
+         Success := False;
+         return "Image too big (max size is " & Bytes_To_Printable(Long_Long_Integer(Max_Size)) & ")";
       end if;
       if not MIME.Is_Image(Mime_Type) then
-         return Response.Url(Location => "/images?error=File is not an image, but " & Mime.Content_Type(Mime_Type));
+         Success := False;
+         return "File is not an image, but " & Mime.Content_Type(Mime_Type);
       end if;
 
       Create_Path(Image_Uploads_Path);
@@ -100,8 +88,37 @@ package body Images is
                Copy_File(File_Path, Upload_Path);
             end if;
 
-            return Response.Url(Location => "/images#image-" & Trim(The_Image.Id'Image, Ada.Strings.Left));
+            Success := True;
+            return Trim(The_Image.Id'Image, Ada.Strings.Left);
          end;
+      end;
+   end Image_From_Path;
+
+   function Dispatch
+     (Handler : in Api_Image_Upload_Handler;
+      Request : in Status.Data) return Response.Data is
+      use Ada.Directories;
+
+      Params : constant Parameters.List := Status.Parameters(Request);
+
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      File_Path : String := Params.Get("file");
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+
+      declare
+         Success : Boolean;
+         Upload_Result : String := Image_From_Path(File_Path, Username, Success);
+      begin
+         if Success then
+            return Response.Url(Location => "/images#image-" & Upload_Result);
+         else
+            return Response.Url(Location => "/images?error=" & Upload_Result);
+         end if;
       end;
    end Dispatch;
 

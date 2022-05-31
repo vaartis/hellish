@@ -1,5 +1,11 @@
+with Ada.Streams;
+
 with Gnatcoll.Sql; use Gnatcoll.Sql;
 with Gnatcoll.Sql.Sessions;
+
+with Aws.Client;
+
+with Lexbor;
 
 separate (Hellish_Web.Routes)
 function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
@@ -14,6 +20,8 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
    Category : Integer := Integer'Value(Params.Get("category"));
    Update : String := Params.Get("update");
    Group : String := Trim(Params.Get("group"), Ada.Strings.Both);
+   Torrent_Image : String := Params.Get("image");
+   Autofind_Image : String := Params.Get("autofind-image");
 
    Session_Id : Session.Id := Request_Session(Request);
    Username : String := Session.Get(Session_Id, "username");
@@ -72,6 +80,72 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
             Torrent_Meta.Set_Field("links", Link_Meta);
          end if;
 
+         if Autofind_Image /= "" then
+            for Possible_Link of Possible_Meta_Links loop
+               if Possible_Link.Autofind_Image and Link_Meta.Has_Field(Possible_Link.Json_Name.Element) then
+                  declare
+                     use Aws.Response;
+                     use type Ada.Streams.Stream_Element_Offset;
+                     use Lexbor;
+
+                     Max_Page_Size : constant := 1024 * 1024;
+
+                     Timeouts : Aws.Client.Timeouts_Values :=
+                       Aws.Client.Timeouts(Connect => 5.0, Send => 5.0, Receive => 5.0, Response => 5.0);
+                     Page_Data : Response.Data :=
+                       Aws.Client.Get(Link_Meta.Get(Possible_Link.Json_Name.Element), Timeouts => Timeouts, Follow_Redirection => True);
+
+                     Doc : Html_Document;
+                     Doc_Head : Dom_Element'Class := No_Dom_Element;
+                     Col : Dom_Collection'Class := Make_Dom_Collection(Doc, 1);
+                  begin
+                     if Content_Length(Page_Data) <= Max_Page_Size
+                       and Ada.Strings.Fixed.Index(Content_Type(Page_Data), Mime.Text_Html) = 1 then
+                        Parse(Doc, Message_Body(Page_Data));
+                        Doc_Head := Document_Head(Doc);
+
+                        Dom_Elements_By_Attr(Doc_Head, Col, "property", "og:image", False);
+
+                        if Length(Col) > 0 then
+                           declare
+                              use Ada.Directories;
+
+                              Image_Elem : Dom_Element'Class := Element(Col, 0);
+                              Image_Url : String := Get_Attribute(Image_Elem, "content");
+                              Image_Data : Response.Data :=
+                                Aws.Client.Get(Image_Url, Timeouts => Timeouts, Follow_Redirection => True);
+
+                              Temp_File_Path : String := Compose(Containing_Directory => Image_Uploads_Path,
+                                                                 Name => "temp_" & Simple_Name(Image_Url));
+                              Temp_File : File_Type;
+                           begin
+                              Create(File => Temp_File, Name => Temp_File_Path);
+                              Put(Temp_File, Message_Body(Image_Data));
+                              Close(Temp_File);
+
+                              declare
+                                 Success : Boolean;
+                                 Upload_Result : String := Images.Image_From_Path(Temp_File_Path, Username, Success);
+                              begin
+                                 Delete_File(Temp_File_Path);
+                                 if Success then
+                                    Torrent_Meta.Set_Field("image",
+                                                           "/uploads/images/" & Database.Get_Image(Integer'Value(Upload_Result)).Filename);
+                                    exit;
+                                 end if;
+                              end;
+                           end;
+                        end if;
+                     end if;
+                  end;
+               end if;
+            end loop;
+         elsif Torrent_Image /= "" then
+            Torrent_Meta.Set_Field("image", Torrent_Image);
+         else
+            Torrent_Meta.Unset_Field("image");
+         end if;
+
          The_Torrent.Set_Meta(Torrent_Meta.Write);
       end;
 
@@ -81,7 +155,7 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
                                                then Database.Get_Group(Group).Id
                                                else -1));
 
-      return Empty_Holder ;
+      return Empty_Holder;
    end Set_Updatable_Fields_And_Create;
 begin
    if not Database.User_Exists(Username) then

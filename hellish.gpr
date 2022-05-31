@@ -78,6 +78,7 @@ project Hellish is
          "-gnatQ", -- Don't quit. Generate ALI and tree files even if illegalities
          "-gnatf",
          "-gnatv",
+         "-gnatwI",
          "-gnat2022");
    end Compiler;
 

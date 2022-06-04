@@ -122,7 +122,7 @@ package body Search is
                                                                           Page_Offset, Page_Size, Total_Count);
          Doc_Stream : aliased Aws.Utils.Streams.Strings;
       begin
-         Rss_Feed_Torrent_List(Doc, Found_Torrents, Passkey);
+         Rss_Feed_Torrent_List(Channel, Found_Torrents, Passkey);
 
          Write(Doc_Stream'Access, Doc);
          return Response.Build(Mime.Application_Xml, Doc_Stream.Value);

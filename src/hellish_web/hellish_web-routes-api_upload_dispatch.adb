@@ -108,8 +108,6 @@ function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
 
                         if Length(Col) > 0 then
                            declare
-                              use Ada.Directories;
-
                               Image_Elem : Dom_Element'Class := Element(Col, 0);
                               Image_Url : String := Get_Attribute(Image_Elem, "content");
                               Image_Data : Response.Data :=

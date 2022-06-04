@@ -117,7 +117,7 @@ package body Groups is
 
          Torrents_In_Group : Direct_Torrent_List := Database.Get_Group_Torrents(Id);
       begin
-         Rss_Feed_Torrent_List (Channel => Channel, Found_Torrents => Torrents_In_Group, Passkey => Passkey);
+         Rss_Feed_Torrent_List(Channel => Channel, Found_Torrents => Torrents_In_Group, Passkey => Passkey);
 
          Write(Doc_Stream'Access, Doc);
          return Response.Build(Mime.Application_Xml, Doc_Stream.Value);

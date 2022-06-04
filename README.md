@@ -6,14 +6,7 @@ A torrent tracker.
 
 - `--invite-not-required` makes the registration process work without invites,
   you can create the first account like this and then invite other people with it
-- `--https` makes the website show the tracker url as https instead of http,
-  if you're running behind a reverse-proxy with https, you should set this
-- `--server-host` sets the address which the website shows as the tracker address,
-  the full tracker url is `(http|https)://(ip+port|your server host)/(user passkey)/announce`.
-  Once again, this is useful when you're running behind a reverse-proxy, so the actual program
-  listens on localhost but people need to connect to the proxy.
-- `--ssl-cert` and `--ssl-privkey` set the SSL certificate and private key for the IRC server,
-  if you set these then the IRC will also run with TLS on a separate port.
+- `--config` sets the config file, which by default is `hellish_config.ini`, the options are described in the file itself
 
 You will need [libsodium](https://doc.libsodium.org/) installed on your system for the program to run.
 The database used is PostgreSQL, it tries to connect to the database `hellish` as user `postgres`.

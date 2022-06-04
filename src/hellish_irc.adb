@@ -897,8 +897,11 @@ package body Hellish_Irc is
                   return;
                end if;
 
-               Database.Notify_User(The_User, "You have a new IRC memo from [" & The_Client.Tracker_User.Username & "](/profile/" &
-                                      The_Client.Tracker_User.Username & "): " & Memo);
+               Database.Notify_User(The_User,
+                                    "You have a new IRC memo from " &
+                                      Hellish_Web.Routes.Local_Markdown_Link(The_Client.Tracker_User.Username,
+                                                                             "/profile/" & The_Client.Tracker_User.Username)
+                                      & ": " & Memo);
                Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Memo sent!", From => "hellish");
             end;
 

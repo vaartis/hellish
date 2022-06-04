@@ -3,9 +3,11 @@ with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Directories; use Ada.Directories;
 with Ada.Characters.Latin_1;
 
-with Gnatcoll.Json;
-with Gnatcoll.Traces; use Gnatcoll.Traces;
-with Gnatcoll.Tribooleans; use Gnatcoll.Tribooleans;
+with Gnatcoll.Json,
+  Gnatcoll.Traces,
+  Gnatcoll.Tribooleans;
+use Gnatcoll.Traces,
+  Gnatcoll.Tribooleans;
 with
   Gnatcoll.Sql,
   Gnatcoll.Sql.Inspect;
@@ -15,12 +17,14 @@ use
 use type
   Gnatcoll.Sql.Text_Fields.Field,
   Gnatcoll.Sql.Integer_Fields.Field;
-
 with Gnatcoll.Vfs; use Gnatcoll.Vfs;
+
+with Aws.Smtp;
 
 with Sodium.Functions;
 
 with Hellish_Database;
+with Hellish_Mail;
 
 package body Hellish_Web.Database is
    Latest_Version : Natural := 10;
@@ -242,6 +246,24 @@ package body Hellish_Web.Database is
 
       Session.Persist(The_User);
       Session.Commit;
+
+      if Sub_Profile.Has_Field("email") then
+         declare
+            Profile_Email : Json_Value := Sub_Profile.Get("email");
+         begin
+            if Profile_Email.Has_Field("address") and Profile_Email.Has_Field("notifications") and
+              Boolean'(Profile_Email.Get("notifications")) then
+
+               declare
+                  Address : String := Profile_Email.Get("address");
+               begin
+                  Hellish_Mail.Send(Aws.Smtp.E_Mail(The_User.Username, Address),
+                                    Subject => "Hellish notification",
+                                    Message => Notification);
+               end;
+            end if;
+         end;
+      end if;
    end;
 
    procedure Create_Torrent(The_Torrent : in out Detached_Torrent'Class) is

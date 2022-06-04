@@ -18,6 +18,9 @@ package Hellish_Web.Routes is
    function Host_Name_Website return String;
 
    Https : Boolean := False;
+
+   function Local_Markdown_Link(Title, Link : String) return String is
+     ("[" & Title & "](" & (if Https then "https://" else "http://") & Host_Name_Website & Link & ")");
 private
    package Posts is
       type Post_Handler is new Dispatchers.Handler with null record;

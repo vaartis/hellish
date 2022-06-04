@@ -60,6 +60,10 @@
          padding: 5px;
          background: var(--panel-color);
      }
+
+     .mail-status-margin {
+         margin-top: 1em;
+     }
     </style>
     <title>@_username_@ :: Hellish</title>
 </head>
@@ -155,12 +159,44 @@
                             <input class="hellish-input-field profile-password-input" id="password-input" name="password" type="password" />
                         </div>
                         <div>
-                            <label for="confirmp-assword-input">Confirm password</label>
+                            <label for="confirm-assword-input">Confirm password</label>
                             <input class="hellish-input-field profile-password-input"
                                    id="confirm-password-input" name="confirm-password" type="password" />
                         </div>
                     </td>
                 </tr>
+                <tr>
+                    <td>E-mail</td>
+                    <td>
+                        <div>
+                            <label for="email-input">E-mail</label>
+                            <input class="hellish-input-field" id="email-input" name="email" type="email"
+                                   @@IF@@ @_EXIST:unconfirmed_email_@
+                                   value="@_unconfirmed_email_@"
+                                   @@ELSIF@@ @_EXIST:confirmed_email_@
+                                   value="@_confirmed_email_@"
+                                   @@END_IF@@
+                            />
+                        </div>
+
+                        @@IF@@ @_EXIST:confirmed_email_@
+                        <div class="mail-status-margin">
+                            <input type="checkbox" id="email-notifications" name="email-notifications"
+                                   @@IF@@ @_email_notifications_@
+                                   checked
+                                   @@END_IF@@
+                            >
+                            <label for="email-notifications">Receive E-mail notifications</label>
+                        </div>
+                        @@ELSIF@@ @_EXIST:unconfirmed_email_@
+                        <div class="mail-status-margin">
+                            <label for="email-confirmation">Confirmation code</label>
+                            <input class="hellish-input-field" id="email-confirmation" name="email-confirmation" />
+                        </div>
+                        @@END_IF@@
+                    </td>
+                </tr>
+
             </table>
             <input class="hellish-button" type="submit" value="Update!">
         </form>

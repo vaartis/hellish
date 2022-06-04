@@ -38,14 +38,15 @@ with
   Aws.Log,
   Aws.Exceptions,
   Aws.Url,
-  Aws.Utils.Streams;
+  Aws.Utils.Streams,
+  Aws.Smtp;
 
 with
   Templates_Parser,
   Templates_Parser.Utils;
 use Templates_Parser;
 
-with Gnatcoll.Json, Gnatcoll.Sql.Exec;
+with Gnatcoll.Json, Gnatcoll.Sql.Exec, Gnatcoll.Config;
 
 with Sodium.Functions;
 
@@ -56,10 +57,13 @@ with
   Dom.Core.Nodes,
   Dom.Core.Attrs;
 
-with Hellish_Web.Bencoder;
-with Hellish_Web.Peers;
-with Hellish_Web.Database;
+with
+  Hellish_Web,
+  Hellish_Web.Bencoder,
+  Hellish_Web.Peers,
+  Hellish_Web.Database;
 with Hellish_Irc;
+with Hellish_Mail;
 
 with Orm; use Orm;
 
@@ -1270,6 +1274,50 @@ package body Hellish_Web.Routes is
                Profile_Json.Set_Field("irc_key", As_Hexidecimal(Random_Hash_Key(16)));
             end if;
 
+            declare
+               Email : String := Params.Get("email");
+               Email_Confirmation : String := Params.Get("email-confirmation");
+               Email_Notifications : String := Params.Get("email-notifications");
+
+               Profile_Email : Json_Value := (if Profile_Json.Has_Field("email")
+                                              then Profile_Json.Get("email")
+                                              else Create_Object);
+            begin
+               if Email /= "" then
+                  if Profile_Email.Has_Field("unconfirmed_address") and then (Email = String'(Profile_Email.Get("unconfirmed_address")))
+                    and then Email_Confirmation /= "" then
+                     if Email_Confirmation = String'(Profile_Email.Get("confirmation_code")) then
+                        Profile_Email.Unset_Field("unconfirmed_address");
+                        Profile_Email.Unset_Field("confirmation_code");
+                        Profile_Email.Set_Field("address", Email);
+                     else
+                        return Referer_With_Error(Request, "Wrong confirmation code");
+                     end if;
+                  elsif (Profile_Email.Has_Field("address") and then not (Profile_Email.Get("address") = Email))
+                    or else not Profile_Email.Has_Field("address") then
+                     declare
+                        New_Confirmation_Code : String := As_Hexidecimal(Random_Hash_Key(16));
+                     begin
+                        Profile_Email.Set_Field("unconfirmed_address", Email);
+                        Profile_Email.Set_Field("confirmation_code", New_Confirmation_Code);
+
+                        Hellish_Mail.Send(Smtp.E_Mail(Profile_User.Username, Email),
+                                          Subject => "Hellish e-mail confirmation",
+                                          Message => "Your confirmation code is **" & New_Confirmation_Code & "**");
+                     end;
+                  end if;
+                  if Email_Notifications /= "" then
+                     Profile_Email.Set_Field("notifications", True);
+                  else
+                     Profile_Email.Set_Field("notifications", False);
+                  end if;
+
+                  Profile_Json.Set_Field("email", Profile_Email);
+               else
+                  Profile_Json.Unset_Field("email");
+               end if;
+            end;
+
             The_User.Set_Profile(Profile_Json.Write);
             Database.Update_User(The_User);
          end;
@@ -1338,6 +1386,15 @@ package body Hellish_Web.Routes is
                Insert(Translations, Assoc("irc_key", String'(Get(Profile_Json, "irc_key"))));
                Insert(Translations, Assoc("irc_host", Hellish_Irc.Irc_Host.Element & ":" & Trim(Hellish_Irc.Port'Image, Ada.Strings.Left) &
                                             " (" & Trim(Hellish_Irc.Port_Ssl'Image, Ada.Strings.Left) & " for TLS)"));
+            end if;
+
+            if Profile_Json.Has_Field("email") and then Profile_Json.Get("email").Has_Field("unconfirmed_address") then
+               Insert(Translations, Assoc("unconfirmed_email", String'(Profile_Json.Get("email").Get("unconfirmed_address"))));
+            elsif Profile_Json.Has_Field("email") and then Profile_Json.Get("email").Has_Field("address") then
+               Insert(Translations, Assoc("confirmed_email", String'(Profile_Json.Get("email").Get("address"))));
+            end if;
+            if Profile_Json.Has_Field("email") and then Profile_Json.Get("email").Has_Field("notifications") then
+               Insert(Translations, Assoc("email_notifications", Boolean'(Profile_Json.Get("email").Get("notifications"))));
             end if;
          end;
          Insert(Translations, Assoc("is_owner", Current_User = Profile_User));
@@ -1632,27 +1689,49 @@ package body Hellish_Web.Routes is
 
    procedure Run_Server is
       use GNAT.Command_Line;
+
+      Config_File : String_Holders.Holder := To_Holder("hellish_config.ini");
    begin
       Server.Set_Unexpected_Exception_Handler(Http, Exception_Handler'Access);
 
       loop
-      case Getopt("-invite-not-required -https -server-host= -ssl-cert= -ssl-privkey=") is
+      case Getopt("-invite-not-required -https -server-host= -ssl-cert= -ssl-privkey= -config=") is
             when '-' =>
                if Full_Switch = "-invite-not-required" then
                   Invite_Required := False;
-               elsif Full_Switch = "-https" then
-                  Https := True;
-               elsif Full_Switch = "-server-host" then
-                  Server_Host := To_Unbounded_String(Parameter);
-               elsif Full_Switch = "-ssl-cert" then
-                  Hellish_Irc.Ssl_Cert_Path := Hellish_Irc.String_Holders.To_Holder(Parameter);
-               elsif Full_Switch = "-ssl-privkey" then
-                  Hellish_Irc.Ssl_Privkey_Path := Hellish_Irc.String_Holders.To_Holder(Parameter);
+               elsif Full_Switch = "-config" then
+                  Config_File := To_Holder(Parameter);
                end if;
             when others =>
                exit;
          end case;
       end loop;
+
+      declare
+         use Gnatcoll.Config;
+
+         Conf_Parser : Ini_Parser;
+         Config : Config_Pool;
+      begin
+         Open(Conf_Parser, Config_File.Element);
+         Fill(Config, Conf_Parser);
+
+         if Config.Get("http.https") /= "" and then Config.Get_Boolean("http.https") then
+            Https := True;
+         end if;
+         if Config.Get("http.server_host") /= "" then
+            Server_Host := To_Unbounded_String(Config.Get("http.server_host"));
+         end if;
+         if Config.Get("irc.ssl_cert") /= "" then
+            Hellish_Irc.Ssl_Cert_Path := Hellish_Irc.String_Holders.To_Holder(Config.Get("irc.ssl_cert"));
+            Hellish_Irc.Ssl_Privkey_Path := Hellish_Irc.String_Holders.To_Holder(Config.Get("irc.ssl_privkey"));
+         end if;
+         if Config.Get("mail.smtp_server") /= "" then
+            Hellish_Mail.Smtp_Server := Hellish_Mail.String_Holders.To_Holder(Config.Get("mail.smtp_server"));
+            Hellish_Mail.Smtp_Port := Config.Get_Integer("mail.smtp_port");
+            Hellish_Mail.From_Address := Hellish_Mail.String_Holders.To_Holder(Config.Get("mail.from_address"));
+         end if;
+      end;
 
       Database.Init;
       Peers.Protected_Map.Load_Persisted_Peers;
@@ -1706,6 +1785,7 @@ package body Hellish_Web.Routes is
       Server.Log.Start(Http, Put_Line'Access, "hellish");
 
       Hellish_Irc.Start;
+      Hellish_Mail.Start;
 
       Put_Line("Started on http://" & Aws.Config.Server_Host(Conf)
                  -- Trim the number string on the left because it has a space for some reason

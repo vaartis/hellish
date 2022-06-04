@@ -330,13 +330,16 @@ package body Posts is
 
          if Parent /= -1 then
             Post_Subscriptions.Notify(The_User,
-                             Detached_Post(Parent_Post),
-                             "There's [a new reply to the post """ & Parent_Post.Title & """](/post/" & Trim(Post.Id'Image, Ada.Strings.Left) & ")");
+                                      Detached_Post(Parent_Post),
+                                      "There's " &
+                                        Local_Markdown_Link("a new reply to the post """ & Parent_Post.Title & """",
+                                                            "/post/" & Trim(Post.Id'Image, Ada.Strings.Left)));
          elsif Parent_Torrent /= -1 then
             Torrent_Subscriptions.Notify(The_User,
-                                Detached_Torrent(The_Parent_Torrent),
-                                "There's [a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """](/post/" &
-                                  Trim(Post.Id'Image, Ada.Strings.Left) & ")");
+                                         Detached_Torrent(The_Parent_Torrent),
+                                         "There's "
+                                           & Local_Markdown_Link("a new comment on the torrent """ & The_Parent_Torrent.Display_Name & """",
+                                                                 "/post/" & Trim(Post.Id'Image, Ada.Strings.Left)));
          end if;
       end if;
 
@@ -371,8 +374,10 @@ package body Posts is
                declare
                   Author : Detached_User'Class := Database.Get_User(Post.By_User);
                begin
-                  Database.Notify_User(Mentioned_User, "You have been [mentioned](/post/" & Trim(Post.Id'Image, Ada.Strings.Left)
-                                         & ") by [" & Author.Username & "](/profile/" & Author.Username & ")");
+                  Database.Notify_User(Mentioned_User,
+                                       "You have been "
+                                         & Local_Markdown_Link("mentioned", "/post/" & Trim(Post.Id'Image, Ada.Strings.Left))
+                                         & " by " & Local_Markdown_Link(Author.Username, "/profile/" & Author.Username));
                end;
             <<Skip>>
             end;

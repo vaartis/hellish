@@ -109,7 +109,9 @@
                 <h3>Description</h3>
 
                 @@IF@@ @_EXIST:image_@
-                <img class="torrent-image" src="@_image_@" />
+                <a href="@_image_@">
+                    <img class="torrent-image" src="@_image_@" />
+                </a>
                 @@END_IF@@
 
                 <div class="hellish-content-box">@_description_@</div>

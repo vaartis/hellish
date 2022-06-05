@@ -833,6 +833,8 @@ package body Hellish_Web.Routes is
          File_Name := Bencode_String(Bencoded_Info.Value(To_Unbounded_String("name")).Element.Element).Value;
 
          Decoded.Include("announce", Encode(User_Announce_Url(User)));
+         Decoded.Include("comment", Encode((if Https then "https://" else "http://") & Host_Name_Website & "/view/" &
+                                             Trim(Id'Image, Ada.Strings.Left)));
 
          declare
             use Aws.Resources.Streams.Memory;

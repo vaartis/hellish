@@ -13,6 +13,7 @@ with Ada.Containers.Indefinite_Holders;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers; use Ada.Containers;
 with Ada.Characters.Latin_1; use Ada.Characters;
+with Ada.Synchronous_Task_Control; use Ada.Synchronous_Task_Control;
 
 with System;
 
@@ -65,6 +66,8 @@ private
       entry Start;
    end Process_Connections;
    task Link_Preview;
+
+   Link_Preview_Suspension_Obj : Suspension_Object;
 
    type Link_Preview_Request is record
       Channel, Link : String_Holders.Holder;

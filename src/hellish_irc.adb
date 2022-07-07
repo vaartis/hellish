@@ -370,6 +370,8 @@ package body Hellish_Irc is
                               if Matches(0) /= No_Match then
                                  Link_Preview_Queue.Append(Link_Preview_Request'(Channel => To_Holder(The_Channel.Name.Element),
                                                                                  Link => To_Holder(Msg_Text(Matches(0).First..Matches(0).Last))));
+                                 -- Unsuspend the task if it was suspended
+                                 Set_True(Link_Preview_Suspension_Obj);
                               end if;
                            end;
                         end;
@@ -1185,9 +1187,13 @@ package body Hellish_Irc is
    begin
       loop
          begin
+            -- Wait until the task is unsuspended by a queued up link preview
+            Suspend_Until_True(Link_Preview_Suspension_Obj);
             if Length(Link_Preview_Queue) > 0 then
                Latest_Preview := Link_Preview_Queue(Link_Preview_Queue.First);
             else
+               -- Suspend the task until a new link preview is received
+               Set_False(Link_Preview_Suspension_Obj);
                goto Next;
             end if;
 

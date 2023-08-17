@@ -1,7 +1,6 @@
 pragma Unsuppress(All_Checks);
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with
   Ada.Strings.Hash,
   Ada.Strings.Less_Case_Insensitive;

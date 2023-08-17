@@ -9,7 +9,6 @@ if [[ ! -d obj/md4c/ ]]; then
 fi
 
 if [[ ! -d "${BASE}/obj/aws" ]]; then
-
     pushd deps/aws/
     make setup build install ZLIB=false DEMOS=false LAL=false XMLADA=false prefix=${BASE}/obj/aws/\
          SOCKET="openssl" PRJ_TARGET="UNIX" TARGET=$(gcc -dumpmachine)

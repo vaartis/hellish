@@ -11,6 +11,7 @@ with Ada.Calendar.Time_Zones; use Ada.Calendar.Time_Zones;
 with Ada.Directories;
 with Ada.Strings;
 with Ada.Strings.Equal_Case_Insensitive;
+with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Command_Line;
 with System.Interrupts;
 
@@ -1134,12 +1135,6 @@ package body Hellish_Irc is
       Title_Str : String_Holders.Holder;
 
       Full_Host : String := (if Hellish_Web.Routes.Https then "https://" else "http://") & Hellish_Web.Routes.Host_Name_Website;
-      Local_Torrent_Matcher : constant Pattern_Matcher :=
-        Compile(Full_Host & "/view/(\d+)");
-      Local_Group_Matcher : constant Pattern_Matcher :=
-        Compile(Full_Host & "/group/(\d+)");
-      Local_Post_Matcher : constant Pattern_Matcher :=
-        Compile(Full_Host & "/post/(\d+)");
       Matches : Match_Array (0..1);
 
       generic
@@ -1227,7 +1222,7 @@ package body Hellish_Irc is
                Protected_Clients.Send_Special_Message(Latest_Preview.Channel.Element,
                                                       "Link title: " & Title_Str.Element);
             end if;
-         <<Skip>>
+
             Title_Str.Clear;
             Link_Preview_Queue.Delete_First;
 
@@ -1316,7 +1311,6 @@ package body Hellish_Irc is
 
       declare
          use System.Interrupts;
-         Old : Parameterless_Handler;
       begin
          -- Attach a SIGHUP handler
          Attach_Handler(Handlers.Reload_Handler'Access, 1, Static => True);

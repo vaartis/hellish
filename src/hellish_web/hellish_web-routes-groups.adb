@@ -95,12 +95,8 @@ package body Groups is
       end if;
 
       declare
-         use
-           Dom.Core,
-           Dom.Core.Documents,
-           Dom.Core.Elements,
-           Dom.Core.Nodes,
-           Dom.Core.Attrs;
+         use Dom.Core, Dom.Core.Nodes;
+
          package Dc renames Dom.Core;
 
          Id : Natural := Natural'Value(Uri_Group_Match(Request, Group_Matcher, 1));
@@ -149,6 +145,7 @@ package body Groups is
 
          Page_Size, Page_Offset : Natural;
          Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+         pragma Unreferenced (Page);
 
          Total_Count : Natural;
          Found_Groups : Torrent_Group_List := Database.Search_Torrent_Groups(Query, Page_Offset, Page_Size, Total_Count);
@@ -221,8 +218,6 @@ package body Groups is
 
          The_Group.Set_Creator(The_User.Id);
       end if;
-
-      Put_Line(Description);
 
       The_Group.Set_Name(Name);
       The_Group.Set_Description(Description);

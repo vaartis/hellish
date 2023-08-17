@@ -1,7 +1,6 @@
 with Ada.Streams;
 
 with Gnatcoll.Sql; use Gnatcoll.Sql;
-with Gnatcoll.Sql.Sessions;
 
 with Aws.Client;
 

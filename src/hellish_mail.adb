@@ -36,21 +36,22 @@ package body Hellish_Mail is
             Subject : String := Curr_Entry.Subject.Element;
             Message : String := Curr_Entry.Message.Element;
 
-            Headers_List : Aws.Headers.List;
             Attachment_List : Attachments.List;
             Message_Attachment : Attachments.Content := Value(Data => Markdown.To_Html(Message, Default_Md_Flags),
                                                               Name => "message.html",
-                                                              Encode => Attachments.Base64,
                                                               Content_Type => Aws.Mime.Text_Html);
+
+            Alternatives : Attachments.Alternatives;
          begin
             Delete_First(Email_Queue);
 
-            Add(Headers_List, "Content-Disposition", "inline");
-            Attachments.Add(Attachment_List, Name => "message.html", Data => Message_Attachment,
-                            Headers => headers_list);
+            Attachments.Add(Alternatives, Message_Attachment);
+            Attachments.Add(Alternatives, Value(Message, Content_Type => MIME.Text_Plain));
+            Attachments.Add(Attachment_List, Alternatives);
+
             Smtp.Client.Send(Smtp_Srv,
                              From => E_Mail("Hellish", From_Address.Element),
-                             To => (1 => To ),
+                             To => (1 => To),
                              Subject => Subject,
                              Attachments => Attachment_List,
                              Status => Message_Status);

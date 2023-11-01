@@ -8,7 +8,6 @@ package body Search is
       Params : Parameters.List := Status.Parameters(Request);
       Query : String := Params.Get("query");
       Uploader : Natural := (if Params.Exist("uploader") then Natural'Value(Params.Get("uploader")) else 0);
-      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
       Category : Integer := (if Params.Exist("category") then Integer'Value(Params.Get("category")) else -1);
       Snatched_By : Integer := (if Params.Exist("snatched_by") then Integer'Value(Params.Get("snatched_by")) else -1);
 
@@ -45,7 +44,7 @@ package body Search is
          The_User : Detached_User'Class := Database.Get_User(Username);
 
          Page_Size, Page_Offset : Natural;
-         Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+         Page_Unused : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
 
          Total_Count : Natural;
          Found_Torrents : Direct_Torrent_List := Database.Search_Torrents(Query, Uploader, Category, Snatched_By,
@@ -89,7 +88,6 @@ package body Search is
       Passkey : String := Params.Get("passkey");
       Query : String := Params.Get("query");
       Uploader : Natural := (if Params.Exist("uploader") then Natural'Value(Params.Get("uploader")) else 0);
-      Page : Natural := (if Params.Exist("page") then Integer'Value(Params.Get("page")) else 1);
       Category : Integer := (if Params.Exist("category") then Integer'Value(Params.Get("category")) else -1);
       Snatched_By : Integer := (if Params.Exist("snatched_by") then Integer'Value(Params.Get("snatched_by")) else -1);
    begin
@@ -100,10 +98,7 @@ package body Search is
       declare
          use
            Dom.Core,
-           Dom.Core.Documents,
-           Dom.Core.Elements,
-           Dom.Core.Nodes,
-           Dom.Core.Attrs;
+           Dom.Core.Nodes;
          package Dc renames Dom.Core;
 
          Channel : Dc.Element;
@@ -112,10 +107,8 @@ package body Search is
                                          Page_Link => Status.Url(Request),
                                          Channel => Channel);
 
-         Full_Host : String := (if Https then "https://" else "http://") & Host_Name_Website;
-
          Page_Size, Page_Offset : Natural;
-         Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+         Page_Unused : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
 
          Total_Count : Natural;
          Found_Torrents : Direct_Torrent_List := Database.Search_Torrents(Query, Uploader, Category, Snatched_By,

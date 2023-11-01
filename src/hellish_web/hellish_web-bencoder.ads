@@ -1,6 +1,4 @@
-with Ada.Strings.Hash;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Containers.Vectors;
 with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Indefinite_Holders;

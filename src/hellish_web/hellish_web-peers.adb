@@ -91,9 +91,10 @@ package body Hellish_Web.Peers is
          Torrent_Map.Exclude(Info_hash);
       end;
 
-      function Contains(Info_Hash : String) return Boolean is (Torrent_Map.Contains(Info_Hash));
-      function Constant_Reference(Info_Hash : String) return Torrent_Maps.Constant_Reference_Type is
-        (Torrent_Map.Constant_Reference(Info_Hash));
+      -- Currently unused, might be useful later
+      -- function Contains(Info_Hash : String) return Boolean is (Torrent_Map.Contains(Info_Hash));
+      -- function Constant_Reference(Info_Hash : String) return Torrent_Maps.Constant_Reference_Type is
+      --   (Torrent_Map.Constant_Reference(Info_Hash));
 
       function Encode_Hash_Peers_Response(Info_Hash : String; From_Id : String;
                                           Options : Response_Options) return Bencode_Value_Holders.Holder is
@@ -128,7 +129,6 @@ package body Hellish_Web.Peers is
                      if To_String(The_Peer.Peer_Id) /= From_Id then
                         declare
                            Peer_Bencode : Bencode_Maps.Map;
-                           Test : String := Ip_Port_Bytes(The_Peer);
                         begin
                            Peer_Bencode.Include(To_Unbounded_String("peer id"), Encode(To_String(The_Peer.Peer_id)));
                            Peer_Bencode.Include(To_Unbounded_String("port"), Encode(The_Peer.Port));

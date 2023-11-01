@@ -65,9 +65,6 @@ package body Images is
          File : File_Type;
          File_Stream : Stream_Access;
          Content : Unbounded_String;
-
-         New_Name : Unbounded_String;
-         Upload_Path : Unbounded_String;
       begin
          Open(File, Mode => In_File, Name => File_Path);
          File_Stream := Stream(File);
@@ -78,7 +75,7 @@ package body Images is
 
          declare
             Sha1_Digest : String := Gnat.Sha1.Digest(To_String(Content));
-            New_Name : String :=  Compose(Name => Sha1_Digest, Extension => Ada.Directories.Extension(File_Path));
+            New_Name : String := Compose(Name => Sha1_Digest, Extension => Ada.Directories.Extension(File_Path));
             Upload_Path : String := Compose(Containing_Directory => Image_Uploads_Path, Name => New_Name);
 
             The_Image : Detached_Image_Upload'Class := Database.Add_Uploaded_Image(Username, New_Name);
@@ -97,13 +94,11 @@ package body Images is
    function Dispatch
      (Handler : in Api_Image_Upload_Handler;
       Request : in Status.Data) return Response.Data is
-      use Ada.Directories;
-
-      Params : constant Parameters.List := Status.Parameters(Request);
 
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
 
+      Params : constant Parameters.List := Status.Parameters(Request);
       File_Path : String := Params.Get("file");
    begin
       if not Database.User_Exists(Username) then
@@ -126,8 +121,6 @@ package body Images is
    function Dispatch
      (Handler : in Api_Image_Delete_Handler;
       Request : in Status.Data) return Response.Data is
-      Params : constant Parameters.List := Status.Parameters(Request);
-
       Session_Id : Session.Id := Request_Session(Request);
       Username : String := Session.Get(Session_Id, "username");
    begin

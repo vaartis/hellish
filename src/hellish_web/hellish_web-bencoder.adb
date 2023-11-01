@@ -1,4 +1,4 @@
-with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
+with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 
 package body Hellish_Web.Bencoder is
    function Encode(Value : Long_Long_Integer) return Holder is
@@ -88,7 +88,7 @@ package body Hellish_Web.Bencoder is
       declare
          Unused_Tmp: Integer;
       begin
-         Unused_Tmp := Integer'Value(( 1 => Char ));
+         Unused_Tmp := Integer'Value([Char]);
          -- Confirmed that the appropriate type is a string
          return Decode_String(File);
       exception
@@ -121,7 +121,7 @@ package body Hellish_Web.Bencoder is
             exit when Char = ':';
             Get_Immediate(File, Char);
 
-            Append(Reading, (1 => Char));
+            Append(Reading, [Char]);
          end loop;
          Length := Natural'Value(To_String(Reading));
       end;
@@ -160,7 +160,7 @@ package body Hellish_Web.Bencoder is
             exit when Char = 'e';
             Get_Immediate(File, Char);
 
-            Append(Reading, (1 => Char));
+            Append(Reading, [Char]);
          end loop;
          Result := Long_Long_Integer'Value(To_String(Reading));
       end;

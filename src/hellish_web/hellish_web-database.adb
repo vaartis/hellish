@@ -1,12 +1,13 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Directories; use Ada.Directories;
-with Ada.Characters.Latin_1;
 
 with Gnatcoll.Json,
-  Gnatcoll.Traces,
+--  Gnatcoll.Traces,
   Gnatcoll.Tribooleans;
-use Gnatcoll.Traces,
+use
+--  Gnatcoll.Traces,
   Gnatcoll.Tribooleans;
 with
   Gnatcoll.Sql,
@@ -17,7 +18,6 @@ use
 use type
   Gnatcoll.Sql.Text_Fields.Field,
   Gnatcoll.Sql.Integer_Fields.Field;
-with Gnatcoll.Vfs; use Gnatcoll.Vfs;
 
 with Aws.Smtp;
 
@@ -30,8 +30,6 @@ package body Hellish_Web.Database is
    Latest_Version : Natural := 10;
 
    procedure Migrate(Session : Session_Type) is
-      Version_Query : Prepared_Statement :=
-        Prepare("SELECT version from config;");
       Cur : Direct_Cursor;
 
       Current_Version : Natural := 0;
@@ -127,7 +125,7 @@ package body Hellish_Web.Database is
    function User_Exists(Name : String; Session : Session_Type := Get_New_Session) return Boolean is
       Cur : Direct_Cursor;
    begin
-      Cur.Fetch(Session.Db, User_Exists_Query, Params => (1 => +Name));
+      Cur.Fetch(Session.Db, User_Exists_Query, Params => [+Name]);
 
       return Cur.Has_Row;
    end;
@@ -165,8 +163,6 @@ package body Hellish_Web.Database is
    Get_User_Query : Prepared_Statement :=
         Prepare("SELECT * FROM users WHERE LOWER(username) = LOWER($1);", On_Server => True);
    function Get_User(Name : String) return Detached_User'Class is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
 
       Manager : Users_Managers := All_Users;
@@ -174,7 +170,7 @@ package body Hellish_Web.Database is
    begin
       -- Stupid workaround to actually run the fetch instead of whatever
       -- is done by the manager. Probably runs the query twice.
-      Cur.Fetch(Session.Db, Get_User_Query, Params => (1 => +Name));
+      Cur.Fetch(Session.Db, Get_User_Query, Params => [+Name]);
 
       if Cur.Has_Row then
          return Cur.Element.Detach;
@@ -184,16 +180,12 @@ package body Hellish_Web.Database is
    end Get_User;
 
    function Get_User(Id : Integer) return Detached_User'Class is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
    begin
       return Orm.Get_User(Session, Id);
    end Get_User;
 
    function Get_User_By_Passkey(Passkey : String) return Detached_User'Class is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
 
       Manager : Users_Managers := All_Users.Filter(Passkey => Passkey);
@@ -207,8 +199,6 @@ package body Hellish_Web.Database is
    end Get_User_By_Passkey;
 
    function Get_Invited_Users(By_User : Detached_User'Class) return Invite_List is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
       Invites_M : Invites_Managers := All_Invites.Filter(By_User => By_User.Id, Activated => True);
    begin
@@ -217,7 +207,6 @@ package body Hellish_Web.Database is
 
    function Verify_User_Credentials(Name, Password : String) return Boolean is
       use Sodium.Functions;
-      use Hellish_Database;
 
       User_Data : Detached_User'Class := Get_User(Name);
    begin
@@ -297,8 +286,6 @@ package body Hellish_Web.Database is
              On_Server => True);
    procedure Update_Torrent_Up_Down(User : Detached_User'Class; Info_Hash : String;
                                     Uploaded_Diff : Long_Long_Integer; Downloaded_Diff : Long_Long_Integer) is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
 
       T_List : Torrent_List := All_Torrents.Filter(Info_Hash => Info_Hash).Get(Session);
@@ -319,20 +306,18 @@ package body Hellish_Web.Database is
          -- Updating fields in gnatcoll sql just does not work with orm, no matter how I try it.
          -- So SQL queries are used instead.
             Execute(Session.Db, Update_User_Torrent_Stats_Stmt,
-                 Params => (1 => +User.Id, 2 => +T_List.Element.Id,
-                            3 => As_Bigint(Uploaded_Diff), 4 => As_Bigint(Downloaded_Diff)));
+                 Params => [+User.Id, +T_List.Element.Id,
+                            As_Bigint(Uploaded_Diff), As_Bigint(Downloaded_Diff)]);
       end if;
 
       -- Also add it to the total user credit
       Execute(Session.Db, Update_User_Stats,
-              Params => ( 1 => +User.Id, 2 => As_Bigint(Uploaded_Diff), 3 => As_Bigint(Downloaded_Diff)));
+              Params => [+User.Id, As_Bigint(Uploaded_Diff), As_Bigint(Downloaded_Diff)]);
 
       Session.Commit;
    end Update_Torrent_Up_Down;
 
    function Get_Torrent_By_Hash(Info_Hash : String; Session : Session_Type := Get_New_Session) return Detached_Torrent'Class is
-      use Hellish_Database;
-
       Manager : Torrents_Managers := All_Torrents.Filter(Info_Hash => Info_Hash);
       List : Torrent_List := Manager.Get(Session);
    begin
@@ -344,8 +329,6 @@ package body Hellish_Web.Database is
    end Get_Torrent_By_Hash;
 
    function Get_Torrent(Id : Integer) return Detached_Torrent'Class is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
    begin
       return Get_Torrent(Session, Id => Id);
@@ -424,9 +407,7 @@ package body Hellish_Web.Database is
         Sql_Select(From => Left_Join(Torrents, User_Torrent_Stats, Torrents.Id = User_Torrent_Stats.Of_Torrent),
                    Fields => Apply(Func_Count, From_String("DISTINCT torrents.id")),
                    Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query, 2 => +Uploader, 3 => +Category, 4 => +Snatched_By);
-
-      The_Query_Managers : Torrents_Managers := All_Torrents;
+      Params : Sql_Parameters := [+Query, +Uploader, +Category, +Snatched_By];
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);
@@ -545,7 +526,7 @@ package body Hellish_Web.Database is
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
         Sql_Select(From => Torrent_Groups, Fields => Apply(Func_Count, Torrent_Groups.Id), Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query);
+      Params : Sql_Parameters := [+Query];
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);
@@ -579,8 +560,6 @@ package body Hellish_Web.Database is
    end Create_Invite;
 
    function Invite_Valid(Invite : String) return Boolean is
-      use Hellish_Database;
-
       Session : Session_Type := Get_New_Session;
       Manager : Invites_Managers := All_Invites.Filter(Value => Invite);
       List : Invite_List := Manager.Get(Session);
@@ -700,7 +679,7 @@ package body Hellish_Web.Database is
       Count_Cur : Direct_Cursor;
       Count_Query : Sql_Query :=
         Sql_Select(From => Posts, Fields => Apply(Func_Count, Posts.Id), Where => Search_Criteria);
-      Params : Sql_Parameters := (1 => +Query, 2 => +Flag, 3 => +Author);
+      Params : Sql_Parameters := [+Query, +Flag, +Author];
    begin
       Count_Cur.Fetch(Session.Db, Count_Query, Params => Params);
       Total_Count := Count_Cur.Integer_Value(0);
@@ -715,7 +694,7 @@ package body Hellish_Web.Database is
       Session : Session_Type := Get_New_Session;
       The_Torrent : Detached_Torrent'Class := Get_Torrent_By_Hash(Info_Hash, Session);
    begin
-      Session.Db.Execute(Peers_Insert_Statement, Params => (1 => +The_Torrent.Id, 2 => +Data));
+      Session.Db.Execute(Peers_Insert_Statement, Params => [+The_Torrent.Id, +Data]);
 
       Session.Commit;
    end Persist_Peers;
@@ -796,7 +775,7 @@ package body Hellish_Web.Database is
    procedure Persist_Channel(Name, Data : String) is
       Session : Session_Type := Get_New_Session;
    begin
-      Session.Db.Execute(Channel_Insert_Statement, Params => (1 => +Name, 2 => +Data));
+      Session.Db.Execute(Channel_Insert_Statement, Params => [+Name, +Data]);
       Session.Commit;
    end Persist_Channel;
    function Persisted_Channels return Irc_Channel_List is (All_Irc_Channels.Get(Get_New_Session));
@@ -913,8 +892,6 @@ package body Hellish_Web.Database is
          Subscriptions : Json_Array := (if Has_Field(The_Meta, "subscribed")
                                         then Get(The_Meta, "subscribed")
                                         else Empty_Array);
-
-         Session : Session_Type := Get_New_Session;
       begin
          for Subscriber of Subscriptions loop
             if Get(Subscriber) /= Creator.Id then

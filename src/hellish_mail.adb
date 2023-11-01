@@ -6,8 +6,8 @@ with Ada.Exceptions; use Ada.Exceptions;
 with
   Aws.Attachments,
   Aws.Mime,
-  Aws.Headers;
-use Aws.Attachments, Aws.Headers;
+  Aws.Smtp.Client;
+use Aws.Attachments;
 
 package body Hellish_Mail is
    procedure Send(To : E_Mail_Data; Subject, Message : String) is
@@ -51,7 +51,7 @@ package body Hellish_Mail is
 
             Smtp.Client.Send(Smtp_Srv,
                              From => E_Mail("Hellish", From_Address.Element),
-                             To => (1 => To),
+                             To => [1 => To],
                              Subject => Subject,
                              Attachments => Attachment_List,
                              Status => Message_Status);
@@ -68,12 +68,12 @@ package body Hellish_Mail is
    end Process_Emails;
 
    protected Handlers is
-      procedure Termination_Handler(Cause : Cause_Of_Termination;
+      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
                                     Id : Task_Id;
                                     E : Exception_Occurrence);
    end Handlers;
    protected body Handlers is
-      procedure Termination_Handler(Cause : Cause_Of_Termination;
+      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
                                     Id : Task_Id;
                                     E : Exception_Occurrence) is
       begin

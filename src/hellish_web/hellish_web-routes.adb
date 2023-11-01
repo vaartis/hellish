@@ -54,11 +54,9 @@ with
   Dom.Core,
   Dom.Core.Documents,
   Dom.Core.Elements,
-  Dom.Core.Nodes,
-  Dom.Core.Attrs;
+  Dom.Core.Nodes;
 
 with
-  Hellish_Web,
   Hellish_Web.Bencoder,
   Hellish_Web.Peers,
   Hellish_Web.Database;
@@ -126,7 +124,6 @@ package body Hellish_Web.Routes is
                                     Extension => "torrent");
       File : File_Type;
       Decoded : Bencode_Value_Holders.Holder;
-      Bencoded_Info : Bencode_Value_Holders.Holder;
    begin
       Open(File, Mode => In_File, Name => File_Path);
       Decoded := Decode(File);
@@ -185,20 +182,20 @@ package body Hellish_Web.Routes is
       Autofind_Image : Boolean := False;
    end record;
    Possible_Meta_Links : array (Natural range <>) of Meta_Link :=
-     (1 => (Name => To_Holder("Wikipedia"), Json_Name => To_Holder("wikipedia"),
-            Link => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1, others => <>),
-      2 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
-            Link => To_Holder("https://myanimelist.net/anime/"), Category => 3, others => <>),
-      3 => (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
-            Link => To_Holder("https://myanimelist.net/manga/"), Category => 9, others => <>),
-      4 => (Name => To_Holder("MusicBrainz"), Json_Name => To_Holder("musicbrainz"),
-            Link => To_Holder("https://musicbrainz.org/release/"), Category => 1, others => <>),
-      5 => (Name => To_Holder("Discogs"), Json_Name => To_Holder("discogs"),
-            Link => To_Holder("https://www.discogs.com/release/"), Category => 1,
-            Autofind_Image => True, others => <>),
-      6 => (Name => To_Holder("Bandcamp"), Json_Name => To_Holder("bandcamp"),
-            Link_Type => Contains, Link => To_Holder(".bandcamp.com"), Category => 1,
-            Autofind_Image => True));
+     [(Name => To_Holder("Wikipedia"), Json_Name => To_Holder("wikipedia"),
+       Link => To_Holder("https://en.wikipedia.org/wiki/"), Category => -1, others => <>),
+      (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
+       Link => To_Holder("https://myanimelist.net/anime/"), Category => 3, others => <>),
+      (Name => To_Holder("MAL"), Json_Name => To_Holder("mal"),
+       Link => To_Holder("https://myanimelist.net/manga/"), Category => 9, others => <>),
+      (Name => To_Holder("MusicBrainz"), Json_Name => To_Holder("musicbrainz"),
+       Link => To_Holder("https://musicbrainz.org/release/"), Category => 1, others => <>),
+      (Name => To_Holder("Discogs"), Json_Name => To_Holder("discogs"),
+       Link => To_Holder("https://www.discogs.com/release/"), Category => 1,
+       Autofind_Image => True, others => <>),
+      (Name => To_Holder("Bandcamp"), Json_Name => To_Holder("bandcamp"),
+       Link_Type => Contains, Link => To_Holder(".bandcamp.com"), Category => 1,
+       Autofind_Image => True)];
 
    function Page_Parameters(Params : Parameters.List; Result_Page_Size, Page_Offset : out Natural) return Natural is
       Page_Size : constant Natural := 25;
@@ -212,8 +209,6 @@ package body Hellish_Web.Routes is
 
    User_Mention_Matcher : constant Pattern_Matcher := Compile("@(?:\w|\d)+");
    function Process_Content(Content : String) return String is
-      use Gnatcoll.Json;
-
       Processed_Content : Unbounded_String := To_Unbounded_String(Content);
 
       Mentioned_Match : Match_Array(0..0);
@@ -234,7 +229,6 @@ package body Hellish_Web.Routes is
             end if;
          end;
 
-      <<Skip>>
          Current := Mentioned_Match(0).Last + 1;
       end loop;
 
@@ -306,7 +300,7 @@ package body Hellish_Web.Routes is
                                   Request : Status.Data
                                  ) is
       Page_Size, Page_Offset : Natural;
-      Page : Integer := Page_Parameters(Status.Parameters(Request), Page_Size, Page_Offset);
+      Page_Unused : Integer := Page_Parameters(Status.Parameters(Request), Page_Size, Page_Offset);
 
       Total_Count : Natural;
       Replies : Post_List := Fetch_Function(Parent, Page_Offset, Page_Size, Total_Count);
@@ -391,7 +385,7 @@ package body Hellish_Web.Routes is
 
          declare
             Total_Comments : Integer;
-            Searched_Replies : Post_List := Database.Torrent_Comments(Found_Torrents.Element.Id, 0, 0, Total_Comments);
+            Searched_Replies_Unused : Post_List := Database.Torrent_Comments(Found_Torrents.Element.Id, 0, 0, Total_Comments);
          begin
             Torrent_Comments := @ & Total_Comments;
          end;
@@ -452,8 +446,7 @@ package body Hellish_Web.Routes is
         Dom.Core,
         Dom.Core.Documents,
         Dom.Core.Elements,
-        Dom.Core.Nodes,
-        Dom.Core.Attrs;
+        Dom.Core.Nodes;
       package Dc renames Dom.Core;
 
       Impl : Dom_Implementation;
@@ -464,13 +457,13 @@ package body Hellish_Web.Routes is
       Channel_Elem : Dc.Element := Append_Child(Rss, Create_Element(Doc, "channel"));
 
       Title_Elem : Dc.Element := Append_Child(Channel_Elem, Create_Element(Doc, "title"));
-      Title_Text : Text := Append_Child(Title_Elem, Create_Text_Node(Doc, Title));
+      Title_Text_Unused : Text := Append_Child(Title_Elem, Create_Text_Node(Doc, Title));
 
       Desc : Dc.Element := Append_Child(Channel_Elem, Create_Element(Doc, "description"));
-      Desc_Text : Text := Append_Child(Desc, Create_Text_Node(Doc, Description));
+      Desc_Text_Unused : Text := Append_Child(Desc, Create_Text_Node(Doc, Description));
 
       Link : Dc.Element := Append_Child(Channel_Elem, Create_Element(Doc, "link"));
-      Link_Text : Text := Append_Child(Link, Create_Text_Node(Doc, (if Https then "https://" else "http://") & Host_Name & Correlating_Page));
+      Link_Text_Unused : Text := Append_Child(Link, Create_Text_Node(Doc, (if Https then "https://" else "http://") & Host_Name & Correlating_Page));
 
       W3_Atom : String := "http://www.w3.org/2005/Atom";
       Atom_Link : Dc.Element :=
@@ -487,15 +480,14 @@ package body Hellish_Web.Routes is
       return Doc;
    end Rss_Feed_Base;
 
-   procedure Rss_Feed_Torrent_List(Channel : in out Dom.Core.Element;
+   procedure Rss_Feed_Torrent_List(Channel : Dom.Core.Element;
                                    Found_Torrents : in out Direct_Torrent_List;
                                    Passkey : String) is
       use
         Dom.Core,
         Dom.Core.Documents,
         Dom.Core.Elements,
-        Dom.Core.Nodes,
-        Dom.Core.Attrs;
+        Dom.Core.Nodes;
       use Gnatcoll.Json;
 
       package Dc renames Dom.Core;
@@ -508,20 +500,20 @@ package body Hellish_Web.Routes is
             Item : Dc.Element := Append_Child(Channel, Create_Element(Doc, "item"));
 
             Title : Dc.Element := Append_Child(Item, Create_Element(Doc, "title"));
-            Title_Text : Dc.Element := Append_Child(Title, Create_Text_Node(Doc, Found_Torrents.Element.Display_Name));
+            Title_Text_Unused : Dc.Element := Append_Child(Title, Create_Text_Node(Doc, Found_Torrents.Element.Display_Name));
 
             Link : Dc.Element := Append_Child(Item, Create_Element(Doc, "link"));
-            Link_Text : Dc.Element :=
+            Link_Text_Unused : Dc.Element :=
               Append_Child(Link,
                            Create_Text_Node(Doc, Full_Host & "/download/" &
                                                Trim(Found_Torrents.Element.Id'Image, Ada.Strings.Left) & "?passkey=" & Passkey));
             Guid : Dc.Element := Append_Child(Item, Create_Element(Doc, "guid"));
-            Guid_Text : Dc.Element := Append_Child(Guid,
+            Guid_Text_Unused : Dc.Element := Append_Child(Guid,
                                                    Create_Text_Node(Doc, Full_Host & "/view/" &
                                                                       Trim(Found_Torrents.Element.Id'Image, Ada.Strings.Left)));
 
             Desc : Dc.Element := Append_Child(Item, Create_Element(Doc, "description"));
-            Desc_Text : Dc.Element :=
+            Desc_Text_Unused : Dc.Element :=
               Append_Child(Desc,
                            Create_Text_Node(Doc, Markdown.To_Html(Found_Torrents.Element.Description, Default_Md_Flags)));
 
@@ -540,7 +532,7 @@ package body Hellish_Web.Routes is
                   Created_Time : Time := Value(Created_At) - Duration(Utc_Time_Offset * 60);
 
                   Pub_Date : Dc.Element := Append_Child(Item, Create_Element(Doc, "pubDate"));
-                  Pub_Date_Text : Text :=
+                  Pub_Date_Text_Unused : Text :=
                     Append_Child(Pub_Date,
                                  Create_Text_Node(Doc, Gnat.Calendar.Time_Io.Image(Created_Time, "%a, %d %b %Y %T") & " -0000"));
                begin
@@ -599,9 +591,9 @@ package body Hellish_Web.Routes is
 
       declare
          Required_Params : array (Natural range <>) of Unbounded_String :=
-           (To_Unbounded_String("info_hash"), To_Unbounded_String("peer_id"),
+           [To_Unbounded_String("info_hash"), To_Unbounded_String("peer_id"),
             To_Unbounded_String("port"), To_Unbounded_String("uploaded"),
-            To_Unbounded_String("downloaded"), To_Unbounded_String("left"));
+            To_Unbounded_String("downloaded"), To_Unbounded_String("left")];
          -- ip and event are optional
       begin
          for Name of Required_Params loop
@@ -839,8 +831,8 @@ package body Hellish_Web.Routes is
          declare
             use Aws.Resources.Streams.Memory;
 
-            Data : not null access Resources.Streams.Memory.Stream_Type
-              := new Resources.Streams.Memory.Stream_Type;
+            type Data_Stream_Type is not null access Resources.Streams.Memory.Stream_Type;
+            Data : Data_Stream_Type := new Resources.Streams.Memory.Stream_Type;
 
             Sent_Name : String := Compose(Name => Base_Name(To_String(File_Name)), Extension => "torrent");
 
@@ -1068,8 +1060,6 @@ package body Hellish_Web.Routes is
          Insert(Translations, Assoc("is_subscribed", Torrent_Subscriptions.Subscribed(The_User, Detached_Torrent(The_Torrent))));
 
          declare
-            use type Peers.Torrent_Maps.Map;
-
             Peers_Users, Peers_Uploaded, Peers_Downloaded, Peers_Percent : Vector_Tag;
             The_Peers : Peers.Peer_Maps.Map := Peers.Protected_Map.Peer_Map_Data(The_Torrent.Info_Hash);
          begin
@@ -1113,7 +1103,6 @@ package body Hellish_Web.Routes is
 
          declare
             use Gnatcoll.Json;
-            use Ada.Calendar, Ada.Calendar.Formatting;
 
             Torrent_Meta : Json_Value := Read(The_Torrent.Meta);
             Created_At : String := (if Torrent_Meta.Has_Field("created_at")
@@ -1344,8 +1333,8 @@ package body Hellish_Web.Routes is
                                                                                  Snatched_By => -1,
                                                                                  Offset => 0, Limit => 0,
                                                                                  Total_Count => Total_Uploads);
-            Unsused_Post_List : Post_List := Database.Search_Posts("", -1, Profile_User.Id, 0, 0, Total_Posts);
-            Unused_Snatch_List : Direct_Torrent_List :=
+            Post_List_Unused : Post_List := Database.Search_Posts("", -1, Profile_User.Id, 0, 0, Total_Posts);
+            Snatch_List_Unused : Direct_Torrent_List :=
               Database.Search_Torrents("",
                                        Uploader => 0,
                                        Category => -1,
@@ -1454,7 +1443,7 @@ package body Hellish_Web.Routes is
 
    -- API
 
-   function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
+   function Api_Upload_Dispatch(Handler_Unused : in Api_Upload_Handler;
                                 Request : in Status.Data) return Response.Data is separate;
    function Dispatch
      (Handler : in Api_Upload_Handler;
@@ -1678,8 +1667,8 @@ package body Hellish_Web.Routes is
    -- Entrypoint
 
    procedure Exception_Handler(E : Exception_Occurrence;
-                               Log    : in out Aws.Log.Object;
-                               Error  : Aws.Exceptions.Data;
+                               Log_Unused    : in out Aws.Log.Object;
+                               Error_Unused  : Aws.Exceptions.Data;
                                Answer : in out Response.Data) is
       Response_Html : String := "<!DOCTYPE HTML><body>" &
         "<b>" & Exception_Name(E) & "</b>" &

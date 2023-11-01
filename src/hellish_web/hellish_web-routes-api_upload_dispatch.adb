@@ -7,7 +7,7 @@ with Aws.Client;
 with Lexbor;
 
 separate (Hellish_Web.Routes)
-function Api_Upload_Dispatch(Handler : in Api_Upload_Handler;
+function Api_Upload_Dispatch(Handler_Unused : in Api_Upload_Handler;
                              Request : in Status.Data) return Response.Data is
    use Ada.Directories;
 

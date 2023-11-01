@@ -40,7 +40,7 @@ with Interfaces.C.Strings; use Interfaces.C.Strings;
 package body Hellish_Irc is
    package body Ssl is separate;
 
-   Supported_Modes : array (Natural range <>) of Character := (1 => 'i', 2 => 't', 3 => 'H');
+   Supported_Modes : array (Natural range <>) of Character := ['i', 't', 'H'];
 
    Link_Preview_Matcher : constant Pattern_Matcher := Compile("https?://[\S]+", Case_Insensitive);
 
@@ -315,9 +315,9 @@ package body Hellish_Irc is
 
                                     if (for some M of Supported_Modes => M = Mode_Key) then
                                        if Mode_Action = '+' then
-                                          Channels(Message_Parts(1)).Modes.Include((1 => Mode_Key));
+                                          Channels(Message_Parts(1)).Modes.Include([Mode_Key]);
                                        elsif Mode_Action = '-' then
-                                          Channels(Message_Parts(1)).Modes.Exclude((1 => Mode_Key));
+                                          Channels(Message_Parts(1)).Modes.Exclude([Mode_Key]);
                                        end if;
                                     end if;
                                  end if;
@@ -529,7 +529,6 @@ package body Hellish_Irc is
                      -- Horrible hack, call execv on the process to restart it from scratch
                      declare
                         use Ada.Command_Line;
-                        use Ada.Directories;
 
                         function Execv(Program_Name : Chars_Ptr; Args : Chars_Ptr_Array) return Integer
                         with
@@ -548,7 +547,7 @@ package body Hellish_Irc is
                         Args(Size_T(Argument_Count + 1)) := Null_Ptr;
 
                         declare
-                           Result : Integer := Execv(New_String(Command_Name), Args);
+                           Result_Unused : Integer := Execv(New_String(Command_Name), Args);
                         begin
                               Put_Line("!! Restart failed: " & String'(Gnat.Os_Lib.Errno_Message(Gnat.Os_Lib.Errno)));
                         end;
@@ -1134,7 +1133,6 @@ package body Hellish_Irc is
       Latest_Preview : Link_Preview_Request;
       Title_Str : String_Holders.Holder;
 
-      Full_Host : String := (if Hellish_Web.Routes.Https then "https://" else "http://") & Hellish_Web.Routes.Host_Name_Website;
       Matches : Match_Array (0..1);
 
       generic
@@ -1240,15 +1238,15 @@ package body Hellish_Irc is
    end;
 
    protected Handlers is
-      procedure Termination_Handler(Cause : Cause_Of_Termination;
+      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
                                     Id : Task_Id;
                                     E : Exception_Occurrence);
       procedure Reload_Handler;
    end Handlers;
    protected body Handlers is
-      procedure Termination_Handler(Cause : Cause_Of_Termination;
-                        Id : Task_Id;
-                        E : Exception_Occurrence) is
+      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
+                                    Id : Task_Id;
+                                    E : Exception_Occurrence) is
       begin
          Put_Line("!! TASK CRASHED " & Image(Id));
          Put_Line(Exception_Information(E));
@@ -1269,7 +1267,7 @@ package body Hellish_Irc is
 
       Irc_Host := To_Holder(Hellish_Web.Routes.Host_Name);
 
-      Addr.Addr := (Family => Family_Inet, Sin_V4 => (others => 0));
+      Addr.Addr := (Family => Family_Inet, Sin_V4 => [others => 0]);
       Addr.Port := Port_Type(Port);
 
       Create_Socket(Socket);
@@ -1294,7 +1292,7 @@ package body Hellish_Irc is
          begin
             Ssl.Initialize(Ssl_Cert_Path.Element, Ssl_Privkey_Path.Element);
 
-            Addr_Ssl.Addr := (Family => Family_Inet, Sin_V4 => (others => 0));
+            Addr_Ssl.Addr := (Family => Family_Inet, Sin_V4 => [others => 0]);
             Addr_Ssl.Port := Port_Type(Port_Ssl);
 
             Create_Socket(Socket_Ssl);

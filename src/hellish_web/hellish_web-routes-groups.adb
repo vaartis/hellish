@@ -83,7 +83,6 @@ package body Groups is
                             String'(Templates_Parser.Parse("assets/group.html", Translations)));
    end Dispatch;
 
-   Group_Rss_Matcher : constant Pattern_Matcher := Compile("/group/(\d+).rss");
    overriding function Dispatch(Handler : in Group_Rss_Handler;
                                 Request : in Status.Data) return Response.Data is
       Params : Parameters.List := Status.Parameters(Request);

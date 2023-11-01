@@ -172,7 +172,7 @@ package body Posts is
 
       declare
          Page_Size, Page_Offset : Natural;
-         Page : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
+         Page_Unused : Integer := Page_Parameters(Params, Page_Size, Page_Offset);
 
          Total_Count : Natural;
          Found_Posts : Post_List := Database.Search_Posts(Query, Flag, Author,
@@ -192,7 +192,7 @@ package body Posts is
 
             declare
                Total_Replies : Integer;
-               Searched_Replies : Post_List := Database.Post_Replies(Found_Posts.Element.Id, 0, 0, Total_Replies);
+               Searched_Replies_Unused : Post_List := Database.Post_Replies(Found_Posts.Element.Id, 0, 0, Total_Replies);
             begin
                Post_Replies := @ & Total_Replies;
             end;

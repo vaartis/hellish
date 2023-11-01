@@ -1,5 +1,3 @@
-with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-
 with Gnatcoll.Sql.Exec; use Gnatcoll.Sql.Exec;
 with Gnatcoll.Sql.Postgres; use Gnatcoll.Sql.Postgres;
 with Gnatcoll.Sql.Sessions; use Gnatcoll.Sql.Sessions;

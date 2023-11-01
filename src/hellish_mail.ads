@@ -1,8 +1,7 @@
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Containers.Indefinite_Holders;
 
-with Aws.Smtp, Aws.Smtp.Client;
-use Aws.Smtp;
+with Aws.Smtp; use Aws.Smtp;
 
 with Markdown; use Markdown;
 

@@ -53,6 +53,8 @@ package Hellish_Web.Database is
                                   Offset : Integer;
                                   Limit : Integer;
                                   Total_Count : out Integer) return Torrent_Group_List;
+   function Get_Latest_Torrents return Torrent_List;
+   function Get_Most_Snatched_Torrents return Direct_Torrent_List;
 
    function Create_Invite(From_User : Detached_User'Class) return String;
    function Invite_Valid(Invite : String) return Boolean;

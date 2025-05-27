@@ -9,6 +9,56 @@
          padding-top: 30px;
      }
 
+     .current-info-box {
+         padding-top: 30px;
+         float: left;
+         max-width: 15%;
+
+         .latest-header {
+             margin-top: 1em;
+             margin-bottom: 0.5em;
+         }
+         .latest-uploads {
+             display: grid;
+             grid-template-columns: 50% 50%;
+             column-gap: 1em;
+             row-gap: 0.5em;
+         }
+
+         .latest-upload {
+             position: relative;
+         }
+
+         .latest-name {
+             position: absolute;
+             top: 0;
+             bottom: 0;
+             left: 0;
+             right: 0;
+             background: color-mix(in srgb, var(--panel-color) 80%, transparent);
+
+             visibility: hidden;
+             opacity: 0;
+             transition: opacity .2s, visibility .2s;
+         }
+         .latest-name-text {
+             margin-left: 0.1em;
+             display: block;
+         }
+
+         .latest-upload:hover .latest-name {
+             visibility: visible;
+             opacity: 1;
+         }
+
+         img {
+             width: 100%;
+             height: 10em;
+
+             object-fit: cover;
+         }
+     }
+
      .news-box {
          position: absolute;
          left: 50%;
@@ -32,13 +82,43 @@
 <body>
     @@INCLUDE@@ navbar.html
 
-    <aside class="content">
+    <aside class="current-info-box">
         <p>
             Current seeders: <b>@_current_seeders_@</b>
         </p>
         <p>
             Current leechers: <b>@_current_leechers_@</b>
         </p>
+
+        <hr>
+        <h2 class="latest-header">Latest</h2>
+
+        <div class="latest-uploads">
+            @@TABLE@@
+            <div class="latest-upload">
+                <img src="@_latest_image_@">
+                <a href="/view/@_latest_id_@">
+                    <div class="latest-name">
+                        <b class="latest-name-text">@_latest_display_name_@</b>
+                    </div>
+                </a>
+            </div>
+            @@END_TABLE@@
+        </div>
+
+        <h2 class="latest-header">Popular</h2>
+        <div class="latest-uploads">
+            @@TABLE@@
+            <div class="latest-upload">
+                <img src="@_popular_image_@">
+                <a href="/view/@_popular_id_@">
+                    <div class="latest-name">
+                        <b class="latest-name-text">@_popular_display_name_@</b>
+                    </div>
+                </a>
+            </div>
+            @@END_TABLE@@
+        </div>
     </aside>
 
     <main class="content">

@@ -725,6 +725,11 @@ package body Hellish_Web.Routes is
       declare
          Latest_News : Detached_Post'Class := Database.Get_Latest_News;
          News_Author : Detached_User'Class := No_Detached_User;
+
+         Latest_Torrents : Torrent_List := Database.Get_Latest_Torrents;
+         Latest_Names, Latest_Images, Latest_Ids : Vector_Tag;
+         Snatched_Torrents : Direct_Torrent_List := Database.Get_Most_Snatched_Torrents;
+         Snatched_Names, Snatched_Images, Snatched_Ids : Vector_Tag;
       begin
          if Latest_News /= Detached_Post'Class(No_Detached_Post) then
             News_Author := Database.Get_User(Latest_News.By_User);
@@ -733,6 +738,44 @@ package body Hellish_Web.Routes is
             Insert(Translations, Assoc("news_content", Process_Content(Latest_News.Content)));
             Insert(Translations, Assoc("news_author", News_Author.Username));
          end if;
+
+         while Latest_Torrents.Has_Row loop
+            declare
+               use Gnatcoll.Json;
+
+               Meta_Json : JSON_Value := Read(Latest_Torrents.Element.Meta);
+               Meta_Img : String := Meta_Json.Get("image");
+            begin
+               Latest_Names := @ & Latest_Torrents.Element.Display_Name;
+               Latest_Images := @ & Meta_Img;
+               Latest_Ids := @ & Latest_Torrents.Element.Id;
+
+               Latest_Torrents.Next;
+            end;
+         end loop;
+
+         Insert(Translations, Assoc("latest_display_name", Latest_Names));
+         Insert(Translations, Assoc("latest_image", Latest_Images));
+         Insert(Translations, Assoc("latest_id", Latest_Ids));
+
+         while Snatched_Torrents.Has_Row loop
+            declare
+               use Gnatcoll.Json;
+
+               Meta_Json : JSON_Value := Read(Snatched_Torrents.Element.Meta);
+               Meta_Img : String := Meta_Json.Get("image");
+            begin
+               Snatched_Names := @ & Snatched_Torrents.Element.Display_Name;
+               Snatched_Images := @ & Meta_Img;
+               Snatched_Ids := @ & Snatched_Torrents.Element.Id;
+
+               Snatched_Torrents.Next;
+            end;
+         end loop;
+
+         Insert(Translations, Assoc("popular_display_name", Snatched_Names));
+         Insert(Translations, Assoc("popular_image", Snatched_Images));
+         Insert(Translations, Assoc("popular_id", Snatched_Ids));
       end;
 
       return Response.Build(Mime.Text_Html,

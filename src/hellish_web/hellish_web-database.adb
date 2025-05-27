@@ -8,7 +8,7 @@ with Gnatcoll.Json,
      Gnatcoll.Tribooleans;
 use Gnatcoll.Tribooleans;
 --  Gnatcoll.Traces,
-with Gnatcoll.Sql, Gnatcoll.Sql.Inspect; use Gnatcoll.Sql, Gnatcoll.Sql.Inspect;
+with Gnatcoll.Sql, Gnatcoll.Sql.Inspect, GNATCOLL.SQL_Impl; use Gnatcoll.Sql, Gnatcoll.Sql.Inspect;
 use type Gnatcoll.Sql.Text_Fields.Field, Gnatcoll.Sql.Integer_Fields.Field;
 
 with Aws.Smtp;
@@ -426,6 +426,39 @@ package body Hellish_Web.Database is
          Result_List.Fetch (Session.Db, Search_Query, Params);
       end return;
    end Search_Torrents;
+
+   Get_Latest_Torrents_Begin : aliased constant String := "STARTS_WITH(";
+   Get_Latest_Torrents_End   : aliased constant String := "->>'image', '/uploads/images/')";
+   function Get_Latest_Torrents return Torrent_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      Newest_With_Image_Criteria : Sql_Criteria :=
+        GNATCOLL.SQL_Impl.Compare1 (Torrents.Meta, Get_Latest_Torrents_Begin'Access, Get_Latest_Torrents_End'Access);
+   begin
+      return All_Torrents.Limit (6).Order_By (Desc (Torrents.Id)).Filter (Newest_With_Image_Criteria).Get (Session);
+   end Get_Latest_Torrents;
+   function Get_Most_Snatched_Torrents return Direct_Torrent_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+
+      Newest_With_Image_Criteria : Sql_Criteria :=
+        GNATCOLL.SQL_Impl.Compare1 (Torrents.Meta, Get_Latest_Torrents_Begin'Access, Get_Latest_Torrents_End'Access);
+      Search_Query               : SQL_Query :=
+        Sql_Select
+          (From     => Left_Join (Torrents, User_Torrent_Stats, Torrents.Id = User_Torrent_Stats.Of_Torrent),
+           Fields   => From_String ("torrents.*"),
+           Where    => (User_Torrent_Stats.Snatched = True) and Newest_With_Image_Criteria,
+           Group_By => Torrents.Id,
+           Limit => 6,
+           Order_By => Desc (Apply (Func_Count, User_Torrent_Stats.Snatched)));
+   begin
+      return Result_List : Direct_Torrent_List do
+         Result_List.Fetch (Session.Db, Search_Query);
+      end return;
+   end Get_Most_Snatched_Torrents;
 
    procedure Delete_Torrent (Id : Integer) is
       use Hellish_Database;

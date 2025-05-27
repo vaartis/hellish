@@ -203,7 +203,8 @@ begin
 
       Decoded_Info := Bencode_Dict(Decoded.Value(To_Unbounded_String("info")).Element.Element);
 
-      if Bencode_Integer(Decoded_Info.Value(To_Unbounded_String("private")).Element.Element).Value /= 1 then
+      if not Decoded_Info.Value.Contains(To_Unbounded_String("private"))
+         or else Bencode_Integer(Decoded_Info.Value(To_Unbounded_String("private")).Element.Element).Value /= 1 then
          Decoded_Info.Include("private", Encode(Natural'(1)));
          Decoded.Include("info", Bencode_Value_Holders.To_Holder(Decoded_Info));
          Error_String := To_Unbounded_String("The torrent wasn't set as private, you have to redownload it from this page for it to work.");

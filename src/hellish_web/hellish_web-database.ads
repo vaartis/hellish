@@ -56,9 +56,13 @@ package Hellish_Web.Database is
    function Get_Latest_Torrents return Torrent_List;
    function Get_Most_Snatched_Torrents return Direct_Torrent_List;
 
-   function Create_Invite(From_User : Detached_User'Class) return String;
+   function Get_User_Invites(From_User : Detached_User'Class) return Invite_List;
+   procedure Create_Invite(From_User : Detached_User'Class);
    function Invite_Valid(Invite : String) return Boolean;
    procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class);
+   procedure Invite_Revoke(From_User : Detached_User'Class; Invite : String);
+   Expire_Time : constant Duration := Duration(60 * 60 * 24 * 3);
+   procedure Invite_Prune;
 
    procedure Create_Post(The_Post : in out Detached_Post'Class);
    function Get_Post(Id : Integer) return Detached_Post'Class;

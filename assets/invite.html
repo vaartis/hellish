@@ -29,6 +29,17 @@
          padding-bottom: 10px;
      }
 
+     .invite-table {
+         margin-top: 1em;
+         margin-bottom: 1em;
+
+         max-width: 50%;
+         display: grid;
+         grid-template-columns: 70% 15% 15%;
+         column-gap: 1em;
+         row-gap: 0.5em;
+     }
+
      .page-container {
          padding-left: 3em;
          padding-top: 3em;
@@ -48,11 +59,16 @@
     @@INCLUDE@@ navbar.html
 
     <div class="page-container">
-        <h2>Your current invite code</h2>
-        <span class="invite-code">@_invite_@</span>
-        <p>
-            After someone uses this code for registration, you will get a new one.
-        </p>
+        <h2>Your current invite codes. You can have up to 3 unused invites at a time.</h2>
+
+        <div class="invite-table">
+            @@TABLE@@
+            <div class="invite-code">@_invite_string_@</div>
+            <div class="invite-code">@_invite_expiration_@</div>
+            <a href="/confirm?action=revoke an invite&ok=/api/invite/revoke?invite=@_invite_string_@">Revoke</a>
+            @@END_TABLE@@
+        </div>
+        <a href="/api/invite/new">Request a new invite</a>
 
         <h2>Users you have invited</h2>
         <table class="invited-box hellish-results-table">

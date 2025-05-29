@@ -53,7 +53,7 @@ package Orm is
    No_Image_Upload : constant Image_Upload;
 
    type Invite is new Orm_Element with null record;
-   type Invite_DDR is new Detached_Data (7) with private;
+   type Invite_DDR is new Detached_Data (8) with private;
    type Detached_Invite is  --  Get() returns a Invite_DDR
    new Sessions.Detached_Element with private;
    type Detached_Invite_Access is access all Detached_Invite'Class;
@@ -331,6 +331,10 @@ package Orm is
    function By_User (Self : Invite) return User'Class;
    function By_User (Self : Detached_Invite) return Detached_User'Class;
    procedure Set_By_User (Self : Detached_Invite; Value : Detached_User'Class);
+
+   function Created_At (Self : Invite) return Ada.Calendar.Time;
+   function Created_At (Self : Detached_Invite) return Ada.Calendar.Time;
+   procedure Set_Created_At (Self : Detached_Invite; Value : Ada.Calendar.Time);
 
    function For_User (Self : Invite) return Integer;
    function For_User (Self : Detached_Invite) return Integer;
@@ -951,12 +955,13 @@ package Orm is
    ----------------------
 
    function Filter
-     (Self      : Invites_Managers'Class;
-      Id        : Integer := -1;
-      Value     : String := No_Update;
-      Activated : Triboolean := Indeterminate;
-      By_User   : Integer := -1;
-      For_User  : Integer := -1)
+     (Self       : Invites_Managers'Class;
+      Id         : Integer := -1;
+      Value      : String := No_Update;
+      Activated  : Triboolean := Indeterminate;
+      By_User    : Integer := -1;
+      For_User   : Integer := -1;
+      Created_At : Ada.Calendar.Time := No_Time)
      return Invites_Managers;
 
    function Get_Invite
@@ -1211,14 +1216,15 @@ private
     end record;
     type Image_Upload_Data is access all Image_Upload_DDR;
     
-    type Invite_DDR is new Detached_Data (7) with record
-       ORM_Activated    : Boolean := False;
-       ORM_By_User      : Integer := -1;
-       ORM_FK_By_User   : Detached_User_Access := null;
-       ORM_FK_For_User  : Detached_User_Access := null;
-       ORM_For_User     : Integer := -1;
-       ORM_Id           : Integer := -1;
-       ORM_Value        : Unbounded_String := Null_Unbounded_String;
+    type Invite_DDR is new Detached_Data (8) with record
+       ORM_Activated     : Boolean := False;
+       ORM_By_User       : Integer := -1;
+       ORM_Created_At    : Ada.Calendar.Time := Clock;
+       ORM_FK_By_User    : Detached_User_Access := null;
+       ORM_FK_For_User   : Detached_User_Access := null;
+       ORM_For_User      : Integer := -1;
+       ORM_Id            : Integer := -1;
+       ORM_Value         : Unbounded_String := Null_Unbounded_String;
     end record;
     type Invite_Data is access all Invite_DDR;
     

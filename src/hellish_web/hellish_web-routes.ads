@@ -184,6 +184,7 @@ private
    type Api_Delete_Handler is new Dispatchers.Handler with null record;
    type Api_Subscribe_Handler is new Dispatchers.Handler with null record;
    type Api_Notifications_Clear_Handler is new Dispatchers.Handler with null record;
+   type Api_Invite_New_Handler is new Dispatchers.Handler with null record;
 
    overriding function Dispatch(Handler : in Api_Upload_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_User_Register_Handler; Request : in Status.Data) return Response.Data;
@@ -192,6 +193,7 @@ private
    overriding function Dispatch(Handler : in Api_Delete_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_Subscribe_Handler; Request : in Status.Data) return Response.Data;
    overriding function Dispatch(Handler : in Api_Notifications_Clear_Handler; Request : in Status.Data) return Response.Data;
+   overriding function Dispatch(Handler : in Api_Invite_New_Handler; Request : in Status.Data) return Response.Data;
 
    overriding function Clone(Element : in Api_Upload_Handler) return Api_Upload_Handler is (Element);
    overriding function Clone(Element : in Api_User_Register_Handler) return Api_User_Register_Handler is (Element);
@@ -200,6 +202,7 @@ private
    overriding function Clone(Element : in Api_Delete_Handler) return Api_Delete_Handler is (Element);
    overriding function Clone(Element : in Api_Subscribe_Handler) return Api_Subscribe_Handler is (Element);
    overriding function Clone(Element : in Api_Notifications_Clear_Handler) return Api_Notifications_Clear_Handler is (Element);
+   overriding function Clone(Element : in Api_Invite_New_Handler) return Api_Invite_New_Handler is (Element);
 
    Api_Upload : Api_Upload_Handler;
    Api_User_Register : Api_User_Register_Handler;
@@ -208,6 +211,8 @@ private
    Api_Delete : Api_Delete_Handler;
    Api_Subscribe : Api_Subscribe_Handler;
    Api_Notifications_Clear : Api_Notifications_Clear_Handler;
+   Api_Invite_New : Api_Invite_New_Handler;
+
 
    -- Uploads
 

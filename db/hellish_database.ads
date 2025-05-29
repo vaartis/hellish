@@ -57,6 +57,7 @@ package Hellish_Database is
       Activated : SQL_Field_Boolean (Ta_Invites, Instance, N_Activated, Index);
       By_User : SQL_Field_Integer (Ta_Invites, Instance, N_By_User, Index);
       For_User : SQL_Field_Integer (Ta_Invites, Instance, N_For_User, Index);
+      Created_At : SQL_Field_Time (Ta_Invites, Instance, N_Created_At, Index);
    end record;
 
    type T_Invites (Instance : Cst_String_Access)

@@ -31,12 +31,13 @@
 | snatched   | BOOLEAN                 | NOT NULL            | FALSE |   |
 
 
-| TABLE     | invites              | invite                  |   |   |
-| id        | AUTOINCREMENT        | PK                      |   |   |
-| value     | TEXT                 | NOT NULL, UNIQUE, INDEX |   |   |
-| activated | BOOLEAN              | NOT NULL                |   |   |
-| by_user   | FK users(invites)    | NOT NULL                |   |   |
-| for_user  | FK users(invited_by) | UNIQUE                  |   |   |
+| TABLE      | invites              | invite                  |       |   |
+| id         | AUTOINCREMENT        | PK                      |       |   |
+| value      | TEXT                 | NOT NULL, UNIQUE, INDEX |       |   |
+| activated  | BOOLEAN              | NOT NULL                |       |   |
+| by_user    | FK users(invites)    | NOT NULL                |       |   |
+| for_user   | FK users(invited_by) | UNIQUE                  |       |   |
+| created_at | TIMESTAMP            | NOT NULL                | now() |   |
 
 | TABLE          | posts                    | post     |      |                                               |
 | id             | AUTOINCREMENT            | PK       |      |                                               |

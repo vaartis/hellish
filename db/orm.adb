@@ -46,13 +46,14 @@ package body Orm is
    F_Image_Uploads_Filename : constant := 2;
    Upto_Image_Uploads_0 : constant Counts := ((3,3),(3,3),(3,3),(3,3));
    Alias_Image_Uploads : constant Alias_Array := (-1,2,-1);
-   F_Invites_Id        : constant := 0;
-   F_Invites_Value     : constant := 1;
-   F_Invites_Activated : constant := 2;
-   F_Invites_By_User   : constant := 3;
-   F_Invites_For_User  : constant := 4;
-   Upto_Invites_0 : constant Counts := ((5,5),(5,5),(5,5),(5,5));
-   Upto_Invites_1 : constant Counts := ((5,5),(13,13),(13,13),(13,13));
+   F_Invites_Id         : constant := 0;
+   F_Invites_Value      : constant := 1;
+   F_Invites_Activated  : constant := 2;
+   F_Invites_By_User    : constant := 3;
+   F_Invites_For_User   : constant := 4;
+   F_Invites_Created_At : constant := 5;
+   Upto_Invites_0 : constant Counts := ((6,6),(6,6),(6,6),(6,6));
+   Upto_Invites_1 : constant Counts := ((6,6),(14,14),(14,14),(14,14));
    Alias_Invites : constant Alias_Array := (-1,3,4,-1,0);
    F_Irc_Channels_Id   : constant := 0;
    F_Irc_Channels_Name : constant := 1;
@@ -821,6 +822,24 @@ package body Orm is
    begin
       return To_String (Post_Data (Self.Unchecked_Get).ORM_Content);
    end Content;
+
+   ----------------
+   -- Created_At --
+   ----------------
+
+   function Created_At (Self : Invite) return Ada.Calendar.Time is
+   begin
+      return Time_Value (Self, F_Invites_Created_At);
+   end Created_At;
+
+   ----------------
+   -- Created_At --
+   ----------------
+
+   function Created_At (Self : Detached_Invite) return Ada.Calendar.Time is
+   begin
+      return Invite_Data (Self.Unchecked_Get).ORM_Created_At;
+   end Created_At;
 
    ----------------
    -- Created_By --
@@ -2418,7 +2437,7 @@ package body Orm is
    begin
       if Result.Is_Null then
          Result.Set (Invite_DDR'
-              (Detached_Data with Field_Count => 7, others => <>));
+              (Detached_Data with Field_Count => 8, others => <>));
       end if;
 
       Tmp := Invite_Data (Result.Unchecked_Get);
@@ -2434,13 +2453,14 @@ package body Orm is
 
       end if;
 
-      Tmp.ORM_Activated    := Boolean_Value (Self, F_Invites_Activated);
-      Tmp.ORM_By_User      := Integer_Value (Self, F_Invites_By_User);
-      Tmp.ORM_FK_By_User   := FK_By_User;
-      Tmp.ORM_FK_For_User  := FK_For_User;
-      Tmp.ORM_For_User     := Integer_Value (Self, F_Invites_For_User);
-      Tmp.ORM_Id           := Integer_Value (Self, F_Invites_Id);
-      Tmp.ORM_Value        := To_Unbounded_String (String_Value (Self, F_Invites_Value));
+      Tmp.ORM_Activated     := Boolean_Value (Self, F_Invites_Activated);
+      Tmp.ORM_By_User       := Integer_Value (Self, F_Invites_By_User);
+      Tmp.ORM_Created_At    := Time_Value (Self, F_Invites_Created_At);
+      Tmp.ORM_FK_By_User    := FK_By_User;
+      Tmp.ORM_FK_For_User   := FK_For_User;
+      Tmp.ORM_For_User      := Integer_Value (Self, F_Invites_For_User);
+      Tmp.ORM_Id            := Integer_Value (Self, F_Invites_Id);
+      Tmp.ORM_Value         := To_Unbounded_String (String_Value (Self, F_Invites_Value));
       Session.Persist (Result);
       return Result;
    end Detach_No_Lookup;
@@ -2819,7 +2839,8 @@ package body Orm is
          & Table.Value
          & Table.Activated
          & Table.By_User
-         & Table.For_User;
+         & Table.For_User
+         & Table.Created_At;
       end if;
       From := Empty_Table_List;
       if Depth > 0 then
@@ -3348,12 +3369,13 @@ package body Orm is
    ------------
 
    function Filter
-     (Self      : Invites_Managers'Class;
-      Id        : Integer := -1;
-      Value     : String := No_Update;
-      Activated : Triboolean := Indeterminate;
-      By_User   : Integer := -1;
-      For_User  : Integer := -1)
+     (Self       : Invites_Managers'Class;
+      Id         : Integer := -1;
+      Value      : String := No_Update;
+      Activated  : Triboolean := Indeterminate;
+      By_User    : Integer := -1;
+      For_User   : Integer := -1;
+      Created_At : Ada.Calendar.Time := No_Time)
      return Invites_Managers
    is
       C      : Sql_Criteria := No_Criteria;
@@ -3373,6 +3395,9 @@ package body Orm is
       end if;
       if For_User /= -1 then
          C := C and DBA.Invites.For_User = For_User;
+      end if;
+      if Created_At /= No_Time then
+         C := C and DBA.Invites.Created_At = Created_At;
       end if;
       Copy(Self.Filter(C), Into => Result);
       return Result;
@@ -4321,6 +4346,9 @@ package body Orm is
                A := A & (DBA.Invites.For_User = D2.ORM_Id);
             end;
          end if;
+      end if;
+      if Mask (6) then
+         A := A & (DBA.Invites.Created_At = D.ORM_Created_At);
       end if;
       if Missing_PK then
          Q := SQL_Insert (A);
@@ -5622,6 +5650,18 @@ package body Orm is
       D.ORM_Content := To_Unbounded_String (Value);
       Self.Set_Modified (3);
    end Set_Content;
+
+   --------------------
+   -- Set_Created_At --
+   --------------------
+
+   procedure Set_Created_At (Self : Detached_Invite; Value : Ada.Calendar.Time)
+   is
+      D : constant Invite_Data := Invite_Data (Self.Unchecked_Get);
+   begin
+      D.ORM_Created_At := Value;
+      Self.Set_Modified (6);
+   end Set_Created_At;
 
    --------------------
    -- Set_Created_By --

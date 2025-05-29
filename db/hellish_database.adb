@@ -94,6 +94,7 @@ package body Hellish_Database is
          & "|activated|boolean|NOT NULL||" & ASCII.LF
          & "|by_user|FK users|NOT NULL||" & ASCII.LF
          & "|for_user|FK users|,UNIQUE||" & ASCII.LF
+         & "|created_at|timestamp with time zone|NOT NULL|now()|" & ASCII.LF
          & "" & ASCII.LF
          & "|TABLE| posts" & ASCII.LF
          & "|id|AUTOINCREMENT|PK||" & ASCII.LF

@@ -1,3 +1,5 @@
+with Ada.Calendar;
+--with Ada.Characters; with Ada.Characters.Latin_1;
 with Ada.Text_Io;           use Ada.Text_Io;
 with Ada.Strings.Fixed;     use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
@@ -19,7 +21,7 @@ with Hellish_Database;
 with Hellish_Mail;
 
 package body Hellish_Web.Database is
-   Latest_Version : Natural := 10;
+   Latest_Version : Natural := 11;
 
    procedure Migrate (Session : Session_Type) is
       Cur : Direct_Cursor;
@@ -571,15 +573,26 @@ package body Hellish_Web.Database is
       return The_Query_Managers.Get (Session, Params => Params);
    end Search_Torrent_Groups;
 
-   function Create_Invite (From_User : Detached_User'Class) return String is
+   function Get_User_Invites(From_User : Detached_User'Class) return Invite_List is
+      Session : Session_Type := Get_New_Session;
+      Manager : Invites_Managers := All_Invites.Filter (By_User => From_User.Id, Activated => To_Triboolean (False));
+   begin
+      Return Manager.Get(Session);
+   end Get_User_Invites;
+
+   procedure Create_Invite (From_User : Detached_User'Class) is
       use Sodium.Functions;
 
       Session : Session_Type := Get_New_Session;
-      Manager : Invites_Managers := All_Invites.Filter (By_User => From_User.Id, Activated => To_Triboolean (False));
-      List    : Invite_List := Manager.Get (Session);
+      Count_Query : Sql_Query := Sql_Select(
+        From => Hellish_Database.Invites,
+        Fields => Apply (Func_Count, Hellish_Database.Invites.Id),
+        Where => (Hellish_Database.Invites.By_User = From_User.Id) and (Hellish_Database.Invites.Activated = False));
+      Count_Cur   : Direct_Cursor;
    begin
-      if List.Has_Row then
-         return List.Element.Value;
+      Count_Cur.Fetch (Session.Db, Count_Query);
+      if Count_Cur.Integer_Value (0) = 3 then
+         return;
       end if;
 
       declare
@@ -592,7 +605,7 @@ package body Hellish_Web.Database is
          Session.Persist (The_Invite);
          Session.Commit;
 
-         return The_Invite.Value;
+         return; -- The_Invite.Value;
       end;
    end Create_Invite;
 
@@ -608,7 +621,7 @@ package body Hellish_Web.Database is
       return False;
    end Invite_Valid;
 
-   procedure Invite_Use (Invite : String; Invited_User : Detached_User'Class) is
+   procedure Invite_Use(Invite : String; Invited_User : Detached_User'Class) is
       Session : Session_Type := Get_New_Session;
 
       Manager : Invites_Managers := All_Invites.Filter (Value => Invite);
@@ -625,6 +638,29 @@ package body Hellish_Web.Database is
          end;
       end if;
    end Invite_Use;
+
+   procedure Invite_Revoke(From_User: Detached_User'Class; Invite : String) is
+      Session : Session_Type := Get_New_Session;
+      Query : SQL_Query := SQL_Delete(
+        From => Hellish_Database.Invites,
+        Where => (Hellish_Database.Invites.Value = Invite and Hellish_Database.Invites.By_User = From_User.Id));
+   begin
+      Session.Db.Execute(Query);
+      Session.Commit;
+   end Invite_Revoke;
+
+   procedure Invite_Prune is
+      use Ada.Calendar;
+
+      Session : Session_Type     := Get_New_Session;
+      -- Approximately 3 days
+      Expiry_Date : Time := Clock - Expire_Time;
+      Query : SQL_Query := SQL_Delete
+        (From => Hellish_Database.Invites, Where => (Hellish_Database.Invites.Created_At < Expiry_Date));
+   begin
+      Session.Db.Execute(Query);
+      Session.Commit;
+   end Invite_Prune;
 
    procedure Create_Post (The_Post : in out Detached_Post'Class) is
       Session : Session_Type := Get_New_Session;

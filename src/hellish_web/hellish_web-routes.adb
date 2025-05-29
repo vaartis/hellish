@@ -59,7 +59,8 @@ with
 with
   Hellish_Web.Bencoder,
   Hellish_Web.Peers,
-  Hellish_Web.Database;
+  Hellish_Web.Database,
+  Hellish_Web.Jobs;
 with Hellish_Irc;
 with Hellish_Mail;
 
@@ -1195,17 +1196,33 @@ package body Hellish_Web.Routes is
       end if;
 
       declare
-         The_User : Detached_User'Class := Database.Get_User(Username);
-         The_Invite : String := Database.Create_Invite(The_User);
+         use Ada.Calendar; use Ada.Calendar.Time_Zones;
 
+         The_User : Detached_User'Class := Database.Get_User(Username);
+
+         Existing_Invites : Invite_List := Database.Get_User_Invites(The_User);
          Invited_Users : Invite_List := Database.Get_Invited_Users(The_User);
 
          Translations : Translate_Set;
          Invited_User : Detached_User'Class := No_Detached_User;
 
+         Invites_Strings, Invites_Expiration : Vector_Tag;
          Invited_User_Names, Invited_User_Ul, Invited_User_Dl : Vector_Tag;
       begin
-         Insert(Translations, Assoc("invite", The_Invite));
+         while Existing_Invites.Has_Row loop
+            declare
+               Difference_Seconds : Natural := Natural(
+                 (Existing_Invites.Element.Created_At + Hellish_Web.Database.Expire_Time) - Clock - Duration(Utc_Time_Offset * 60));
+               Difference_Days : Natural := Difference_Seconds / (60 * 60 * 24);
+               Difference_Hours : Natural := (Difference_Seconds - (Difference_Days * 60 * 60 * 24)) / (60 * 60);
+            begin
+               Invites_Strings := @ & Existing_Invites.Element.Value;
+               Invites_Expiration := @ & (Difference_Days'Image & " days " & Difference_Hours'Image & " hours");
+               Existing_Invites.Next;
+            end;
+         end loop;
+         Insert(Translations, Assoc("invite_string", Invites_Strings));
+         Insert(Translations, Assoc("invite_expiration", Invites_Expiration));
 
          while Invited_Users.Has_row loop
             Invited_User := Invited_Users.Element.For_User.Detach;
@@ -1319,7 +1336,7 @@ package body Hellish_Web.Routes is
             begin
                if Email /= "" then
                   if Profile_Email.Has_Field("unconfirmed_address") and then (Email = String'(Profile_Email.Get("unconfirmed_address")))
-                    and then Email_Confirmation /= "" then
+                     and then Email_Confirmation /= "" then
                      if Email_Confirmation = String'(Profile_Email.Get("confirmation_code")) then
                         Profile_Email.Unset_Field("unconfirmed_address");
                         Profile_Email.Unset_Field("confirmation_code");
@@ -1327,8 +1344,8 @@ package body Hellish_Web.Routes is
                      else
                         return Referer_With_Error(Request, "Wrong confirmation code");
                      end if;
-                  elsif (Profile_Email.Has_Field("address") and then not (Profile_Email.Get("address") = Email))
-                    or else not Profile_Email.Has_Field("address") then
+                  elsif (Profile_Email.Has_Field("address") and then not (String'(Profile_Email.Get("address")) = Email))
+                        or else not Profile_Email.Has_Field("address") then
                      declare
                         New_Confirmation_Code : String := As_Hexidecimal(Random_Hash_Key(16));
                      begin
@@ -1690,6 +1707,29 @@ package body Hellish_Web.Routes is
       return Response.Url(Location => Status.Header(Request).Get_Values("Referer"));
    end Dispatch;
 
+   overriding function Dispatch(Handler : in Api_Invite_New_Handler;
+                                Request : in Status.Data) return Response.Data is
+      Session_Id : Session.Id := Request_Session(Request);
+      Username : String := Session.Get(Session_Id, "username");
+
+      Params : Parameters.List := Status.Parameters(Request);
+   begin
+      if not Database.User_Exists(Username) then
+         return Response.Acknowledge(Messages.S403, "Forbidden");
+      end if;
+      declare
+         The_User : Detached_User'Class := Database.Get_User(Username);
+      begin
+         if Status.URI(Request) = "/api/invite/new" then
+            Database.Create_Invite(The_User);
+         elsif Status.URI(Request) = "/api/invite/revoke" then
+            Database.Invite_Revoke(The_User, Params.Get("invite"));
+         end if;
+      end;
+
+      return Response.Url(Location => "/invite");
+   end Dispatch;
+
    -- Uploads
 
    Uploads_Images_Matcher : constant Pattern_Matcher := Compile("/uploads/images/(\w+\.\w+)");
@@ -1810,6 +1850,8 @@ package body Hellish_Web.Routes is
       Services.Dispatchers.Uri.Register(Root, "/api/subscribe", Api_Subscribe);
       Services.Dispatchers.Uri.Register(Root, "/api/notifications/clear", Api_Notifications_Clear);
       Services.Dispatchers.Uri.Register(Root, "/api/group/create", Groups.Api_Group_Create);
+      Services.Dispatchers.Uri.Register(Root, "/api/invite/new", Api_Invite_New);
+      Services.Dispatchers.Uri.Register(Root, "/api/invite/revoke", Api_Invite_New);
 
       -- Uploads
 
@@ -1820,6 +1862,7 @@ package body Hellish_Web.Routes is
 
       Hellish_Irc.Start;
       Hellish_Mail.Start;
+      Jobs.Start;
 
       Put_Line("Started on http://" & Aws.Config.Server_Host(Conf)
                  -- Trim the number string on the left because it has a space for some reason

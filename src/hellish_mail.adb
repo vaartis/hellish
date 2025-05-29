@@ -1,13 +1,13 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Task_Termination; use Ada.Task_Termination;
-with Ada.Task_Identification; use Ada.Task_Identification;
-with Ada.Exceptions; use Ada.Exceptions;
 
 with
   Aws.Attachments,
   Aws.Mime,
   Aws.Smtp.Client;
 use Aws.Attachments;
+
+with Hellish_Termination_Handler; use Hellish_Termination_Handler;
 
 package body Hellish_Mail is
    procedure Send(To : E_Mail_Data; Subject, Message : String) is
@@ -67,23 +67,8 @@ package body Hellish_Mail is
       end loop;
    end Process_Emails;
 
-   protected Handlers is
-      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
-                                    Id : Task_Id;
-                                    E : Exception_Occurrence);
-   end Handlers;
-   protected body Handlers is
-      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
-                                    Id : Task_Id;
-                                    E : Exception_Occurrence) is
-      begin
-         Put_Line("!! TASK CRASHED " & Image(Id));
-         Put_Line(Exception_Information(E));
-      end Termination_Handler;
-   end Handlers;
-
    procedure Start is
    begin
-      Set_Specific_Handler(Process_Emails'Identity, Handlers.Termination_Handler'Access);
+      Set_Specific_Handler(Process_Emails'Identity, Termination_Handlers.Termination_Handler'Access);
    end;
 end Hellish_Mail;

@@ -30,6 +30,7 @@ with
 
 with Hellish_Web.Routes;
 with Hellish_Web.Database;
+with Hellish_Termination_Handler; use Hellish_Termination_Handler;
 use Hellish_Web;
 
 with Lexbor;
@@ -1238,20 +1239,9 @@ package body Hellish_Irc is
    end;
 
    protected Handlers is
-      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
-                                    Id : Task_Id;
-                                    E : Exception_Occurrence);
       procedure Reload_Handler;
    end Handlers;
    protected body Handlers is
-      procedure Termination_Handler(Unused_Cause : Cause_Of_Termination;
-                                    Id : Task_Id;
-                                    E : Exception_Occurrence) is
-      begin
-         Put_Line("!! TASK CRASHED " & Image(Id));
-         Put_Line(Exception_Information(E));
-      end Termination_Handler;
-
       procedure Reload_Handler is
       begin
          Put_Line("!! Reloading certificates");
@@ -1275,9 +1265,9 @@ package body Hellish_Irc is
       Bind_Socket(Socket, Addr);
       Listen_Socket(Socket, Queue_Size);
 
-      Set_Specific_Handler(Accept_Connections'Identity, Handlers.Termination_Handler'Access);
-      Set_Specific_Handler(Process_Connections'Identity, Handlers.Termination_Handler'Access);
-      Set_Specific_Handler(Link_Preview'Identity, Handlers.Termination_Handler'Access);
+      Set_Specific_Handler(Accept_Connections'Identity, Termination_Handlers.Termination_Handler'Access);
+      Set_Specific_Handler(Process_Connections'Identity, Termination_Handlers.Termination_Handler'Access);
+      Set_Specific_Handler(Link_Preview'Identity, Termination_Handlers.Termination_Handler'Access);
 
       Protected_Clients.Load_Persisted_Channels;
       Accept_Connections.Start;
@@ -1300,7 +1290,7 @@ package body Hellish_Irc is
             Bind_Socket(Socket_Ssl, Addr_Ssl);
             Listen_Socket(Socket_Ssl, Queue_Size);
 
-            Set_Specific_Handler(Accept_Connections_Ssl'Identity, Handlers.Termination_Handler'Access);
+            Set_Specific_Handler(Accept_Connections_Ssl'Identity, Termination_Handlers.Termination_Handler'Access);
             Accept_Connections_Ssl.Start;
 
             Put_Line("Started SSL IRC server on " & Irc_Host.Element & ":" & Trim(Port_Ssl'Image, Ada.Strings.Left));

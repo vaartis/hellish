@@ -1,7 +1,6 @@
 pragma Unsuppress(All_Checks);
 
 with Ada.Task_Termination; use Ada.Task_Termination;
-with Ada.Task_Identification; use Ada.Task_Identification;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Text_Io.Unbounded_Io; use Ada.Text_Io.Unbounded_Io;
@@ -31,12 +30,14 @@ with
 with Hellish_Web.Routes;
 with Hellish_Web.Database;
 with Hellish_Termination_Handler; use Hellish_Termination_Handler;
-use Hellish_Web;
+use Hellish_Web.String_Holders;
 
 with Lexbor;
 
 with Interfaces.C; use Interfaces.C;
 with Interfaces.C.Strings; use Interfaces.C.Strings;
+
+with Sodium.Functions; use Sodium.Functions;
 
 package body Hellish_Irc is
    package body Ssl is separate;
@@ -841,6 +842,7 @@ package body Hellish_Irc is
          Login_Matcher : constant Pattern_Matcher := Compile("login (\S+) (.+)", Case_Insensitive);
          Memo_Matcher : constant Pattern_Matcher := Compile("memo (\S+) (.+)", Case_Insensitive);
          Help_Matcher : constant Pattern_Matcher := Compile("help", Case_Insensitive);
+         Reset_PW_Matcher : constant Pattern_Matcher := Compile("reset-password (.+)", Case_Insensitive);
 
          Matches : Match_Array (0..2);
       begin
@@ -911,17 +913,51 @@ package body Hellish_Irc is
             return;
          end if;
 
+         Match(Reset_PW_Matcher, Message, Matches);
+         if Matches(0) /= No_Match and Matches(1) /= No_Match then
+            if The_Client.Tracker_User = No_Detached_User then
+               Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Only logged in users can reset password", From => "hellish");
+               return;
+            end if;
+            if not The_Client.Is_Ssl then
+               Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :Resetting your password is only available through an SSL connection", From => "hellish");
+               return;
+            end if;
+            declare
+               New_Password : String := Message(Matches(1).First..Matches(1).Last);
+               Password_Error : String_Holders.Holder := Hellish_Web.Routes.Validate_Password(New_Password, New_Password);
+            begin
+               if not Password_Error.Is_Empty then
+                  Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :" & Password_Error.Element, From => "hellish");
+                  return;
+               end if;
+
+               The_Client.Tracker_User.Set_Password(Generate_Password_Hash(Criticality => Online_Interactive, Password => New_Password));
+               Database.Update_User(The_Client.Tracker_User);
+               Send(The_Client,
+                    "NOTICE " & The_Client.Nick.Element & " :Your new password is """ & New_Password & """. Be sure to clean up your IRC logs!",
+                    From => "hellish");
+            end;
+
+            return;
+         end if;
+
+
          Match(Help_Matcher, Message, Matches);
          if Matches(0) /= No_Match then
             Send(The_Client, "NOTICE " & The_Client.Nick.Element & Text_Bold & " :Help for special commands" & Text_Bold,
                  From => "hellish");
             Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :"
-                   & Text_Bold & "login " & Text_Italic & "<username> <password>" & Text_Italic & Text_Bold
+                   & Text_Bold & "login " & Text_Italic & "<username> <irc-key>" & Text_Italic & Text_Bold
                    & " Login with your tracker username and irc key",
                  From => "hellish");
             Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :"
                    & Text_Bold & "memo " & Text_Italic & "<username> <memo>" & Text_Italic & Text_Bold
                    & " Leave a memo for a tracker user, they will see it as a notification",
+                 From => "hellish");
+            Send(The_Client, "NOTICE " & The_Client.Nick.Element & " :"
+                   & Text_Bold & "reset-password " & Text_Italic & "<new-password>" & Text_Italic & Text_Bold
+                   & " Change your tracker user password. You must be logged in and connected via SSL to do this",
                  From => "hellish");
             return;
          end if;

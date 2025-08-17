@@ -5,7 +5,6 @@ with Ada.Float_Text_Io; use Ada.Float_Text_Io;
 with Ada.Strings.Maps.Constants; use Ada.Strings.Maps.Constants;
 with Ada.Strings.Equal_Case_Insensitive; use Ada.Strings;
 with Ada.Exceptions; use Ada.Exceptions;
-with Ada.Containers.Indefinite_Holders;
 with Ada.Directories;
 with Ada.Containers.Indefinite_Ordered_Maps;
 with
@@ -63,6 +62,7 @@ with
   Hellish_Web.Jobs;
 with Hellish_Irc;
 with Hellish_Mail;
+use Hellish_Web.String_Holders;
 
 with Orm; use Orm;
 
@@ -76,9 +76,6 @@ package body Hellish_Web.Routes is
      (T => Detached_Post, Meta => Meta, Set_Meta => Set_Meta);
    package Torrent_Subscriptions is new Database.Subscriptions
      (T => Detached_Torrent, Meta => Meta, Set_Meta => Set_Meta);
-
-   package String_Holders is new Ada.Containers.Indefinite_Holders(String);
-   use String_Holders;
 
    function To_Hex_string(Input : String) return String is
       Result : Unbounded_String;
@@ -1255,16 +1252,13 @@ package body Hellish_Web.Routes is
       Action : String := Params.Get("action");
       Ok : String := Params.Get("ok");
    begin
-      if not Database.User_Exists(Username) then
-         -- Redirect to the login page
-         return Response.Url(Location => "/login");
-      end if;
-
       Insert(Translations, Assoc("action", Action));
       Insert(Translations, Assoc("back", Status.Header(Request).Get_Values("Referer")));
       Insert(Translations, Assoc("ok", Ok));
 
-      Userinfo_Translations(Database.Get_User(Username), Translations);
+      if Database.User_Exists(Username) then
+         Userinfo_Translations(Database.Get_User(Username), Translations);
+      end if;
 
       return Response.Build(Mime.Text_Html,
                                String'(Templates_Parser.Parse("assets/confirm.html", Translations)));
@@ -1317,6 +1311,8 @@ package body Hellish_Web.Routes is
                      return Referer_With_Error(Request, Error_String.Element);
                   end if;
                end;
+
+               The_User.Set_Password(Generate_Password_Hash(Criticality => Online_Interactive, Password => Password));
             end if;
 
             Profile_Json.Set_Field("profile_picture", Params.Get("profile_picture"));
@@ -1797,8 +1793,8 @@ package body Hellish_Web.Routes is
             Server_Host := To_Unbounded_String(Config.Get("http.server_host"));
          end if;
          if Config.Get("irc.ssl_cert") /= "" then
-            Hellish_Irc.Ssl_Cert_Path := Hellish_Irc.String_Holders.To_Holder(Config.Get("irc.ssl_cert"));
-            Hellish_Irc.Ssl_Privkey_Path := Hellish_Irc.String_Holders.To_Holder(Config.Get("irc.ssl_privkey"));
+            Hellish_Irc.Ssl_Cert_Path := String_Holders.To_Holder(Config.Get("irc.ssl_cert"));
+            Hellish_Irc.Ssl_Privkey_Path := String_Holders.To_Holder(Config.Get("irc.ssl_privkey"));
          end if;
          if Config.Get("mail.smtp_server") /= "" then
             Hellish_Mail.Smtp_Server := Hellish_Mail.String_Holders.To_Holder(Config.Get("mail.smtp_server"));

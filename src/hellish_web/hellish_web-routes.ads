@@ -21,6 +21,7 @@ package Hellish_Web.Routes is
 
    function Local_Markdown_Link(Title, Link : String) return String is
      ("[" & Title & "](" & (if Https then "https://" else "http://") & Host_Name_Website & Link & ")");
+   function Validate_Password(Password, Confirm_Password : String) return Hellish_Web.String_Holders.Holder;
 private
    package Posts is
       type Post_Handler is new Dispatchers.Handler with null record;

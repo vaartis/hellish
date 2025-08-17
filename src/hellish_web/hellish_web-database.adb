@@ -599,7 +599,7 @@ package body Hellish_Web.Database is
          The_Invite : Detached_Invite'Class := New_Invite;
       begin
          The_Invite.Set_By_User (From_User);
-         The_Invite.Set_Value (As_Hexidecimal (Random_Hash_Key (32)));
+         The_Invite.Set_Value (As_Hexidecimal (Random_Hash_Key (16)));
          The_Invite.Set_Activated (False);
 
          Session.Persist (The_Invite);
@@ -656,7 +656,7 @@ package body Hellish_Web.Database is
       -- Approximately 3 days
       Expiry_Date : Time := Clock - Expire_Time;
       Query : SQL_Query := SQL_Delete
-        (From => Hellish_Database.Invites, Where => (Hellish_Database.Invites.Created_At < Expiry_Date));
+        (From => Hellish_Database.Invites, Where => (Hellish_Database.Invites.Created_At < Expiry_Date and Hellish_Database.Invites.Activated = False));
    begin
       Session.Db.Execute(Query);
       Session.Commit;

@@ -8,7 +8,6 @@ with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Containers.Indefinite_Hashed_Sets;
 with Ada.Containers.Indefinite_Ordered_Maps;
-with Ada.Containers.Indefinite_Holders;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers; use Ada.Containers;
 with Ada.Characters.Latin_1; use Ada.Characters;
@@ -20,6 +19,8 @@ with Orm; use Orm;
 
 with Gnat.Sockets; use Gnat.Sockets;
 
+with Hellish_Web; use Hellish_Web;
+
 package Hellish_Irc is
    procedure Start;
 
@@ -27,9 +28,6 @@ package Hellish_Irc is
    Port_Ssl : Natural := 16698;
    Queue_Size : Positive := 10;
    History_Size : Positive := 50;
-
-   package String_Holders is new Ada.Containers.Indefinite_Holders(String);
-   use String_Holders;
 
    Ssl_Cert_Path : String_Holders.Holder;
    Ssl_Privkey_Path : String_Holders.Holder;

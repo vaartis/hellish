@@ -1,6 +1,7 @@
 with Ada.Text_Io; use Ada.Text_Io;
 with Ada.Integer_Text_Io; use Ada.Integer_Text_Io;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Containers.Vectors;
 with Interfaces; use Interfaces;
 with System; use System;
 
@@ -58,15 +59,30 @@ package body Hellish_Web.Peers is
             Put_Line("Peer " & To_String(Joined_Peer.Peer_Id) & " reported stopping");
          end if;
 
-         for Peer of Torrent_Map(Info_Hash)  loop
+         -- Will also persist peers
+         Remove_Stale_Peers(Info_Hash);
+      end Add;
+
+      procedure Remove_Stale_Peers(Info_Hash : String) is
+         package String_Vectors is new Ada.Containers.Vectors (Index_Type => Natural, Element_Type => Unbounded_String);
+         use String_Vectors;
+
+         Peers_To_Remove : String_Vectors.Vector;
+      begin
+         if not Torrent_Map.Contains(Info_Hash) then return; end if;
+
+         for Peer of Torrent_Map(Info_Hash) loop
             if Peer.Last_Seen + Duration(30 * 60) < Clock then
-               Put_Line("Peer " & To_String(Peer.Peer_Id) & " hasn't been seen for thirty minutes, assuming they left");
-               Remove(Info_Hash, Peer.Peer_Id);
+               Put_Line("Peer " & To_String(Peer.Peer_Id) & " of torrent " & Info_Hash & " hasn't been seen for 30 minutes, assuming they left");
+               Peers_To_Remove.Append(Peer.Peer_Id);
             end if;
+         end loop;
+         for P of Peers_To_Remove loop
+            Remove(Info_Hash, P);
          end loop;
 
          Persist_Peers(Info_Hash);
-      end Add;
+      end Remove_Stale_Peers;
 
       procedure Remove(Info_Hash : String; Peer_Id : Unbounded_String) is
       begin
@@ -78,10 +94,6 @@ package body Hellish_Web.Peers is
 
                Put_Line("Peer """ & To_String(Peer_Id) & """ LEFT """ & Info_Hash & """");
                Put_Line("There are now " & Trim(Peer_Map.Length'Image, Ada.Strings.Left) & " peers");
-
-               if Natural(Length(Peer_Map)) = 0 then
-                  Torrent_Map.Delete(Info_Hash);
-               end if;
             end;
          end if;
       end Remove;
@@ -239,6 +251,14 @@ package body Hellish_Web.Peers is
          Peers_Json : Json_Value := Create_Object;
          Torrent_Peers : Peer_Maps.Map := Torrent_Map(Info_Hash);
       begin
+         if Natural(Length(Torrent_Peers)) = 0 then
+            Put_Line("Torrent " & Info_Hash & " has no peers, removing it from the peer table");
+            Remove_Torrent(Info_Hash);
+            -- Empty string means removing it
+            Database.Persist_Peers(Info_Hash, "");
+            return;
+         end if;
+
          for Peer of Torrent_Peers loop
             declare
                Peer_Json : Json_Value := Create_Object;

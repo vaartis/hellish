@@ -65,6 +65,7 @@ package Hellish_Web.Peers is
 
       function Total_Stat_Data return Total_Stats;
 
+      procedure Remove_Stale_Peers(Info_Hash : String);
       procedure Load_Persisted_Peers;
    private
       function Ip_Port_Bytes(From_Peer : Peer) return String;

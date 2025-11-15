@@ -461,6 +461,19 @@ package body Hellish_Web.Database is
          Result_List.Fetch (Session.Db, Search_Query);
       end return;
    end Get_Most_Snatched_Torrents;
+   function Get_Active_Torrents return Direct_Torrent_List is
+      use Hellish_Database;
+
+      Session : Session_Type := Get_New_Session;
+      Search_Query               : SQL_Query :=
+        Sql_Select
+          (From     => Left_Join (Torrents, Hellish_Database.Peer_Data, Torrents.Id = Hellish_Database.Peer_Data.Torrent_Id),
+           Fields   => From_String("torrents.*"));
+   begin
+      return Result_List : Direct_Torrent_List do
+         Result_List.Fetch (Session.Db, Search_Query);
+      end return;
+   end Get_Active_Torrents;
 
    procedure Delete_Torrent (Id : Integer) is
       use Hellish_Database;
@@ -763,8 +776,13 @@ package body Hellish_Web.Database is
    procedure Persist_Peers (Info_Hash : String; Data : String) is
       Session     : Session_Type := Get_New_Session;
       The_Torrent : Detached_Torrent'Class := Get_Torrent_By_Hash (Info_Hash, Session);
+      Delete_Peers : Sql_Query := Sql_Delete (From => Hellish_Database.Peer_Data, Where => (Hellish_Database.Peer_Data.Torrent_Id = The_Torrent.Id));
    begin
-      Session.Db.Execute (Peers_Insert_Statement, Params => [+The_Torrent.Id, +Data]);
+      if Data /= "" then
+         Session.Db.Execute (Peers_Insert_Statement, Params => [+The_Torrent.Id, +Data]);
+      else
+         Session.Db.Execute(Delete_Peers);
+      end if;
 
       Session.Commit;
    end Persist_Peers;

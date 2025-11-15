@@ -55,6 +55,7 @@ package Hellish_Web.Database is
                                   Total_Count : out Integer) return Torrent_Group_List;
    function Get_Latest_Torrents return Torrent_List;
    function Get_Most_Snatched_Torrents return Direct_Torrent_List;
+   function Get_Active_Torrents return Direct_Torrent_List;
 
    function Get_User_Invites(From_User : Detached_User'Class) return Invite_List;
    procedure Create_Invite(From_User : Detached_User'Class);
